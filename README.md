@@ -21,8 +21,8 @@ Esta API (**Equipo 1**) es responsable de la **vigilancia y validación cruzada 
 
 | Método | Ruta | Descripción |
 |---|---|---|
-| `GET` | `/patentes/estado` | Consulta el estado actual del servicio o barrido de patentes |
-| `POST` | `/patentes/busqueda` | Ejecuta la búsqueda o validación cruzada de patentes de diseño |
+| `GET` | `/api/v1/patentes/estado?formulaId=form-001` | Consulta el estado precalculado de una fórmula frente al barrido de patentes |
+| `POST` | `/api/v1/patentes/busqueda` | Busca conflictos de patentes para la fórmula indicada en el cuerpo JSON (`formulaId`) |
 
 ---
 
@@ -31,7 +31,7 @@ Esta API (**Equipo 1**) es responsable de la **vigilancia y validación cruzada 
 - **Lenguaje / Framework:** Java 21 / Spring Boot 3.5.16
 - **Base de datos:** PostgreSQL (con migraciones automatizadas vía Flyway)
 - **Gestión de Dependencias:** Maven
-- **Calidad y Cobertura:** JaCoCo (umbral de cobertura del 80%)
+- **Calidad y Cobertura:** JaCoCo (mínimo 81% de cobertura de líneas y ramas en cada uno de los paquetes)
 - **Documentación:** SpringDoc OpenAPI (Swagger UI)
 - **CI/CD:** GitHub Actions (build, pruebas unitarias y análisis de cobertura en `ubuntu-24.04`)
 - **Contenedores:** Docker
@@ -41,10 +41,11 @@ Esta API (**Equipo 1**) es responsable de la **vigilancia y validación cruzada 
 
 ## 🚀 Cómo correr el proyecto localmente
 
-> Las instrucciones de configuración detalladas se encuentran en la carpeta del backend.
+> Para ejecutar sin Docker, prepara una base de datos PostgreSQL accesible desde tu equipo. Copia `patent-sweep/.env.example` a `patent-sweep/backend/.env` y ajusta el perfil, el puerto, las credenciales de PostgreSQL, el secreto JWT y las URLs de integración. Sustituye los nombres de host de Docker (`postgres` y `apis-simuladas`) por direcciones accesibles desde tu equipo. Para la alternativa con Docker, consulta [la guía de configuración](patent-sweep/README.md).
 
-1. **Compilar y verificar pruebas unitarias / cobertura:**
+1. **Compilar y verificar pruebas unitarias / cobertura (desde la raíz del repositorio):**
    ```bash
+   cd patent-sweep/backend
    mvn clean verify
    ```
 
