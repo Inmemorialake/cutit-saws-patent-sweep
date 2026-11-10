@@ -77,6 +77,19 @@ public class FuentePatentesMockAdapter implements FuentePatentesPort {
                         "Mecanismo de transmisión de potencia para maquinaria pesada de corte.",
                         List.of("Reivindicación 1: Ensamblaje de poleas dentadas."),
                         List.of("F16H")
+                ),
+                new PatenteExternaDTO(
+                        "PAT-100000",
+                        "Aleación para cadenas de corte",
+                        "Materiales",
+                        EstadoVigenciaPatente.CONCEDIDA,
+                        LocalDate.of(2025, 1, 10),
+                        LocalDate.of(2026, 6, 22),
+                        LocalDate.of(2031, 1, 10),
+                        "US",
+                        "Aleación metálica basada en Hierro, Cobalto y Níquel para cadenas de corte.",
+                        List.of("Reivindicación 1: Composición con Hierro, Cobalto y Níquel."),
+                        List.of("B27B 17/00", "B24D 3/00")
                 )
         );
 
