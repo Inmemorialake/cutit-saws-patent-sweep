@@ -23,7 +23,7 @@ import lombok.Setter;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
-/** Evento del historial de revisiones, solo de inserción (ER: RevisionFormula; DAS P18, DA-10). */
+/** Evento del historial de revisiones, solo de inserción (ER: RevisionFormula). */
 @Entity
 @Table(name = "revision_formula")
 @Getter

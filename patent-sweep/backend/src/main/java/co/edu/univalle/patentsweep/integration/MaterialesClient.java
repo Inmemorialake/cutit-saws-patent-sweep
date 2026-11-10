@@ -15,8 +15,8 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
 /**
- * Cliente de Materiales/Fórmulas (P09 Adapter/Gateway). Traduce los errores HTTP a excepciones
- * propias y se protege con Retry (3 intentos, 5 s) y Circuit Breaker (P10, P25).
+ * Cliente de Materiales/Fórmulas. Traduce los errores HTTP a excepciones
+ * propias y se protege con Retry (3 intentos, 5 s) y Circuit Breaker.
  */
 @Component
 public class MaterialesClient {
@@ -27,7 +27,7 @@ public class MaterialesClient {
         this.restClient = restClient;
     }
 
-    /** GET /formulas/{codigo}: detalle de una fórmula con sus componentes (PB HU-01, criterio 3). */
+    /** GET /formulas/{codigo}: detalle de una fórmula con sus componentes. */
     @Retry(name = "materiales")
     @CircuitBreaker(name = "materiales")
     public FormulaExternaDTO obtenerFormula(String formulaId) {

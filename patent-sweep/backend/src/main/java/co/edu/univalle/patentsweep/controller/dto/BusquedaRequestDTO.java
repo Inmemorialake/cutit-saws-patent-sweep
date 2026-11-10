@@ -4,7 +4,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 
-/** Cuerpo de POST /api/v1/patentes/busqueda (PB HU-02, criterio 2). */
+/** Cuerpo de POST /api/v1/patentes/busqueda */
 public record BusquedaRequestDTO(
         @Schema(description = "Código de la fórmula en Materiales/Fórmulas", example = "form-001")
         @NotBlank(message = BusquedaRequestDTO.MENSAJE_FORMULA)

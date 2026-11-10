@@ -18,7 +18,7 @@ import java.util.Map;
 import org.springframework.stereotype.Service;
 
 /**
- * Búsqueda manual de patentes en conflicto con una fórmula (PB HU-02). Orquesta la consulta a
+ * Búsqueda manual de patentes en conflicto con una fórmula. Orquesta la consulta a
  * Materiales, la búsqueda en la fuente y el motor de coincidencias; la persistencia la hace
  * {@link RevisionService} en una transacción corta, para no retener una conexión durante las llamadas HTTP.
  */
@@ -72,7 +72,7 @@ public class BusquedaService {
                 formula, username, motorCoincidencias.filtrarConflictos(formula, candidatas), parametros);
     }
 
-    /** El rango relativo se cuenta hacia atrás desde hoy y se aplica a la fecha de solicitud (PB HU-10, 2.2.3). */
+    /** El rango relativo se cuenta hacia atrás desde hoy y se aplica a la fecha de solicitud. */
     private LocalDate calcularFechaDesde(Configuracion configuracion) {
         if (configuracion.getRangoCantidad() == null || configuracion.getRangoUnidad() == null) {
             return null;

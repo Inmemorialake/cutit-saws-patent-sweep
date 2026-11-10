@@ -4,7 +4,7 @@ import co.edu.univalle.patentsweep.model.enums.EstadoVigenciaPatente;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.LocalDate;
 
-/** Fila de la tabla de resultados de la búsqueda manual (PB HU-02, criterio 4). */
+/** Fila de la tabla de resultados de la búsqueda manual. */
 public record ConflictoResumenDTO(
         @Schema(description = "Identificador del conflicto (6 dígitos)", example = "100001")
         String conflictoId,

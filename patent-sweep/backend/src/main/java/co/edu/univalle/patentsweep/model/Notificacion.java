@@ -19,7 +19,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-/** Registro de notificación, una sola fila por conflicto (ER: Notificacion; idempotencia P13). */
+/** Registro de notificación, una sola fila por conflicto (ER: Notificacion). */
 @Entity
 @Table(name = "notificacion")
 @Getter
