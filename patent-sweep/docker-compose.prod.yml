@@ -1,0 +1,24 @@
+# Override de producción (EC2). Se usa junto con docker-compose.yml:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --no-build
+# La imagen de la API se construye en GitHub Actions y se descarga de GHCR: el servidor no compila.
+# Los límites de memoria están pensados para una instancia de 1–2 GB de RAM con 2 GB de swap
+# (ver docs/despliegue/EC2.md). Requiere Docker Compose v2.24 o superior (por "!reset").
+services:
+  postgres:
+    mem_limit: 384m
+
+  apis-simuladas:
+    mem_limit: 256m
+    environment:
+      # WireMock corre en la JVM: se limita el heap para que quepa en el límite del contenedor.
+      JAVA_OPTS: "-Xmx128m -XX:+UseSerialGC"
+
+  api-patent-sweep:
+    # En producción no se construye la imagen: se elimina "build" del archivo base y se usa la de GHCR.
+    build: !reset null
+    image: ${IMAGE_NAME:-ghcr.io/inmemorialake/cutit-saws-patent-sweep}:${IMAGE_TAG:-latest}
+    pull_policy: missing
+    mem_limit: 768m
+    environment:
+      # Heap acotado para que heap + metaspace + hilos quepan en los 768 MB del contenedor.
+      JAVA_TOOL_OPTIONS: "-Xmx448m -XX:MaxMetaspaceSize=160m -Xss512k -XX:+UseSerialGC -XX:+ExitOnOutOfMemoryError"
