@@ -5,8 +5,8 @@ import java.time.LocalDate;
 import java.util.List;
 
 /**
- * Puerto de la fuente externa de patentes (P09 Adapter/Gateway, DAS DA-05). La lógica de negocio
- * depende solo de esta interfaz; se puede cambiar el adaptador sin tocar el motor de coincidencias.
+ * Puerto de la fuente externa de patentes. La lógica de negocio
+ * depende sólo de esta interfaz; se puede cambiar el adaptador sin tocar el motor de coincidencias.
  */
 public interface FuentePatentesPort {
 

@@ -1,11 +1,13 @@
 package co.edu.univalle.patentsweep.controller.dto;
 
 import co.edu.univalle.patentsweep.model.enums.EstadoVigenciaPatente;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.LocalDate;
 
-/** Fila de la tabla de resultados de la búsqueda manual (PB HU-02, criterio 4). */
+/** Fila de la tabla de resultados de la búsqueda manual. */
 public record ConflictoResumenDTO(
+        @JsonProperty("conflictoId")
         @Schema(description = "Identificador del conflicto (6 dígitos)", example = "100001")
         String conflictoId,
         @Schema(description = "Título de la patente (máximo 60 caracteres)", example = "Aleación para cadenas de corte")

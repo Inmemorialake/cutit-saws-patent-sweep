@@ -19,7 +19,7 @@ import lombok.Setter;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
-/** Frecuencia y criterios de búsqueda; solo una fila activa a la vez (ER: Configuracion; DA-10). */
+/** Frecuencia y criterios de búsqueda; solo una fila activa a la vez (ER: Configuracion). */
 @Entity
 @Table(name = "configuracion")
 @Getter
