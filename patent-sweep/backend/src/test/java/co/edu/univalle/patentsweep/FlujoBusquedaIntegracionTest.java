@@ -11,12 +11,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import co.edu.univalle.patentsweep.exception.FormulaNoEncontradaException;
+import co.edu.univalle.patentsweep.integration.FuentePatentesClient;
 import co.edu.univalle.patentsweep.integration.MaterialesClient;
 import co.edu.univalle.patentsweep.integration.NotificacionesClient;
 import co.edu.univalle.patentsweep.integration.dto.ComponenteExternoDTO;
 import co.edu.univalle.patentsweep.integration.dto.FormulaExternaDTO;
+import co.edu.univalle.patentsweep.integration.dto.PatenteExternaDTO;
 import co.edu.univalle.patentsweep.model.Notificacion;
 import co.edu.univalle.patentsweep.model.enums.EstadoFormula;
+import co.edu.univalle.patentsweep.model.enums.EstadoVigenciaPatente;
 import co.edu.univalle.patentsweep.model.enums.EstadoNotificacion;
 import co.edu.univalle.patentsweep.repository.ConflictoRepository;
 import co.edu.univalle.patentsweep.repository.FormulaRepository;
@@ -26,6 +29,7 @@ import io.zonky.test.db.postgres.embedded.EmbeddedPostgres;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.Duration;
+import java.time.LocalDate;
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -43,7 +47,7 @@ import org.springframework.test.web.servlet.MockMvc;
 /**
  * Flujo completo de HU-02 contra una base PostgreSQL real y embebida: migraciones Flyway, validación del
  * mapeo JPA, login con JWT, búsqueda, historial, estado de la fórmula y notificación asíncrona.
- * Solo se simulan las APIs externas (Materiales y Notificaciones).
+ * Solo se simulan las APIs externas (Materiales, Fuente de patentes y Notificaciones).
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -77,6 +81,8 @@ class FlujoBusquedaIntegracionTest {
     @MockitoBean
     private MaterialesClient materialesClient;
     @MockitoBean
+    private FuentePatentesClient fuentePatentesClient;
+    @MockitoBean
     private NotificacionesClient notificacionesClient;
 
     @Test
@@ -86,6 +92,11 @@ class FlujoBusquedaIntegracionTest {
         when(materialesClient.obtenerFormula("form-001")).thenReturn(new FormulaExternaDTO("form-001",
                 "Aleación Cuchilla Diamante A", "Cadena de corte para motosierra Ripit 5000", "1", "APROBADA",
                 List.of(componente("Hierro"), componente("Cobalto"), componente("Níquel"), componente("Carbono"))));
+        when(fuentePatentesClient.buscarPatentes(any(), any(), any())).thenReturn(List.of(new PatenteExternaDTO(
+                "PAT-100001", "Aleación para cadenas de corte", "Materiales", EstadoVigenciaPatente.CONCEDIDA,
+                LocalDate.of(2025, 1, 10), LocalDate.of(2026, 6, 22), LocalDate.of(2031, 1, 10), "US",
+                "Aleación de Hierro, Cobalto y Níquel para cadenas de corte.",
+                List.of("Reivindicación 1: Composición con Hierro, Cobalto y Níquel."), List.of("B27B 17/00"))));
         String token = iniciarSesion();
 
         // Act / Assert: primera búsqueda detecta el conflicto con id de 6 dígitos

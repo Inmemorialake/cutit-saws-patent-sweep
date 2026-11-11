@@ -36,7 +36,7 @@ Cliente / Consumidor
         ↙           ↘
 Integration Layer   Repositories (JPA)
     ↓                     ↓
-FuentePatentesMockAdapter   PostgreSQL 16 (Flyway)
+FuentePatentesClient(HTTP)  PostgreSQL 16 (Flyway)
 ```
 
 ### Documentos de referencia

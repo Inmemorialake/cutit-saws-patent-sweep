@@ -30,6 +30,14 @@ public class RestClientConfig {
         return construir(constructor, urlBase, conexion, lectura);
     }
 
+    @Bean
+    public RestClient fuentePatentesRestClient(RestClient.Builder constructor,
+                                               @Value("${patentsweep.fuente-patentes.url-base}") String urlBase,
+                                               @Value("${patentsweep.http.timeout-conexion-segundos}") long conexion,
+                                               @Value("${patentsweep.http.timeout-lectura-segundos}") long lectura) {
+        return construir(constructor, urlBase, conexion, lectura);
+    }
+
     private static RestClient construir(RestClient.Builder constructor, String urlBase, long conexion, long lectura) {
         SimpleClientHttpRequestFactory fabrica = new SimpleClientHttpRequestFactory();
         fabrica.setConnectTimeout(Duration.ofSeconds(conexion));
