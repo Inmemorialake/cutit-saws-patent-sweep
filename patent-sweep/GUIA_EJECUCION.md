@@ -177,7 +177,7 @@ mvn verify
 ```
 
 El reporte de cobertura queda en `backend/target/site/jacoco/index.html`. La compilación falla si la capa `service`
-baja del 100 % de líneas o ramas.
+baja del 80 % de líneas o ramas.
 
 ---
 

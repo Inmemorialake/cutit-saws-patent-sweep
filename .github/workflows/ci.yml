@@ -52,3 +52,13 @@ jobs:
           name: patent-sweep-${{ github.sha }}
           path: patent-sweep/backend/target/patent-sweep.jar
           if-no-files-found: error
+
+      - name: Análisis estático de código con Sonar
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        run: |
+          mvn --batch-mode sonar:sonar \
+            -Dsonar.host.url=${SONAR_HOST_URL:-"https://sonarcloud.io"} \
+            -Dsonar.token=${SONAR_TOKEN}
+        continue-on-error: true
