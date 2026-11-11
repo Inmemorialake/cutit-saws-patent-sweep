@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -19,11 +20,9 @@ import co.edu.univalle.patentsweep.integration.dto.FormulaExternaDTO;
 import co.edu.univalle.patentsweep.integration.dto.PatenteExternaDTO;
 import co.edu.univalle.patentsweep.model.Notificacion;
 import co.edu.univalle.patentsweep.model.enums.EstadoConflicto;
-import co.edu.univalle.patentsweep.model.enums.EstadoFormula;
 import co.edu.univalle.patentsweep.model.enums.EstadoVigenciaPatente;
 import co.edu.univalle.patentsweep.model.enums.EstadoNotificacion;
 import co.edu.univalle.patentsweep.repository.ConflictoRepository;
-import co.edu.univalle.patentsweep.repository.FormulaRepository;
 import co.edu.univalle.patentsweep.repository.NotificacionRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.zonky.test.db.postgres.embedded.EmbeddedPostgres;
@@ -77,8 +76,6 @@ class FlujoBusquedaIntegracionTest {
     @Autowired
     private ObjectMapper objectMapper;
     @Autowired
-    private FormulaRepository formulaRepository;
-    @Autowired
     private ConflictoRepository conflictoRepository;
     @Autowired
     private NotificacionRepository notificacionRepository;
@@ -115,8 +112,10 @@ class FlujoBusquedaIntegracionTest {
                 .andExpect(jsonPath("$.conflictos[0].fechaConcesion").value("22/06/2026"));
 
         // Assert: la fórmula quedó bloqueada y el conflicto es único
-        assertThat(formulaRepository.findById("form-001").orElseThrow().getEstado())
-                .isEqualTo(EstadoFormula.CONFLICTO_DETECTADO);
+        mockMvc.perform(get("/api/v1/patentes/estado").param("formulaId", "form-001")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.estado").value("CONFLICTO_DETECTADO"));
         assertThat(conflictoRepository.count()).isEqualTo(1);
 
         // Assert: segunda búsqueda no duplica el conflicto (PB HU-01, 6.2)
@@ -154,9 +153,9 @@ class FlujoBusquedaIntegracionTest {
                 .andExpect(jsonPath("$.conflictos.length()").value(1));
 
         // Assert: un conflicto por versión, sin duplicados dentro de la misma versión
-        assertThat(conflictoRepository.countByFormula_FormulaIdAndVersionFormulaAndEstado("form-020", "1",
+        assertThat(conflictoRepository.countByFormulaIdAndVersionFormulaAndEstado("form-020", "1",
                 EstadoConflicto.DETECTADO)).isEqualTo(1);
-        assertThat(conflictoRepository.countByFormula_FormulaIdAndVersionFormulaAndEstado("form-020", "2",
+        assertThat(conflictoRepository.countByFormulaIdAndVersionFormulaAndEstado("form-020", "2",
                 EstadoConflicto.DETECTADO)).isEqualTo(1);
     }
 

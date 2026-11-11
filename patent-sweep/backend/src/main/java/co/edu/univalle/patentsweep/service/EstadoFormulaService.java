@@ -1,57 +1,67 @@
 package co.edu.univalle.patentsweep.service;
 
-import co.edu.univalle.patentsweep.model.Formula;
-import co.edu.univalle.patentsweep.exception.FormulaNoEncontradaException;
+import co.edu.univalle.patentsweep.integration.MaterialesClient;
+import co.edu.univalle.patentsweep.integration.dto.FormulaExternaDTO;
+import co.edu.univalle.patentsweep.model.RevisionFormula;
 import co.edu.univalle.patentsweep.model.enums.EstadoConflicto;
 import co.edu.univalle.patentsweep.model.enums.EstadoFormula;
 import co.edu.univalle.patentsweep.model.enums.ResultadoRevision;
 import co.edu.univalle.patentsweep.repository.ConflictoRepository;
-import co.edu.univalle.patentsweep.repository.FormulaRepository;
+import co.edu.univalle.patentsweep.repository.EvaluacionFormulaRepository;
+import co.edu.univalle.patentsweep.repository.RevisionFormulaRepository;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
 import org.springframework.stereotype.Service;
 
 /**
- * Modelo de lectura precalculado (P16, DA-08): al cerrar cada revisión se recalcula y guarda el
- * estado de la fórmula, de modo que HU-04 responde sin buscar patentes en tiempo real.
+ * Estado de una fórmula frente a las patentes (HU-04, 3.2). No se guarda: se calcula en cada consulta con
+ * los conflictos, las evaluaciones y la última revisión, así que nunca queda desactualizado.
  */
 @Service
 public class EstadoFormulaService {
 
+    private static final List<String> EVALUACIONES_ABIERTAS = List.of("EN_PROCESO", "PENDIENTE_DE_ENVIO");
+
+    private final MaterialesClient materialesClient;
     private final ConflictoRepository conflictoRepository;
-    private final FormulaRepository formulaRepository;
+    private final EvaluacionFormulaRepository evaluacionRepository;
+    private final RevisionFormulaRepository revisionRepository;
 
-    public EstadoFormulaService(ConflictoRepository conflictoRepository, FormulaRepository formulaRepository) {
+    public EstadoFormulaService(MaterialesClient materialesClient, ConflictoRepository conflictoRepository,
+                                EvaluacionFormulaRepository evaluacionRepository,
+                                RevisionFormulaRepository revisionRepository) {
+        this.materialesClient = materialesClient;
         this.conflictoRepository = conflictoRepository;
-        this.formulaRepository = formulaRepository;
+        this.evaluacionRepository = evaluacionRepository;
+        this.revisionRepository = revisionRepository;
+    }
+
+    /** Estado calculado y fecha de la última revisión (nula si la fórmula no se ha revisado o falló). */
+    public record EstadoCalculado(EstadoFormula estado, LocalDateTime fechaUltimaRevision) {
     }
 
     /**
-     * Regla del PB (HU-04, 3.2): CONFLICTO_DETECTADO si hay al menos un conflicto DETECTADO de la versión evaluada; NO_PROCESADO
-     * si la última revisión falló técnicamente; LIBRE en cualquier otro caso (ya fue revisada).
+     * Primero verifica en Materiales que la fórmula exista (404 si no) y toma su versión vigente. Después
+     * aplica, en orden: conflicto DETECTADO de esa versión, evaluación abierta, nunca revisada o último
+     * intento fallido, y en cualquier otro caso LIBRE.
      */
-    public Formula actualizarEstado(Formula formula, String versionFormula, ResultadoRevision ultimoResultado,
-                                    LocalDateTime fechaRevision) {
-        long vigentes = conflictoRepository.countByFormula_FormulaIdAndVersionFormulaAndEstado(
-                formula.getFormulaId(), versionFormula, EstadoConflicto.DETECTADO);
-        EstadoFormula nuevoEstado;
-        if (vigentes > 0) {
-            nuevoEstado = EstadoFormula.CONFLICTO_DETECTADO;
-        } else if (ultimoResultado == ResultadoRevision.FALLO_TECNICO) {
-            nuevoEstado = EstadoFormula.NO_PROCESADO;
-        } else {
-            nuevoEstado = EstadoFormula.LIBRE;
+    public EstadoCalculado consultarEstado(String formulaId) {
+        FormulaExternaDTO formula = materialesClient.obtenerFormula(formulaId);
+        Optional<RevisionFormula> ultima = revisionRepository
+                .findFirstByFormulaIdOrderByFechaRevisionDescRevisionIdDesc(formulaId);
+        LocalDateTime fecha = ultima.map(RevisionFormula::getFechaRevision).orElse(null);
+
+        if (conflictoRepository.countByFormulaIdAndVersionFormulaAndEstado(
+                formulaId, formula.versionRegistrada(), EstadoConflicto.DETECTADO) > 0) {
+            return new EstadoCalculado(EstadoFormula.CONFLICTO_DETECTADO, fecha);
         }
-        formula.setEstado(nuevoEstado);
-        formula.setFechaUltimaRevision(fechaRevision);
-        return formulaRepository.save(formula);
-    }
-
-    /**
-     * Consulta el estado precalculado de una fórmula para Fabricación (PB HU-04).
-     * Lanza FormulaNoEncontradaException si no existe en la base de datos.
-     */
-    public Formula consultarEstado(String formulaId) {
-        return formulaRepository.findById(formulaId)
-                .orElseThrow(FormulaNoEncontradaException::new);
+        if (evaluacionRepository.existsByFormulaIdAndEstadoIn(formulaId, EVALUACIONES_ABIERTAS)) {
+            return new EstadoCalculado(EstadoFormula.PENDIENTE_REVISION, fecha);
+        }
+        if (ultima.isEmpty() || ultima.get().getResultado() == ResultadoRevision.FALLO_TECNICO) {
+            return new EstadoCalculado(EstadoFormula.NO_PROCESADO, null);
+        }
+        return new EstadoCalculado(EstadoFormula.LIBRE, fecha);
     }
 }

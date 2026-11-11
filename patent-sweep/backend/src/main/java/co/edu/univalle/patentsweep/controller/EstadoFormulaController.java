@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-/** Consulta del estado precalculado de una fórmula para Fabricación (PB HU-04). */
+/** Consulta del estado de una fórmula para Fabricación (PB HU-04). */
 @RestController
 @RequestMapping("/api/v1/patentes")
 @Tag(name = "Estado de Fórmulas", description = "Consulta del estado operativo de fórmulas para Fabricación")
@@ -33,9 +33,9 @@ public class EstadoFormulaController {
 
     @GetMapping("/estado")
     @Operation(summary = "Consultar el estado de una fórmula frente al barrido de patentes",
-            description = "Permite a Fabricación verificar el estado precalculado de la fórmula "
-                    + "para autorizar su producción en menos de 1 segundo (HU-04, modelo P16 / DA-08). "
-                    + "El usuario responsable se toma del token de la sesión.")
+            description = "Permite a Fabricación verificar el estado de la fórmula para autorizar su "
+                    + "producción. El estado se calcula en cada consulta (HU-04) y la fórmula se verifica "
+                    + "en Materiales. El usuario responsable se toma del token de la sesión.")
     @ApiResponse(responseCode = "200", description = "Estado consultado exitosamente")
     @ApiResponse(responseCode = "400", description = "El formulaId está vacío o no tiene el formato form-NNN")
     @ApiResponse(responseCode = "401", description = "No autenticado")
@@ -47,12 +47,12 @@ public class EstadoFormulaController {
             @Pattern(regexp = "^form-\\d{3}$", message = "El código de la fórmula es obligatorio y debe tener el formato form-NNN")
             String formulaId) {
 
-        var formula = estadoFormulaService.consultarEstado(formulaId);
+        var resultado = estadoFormulaService.consultarEstado(formulaId);
         return ResponseEntity.ok(new EstadoFormulaResponseDTO(
-                formula.getFormulaId(),
-                formula.getEstado(),
-                formula.getFechaUltimaRevision(),
-                "La fórmula se encuentra en estado " + formula.getEstado() + " para su uso en fabricación."
+                formulaId,
+                resultado.estado(),
+                resultado.fechaUltimaRevision(),
+                "La fórmula se encuentra en estado " + resultado.estado() + " para su uso en fabricación."
         ));
     }
 }

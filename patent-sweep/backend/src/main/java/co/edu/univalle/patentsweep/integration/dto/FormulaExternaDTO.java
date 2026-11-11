@@ -16,6 +16,13 @@ public record FormulaExternaDTO(
     /** Estado con el que Materiales/Fórmulas marca una fórmula retirada. */
     public static final String ESTADO_DESCONTINUADA = "DESCONTINUADA";
 
+    /** Versión que se guarda en conflictos y se compara al consultar el estado (DA-17). */
+    public static final String SIN_VERSION = "SIN_VERSION";
+
+    public String versionRegistrada() {
+        return version == null ? SIN_VERSION : version;
+    }
+
     public boolean estaDescontinuada() {
         return ESTADO_DESCONTINUADA.equals(estado);
     }

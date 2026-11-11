@@ -38,9 +38,9 @@ public class RevisionFormula {
     @Column(name = "revision_id")
     private Long revisionId;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "formula_id", nullable = false)
-    private Formula formula;
+    /** Código de la fórmula en Materiales/Fórmulas (form-NNN); la fórmula no se guarda aquí. */
+    @Column(name = "formula_id", nullable = false, length = 20)
+    private String formulaId;
 
     /** Nulo cuando la ejecuta el sistema (el PB lo muestra como "SISTEMA"). */
     @ManyToOne(fetch = FetchType.LAZY)

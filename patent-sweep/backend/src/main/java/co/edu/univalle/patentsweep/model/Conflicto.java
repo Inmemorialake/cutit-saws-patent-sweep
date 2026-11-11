@@ -44,9 +44,9 @@ public class Conflicto {
     @JoinColumn(name = "revision_id", nullable = false)
     private RevisionFormula revision;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "formula_id", nullable = false)
-    private Formula formula;
+    /** Código de la fórmula en Materiales/Fórmulas (form-NNN); la fórmula no se guarda aquí. */
+    @Column(name = "formula_id", nullable = false, length = 20)
+    private String formulaId;
 
     @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "patente_id", nullable = false)

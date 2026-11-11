@@ -9,7 +9,6 @@ import co.edu.univalle.patentsweep.config.JacksonConfig;
 import co.edu.univalle.patentsweep.config.JwtProvider;
 import co.edu.univalle.patentsweep.exception.FormulaNoEncontradaException;
 import co.edu.univalle.patentsweep.exception.GlobalExceptionHandler;
-import co.edu.univalle.patentsweep.model.Formula;
 import co.edu.univalle.patentsweep.model.enums.EstadoFormula;
 import co.edu.univalle.patentsweep.service.EstadoFormulaService;
 import java.time.LocalDateTime;
@@ -45,15 +44,11 @@ class EstadoFormulaControllerTest {
     private JwtProvider jwtProvider;
 
     @Test
-    @DisplayName("200: devuelve el estado precalculado de la fórmula para Fabricación")
+    @DisplayName("200: devuelve el estado calculado de la fórmula para Fabricación")
     void deberiaResponder200ConEstadoDeFormula() throws Exception {
         LocalDateTime ahora = LocalDateTime.of(2026, 10, 19, 10, 30, 0);
-        Formula formula = Formula.builder()
-                .formulaId("form-001")
-                .estado(EstadoFormula.LIBRE)
-                .fechaUltimaRevision(ahora)
-                .build();
-        when(estadoFormulaService.consultarEstado("form-001")).thenReturn(formula);
+        when(estadoFormulaService.consultarEstado("form-001"))
+                .thenReturn(new EstadoFormulaService.EstadoCalculado(EstadoFormula.LIBRE, ahora));
 
         mockMvc.perform(solicitud("form-001"))
                 .andExpect(status().isOk())
