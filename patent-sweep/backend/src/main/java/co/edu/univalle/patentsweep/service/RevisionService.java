@@ -81,7 +81,7 @@ public class RevisionService {
         ResultadoRevision resultado = hayNuevos || hayVigentes
                 ? ResultadoRevision.CON_CONFLICTO : ResultadoRevision.SIN_CONFLICTO;
 
-        RevisionFormula revision = guardarRevision(formulaId, username, resultado, parametros, null, ahora);
+        RevisionFormula revision = guardarRevision(formulaId, version, username, resultado, parametros, null, ahora);
 
         List<Conflicto> conflictos = new ArrayList<>();
         for (int i = 0; i < patentes.size(); i++) {
@@ -109,16 +109,17 @@ public class RevisionService {
     public void registrarFalloTecnico(FormulaExternaDTO formulaExterna, String username, String mensajeError,
                                       Map<String, Object> parametros) {
         LocalDateTime ahora = LocalDateTime.now(reloj);
-        guardarRevision(formulaExterna.codigo(), username, ResultadoRevision.FALLO_TECNICO, parametros,
-                mensajeError, ahora);
+        guardarRevision(formulaExterna.codigo(), formulaExterna.versionRegistrada(), username,
+                ResultadoRevision.FALLO_TECNICO, parametros, mensajeError, ahora);
     }
 
-    private RevisionFormula guardarRevision(String formulaId, String username, ResultadoRevision resultado,
-                                            Map<String, Object> parametros, String mensajeError,
-                                            LocalDateTime fecha) {
+    private RevisionFormula guardarRevision(String formulaId, String version, String username,
+                                            ResultadoRevision resultado, Map<String, Object> parametros,
+                                            String mensajeError, LocalDateTime fecha) {
         Usuario usuario = usuarioRepository.findByUsername(username).orElse(null);
         return revisionRepository.save(RevisionFormula.builder()
                 .formulaId(formulaId)
+                .versionFormula(version)
                 .usuario(usuario)
                 .origen(OrigenRevision.BUSQUEDA_MANUAL)
                 .fechaRevision(fecha)

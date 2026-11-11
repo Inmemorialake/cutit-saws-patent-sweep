@@ -43,8 +43,8 @@ public class EstadoFormulaService {
 
     /**
      * Primero verifica en Materiales que la fórmula exista (404 si no) y toma su versión vigente. Después
-     * aplica, en orden: conflicto DETECTADO de esa versión, evaluación abierta, nunca revisada o último
-     * intento fallido, y en cualquier otro caso LIBRE.
+     * aplica, en orden: conflicto DETECTADO de esa versión, evaluación abierta, nunca revisada (o revisada
+     * solo en otra versión) o último intento fallido, y en cualquier otro caso LIBRE.
      */
     public EstadoCalculado consultarEstado(String formulaId) {
         FormulaExternaDTO formula = materialesClient.obtenerFormula(formulaId);
@@ -59,7 +59,8 @@ public class EstadoFormulaService {
         if (evaluacionRepository.existsByFormulaIdAndEstadoIn(formulaId, EVALUACIONES_ABIERTAS)) {
             return new EstadoCalculado(EstadoFormula.PENDIENTE_REVISION, fecha);
         }
-        if (ultima.isEmpty() || ultima.get().getResultado() == ResultadoRevision.FALLO_TECNICO) {
+        if (ultima.isEmpty() || ultima.get().getResultado() == ResultadoRevision.FALLO_TECNICO
+                || !formula.versionRegistrada().equals(ultima.get().getVersionFormula())) {
             return new EstadoCalculado(EstadoFormula.NO_PROCESADO, null);
         }
         return new EstadoCalculado(EstadoFormula.LIBRE, fecha);

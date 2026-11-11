@@ -39,6 +39,7 @@ import org.junit.jupiter.api.TestMethodOrder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -75,6 +76,8 @@ class FlujoBusquedaIntegracionTest {
     private MockMvc mockMvc;
     @Autowired
     private ObjectMapper objectMapper;
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
     @Autowired
     private ConflictoRepository conflictoRepository;
     @Autowired
@@ -157,6 +160,21 @@ class FlujoBusquedaIntegracionTest {
                 EstadoConflicto.DETECTADO)).isEqualTo(1);
         assertThat(conflictoRepository.countByFormulaIdAndVersionFormulaAndEstado("form-020", "2",
                 EstadoConflicto.DETECTADO)).isEqualTo(1);
+
+        // Assert: cada revisión guarda la versión y la foto de la fórmula evaluada
+        assertThat(jdbcTemplate.queryForList("SELECT version_formula FROM revision_formula "
+                + "WHERE formula_id = 'form-020' ORDER BY revision_id", String.class))
+                .containsExactly("1", "1", "2");
+        assertThat(jdbcTemplate.queryForObject("SELECT parametros->'formula'->'componentes'->0->>'nombreMaterial' "
+                + "FROM revision_formula WHERE formula_id = 'form-020' ORDER BY revision_id LIMIT 1", String.class))
+                .isEqualTo("Hierro");
+
+        // Assert: una versión que nadie ha revisado deja la fórmula en NO_PROCESADO
+        when(materialesClient.obtenerFormula("form-020")).thenReturn(formulaConVersion("3"));
+        mockMvc.perform(get("/api/v1/patentes/estado").param("formulaId", "form-020")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.estado").value("NO_PROCESADO"));
     }
 
     private static FormulaExternaDTO formulaConVersion(String version) {

@@ -114,6 +114,8 @@ class RevisionServiceTest {
         assertThat(revision.getValue().getUsuario().getUsername()).isEqualTo("ingeniera");
         assertThat(revision.getValue().getParametros()).isEqualTo(PARAMETROS);
         assertThat(revision.getValue().getMensajeError()).isNull();
+        assertThat(revision.getValue().getFormulaId()).isEqualTo("form-001");
+        assertThat(revision.getValue().getVersionFormula()).isEqualTo("1");
 
         ArgumentCaptor<ConflictoDetectadoEvent> evento = ArgumentCaptor.forClass(ConflictoDetectadoEvent.class);
         verify(publicador).publishEvent(evento.capture());
@@ -282,6 +284,7 @@ class RevisionServiceTest {
         verify(revisionRepository).save(revision.capture());
         assertThat(revision.getValue().getResultado()).isEqualTo(ResultadoRevision.FALLO_TECNICO);
         assertThat(revision.getValue().getMensajeError()).isEqualTo("La fuente no respondió");
+        assertThat(revision.getValue().getVersionFormula()).isEqualTo("1");
         verificarResultado(ResultadoRevision.FALLO_TECNICO);
     }
 

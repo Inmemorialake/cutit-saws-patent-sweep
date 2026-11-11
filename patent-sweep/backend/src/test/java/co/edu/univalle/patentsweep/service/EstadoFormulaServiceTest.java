@@ -136,6 +136,35 @@ class EstadoFormulaServiceTest {
     }
 
     @Test
+    @DisplayName("Si la última revisión fue de otra versión, la versión vigente cuenta como no revisada")
+    void deberiaMarcarNoProcesadoCuandoLaUltimaRevisionEsDeOtraVersion() {
+        // Arrange
+        when(revisionRepository.findFirstByFormulaIdOrderByFechaRevisionDescRevisionIdDesc("form-001"))
+                .thenReturn(Optional.of(revision(ResultadoRevision.SIN_CONFLICTO, "1")));
+
+        // Act
+        EstadoFormulaService.EstadoCalculado resultado = servicio.consultarEstado("form-001");
+
+        // Assert
+        assertThat(resultado.estado()).isEqualTo(EstadoFormula.NO_PROCESADO);
+        assertThat(resultado.fechaUltimaRevision()).isNull();
+    }
+
+    @Test
+    @DisplayName("Una revisión anterior sin versión registrada no cubre la versión vigente")
+    void deberiaMarcarNoProcesadoCuandoLaRevisionNoTieneVersion() {
+        // Arrange
+        when(revisionRepository.findFirstByFormulaIdOrderByFechaRevisionDescRevisionIdDesc("form-001"))
+                .thenReturn(Optional.of(revision(ResultadoRevision.SIN_CONFLICTO, null)));
+
+        // Act
+        EstadoFormulaService.EstadoCalculado resultado = servicio.consultarEstado("form-001");
+
+        // Assert
+        assertThat(resultado.estado()).isEqualTo(EstadoFormula.NO_PROCESADO);
+    }
+
+    @Test
     @DisplayName("Revisada, sin conflictos ni evaluaciones abiertas el estado es LIBRE")
     void deberiaMarcarLibreCuandoNoHayNadaPendiente() {
         // Act
@@ -179,6 +208,11 @@ class EstadoFormulaServiceTest {
     }
 
     private static RevisionFormula revision(ResultadoRevision resultado) {
-        return RevisionFormula.builder().formulaId("form-001").fechaRevision(FECHA).resultado(resultado).build();
+        return revision(resultado, "2");
+    }
+
+    private static RevisionFormula revision(ResultadoRevision resultado, String version) {
+        return RevisionFormula.builder().formulaId("form-001").versionFormula(version).fechaRevision(FECHA)
+                .resultado(resultado).build();
     }
 }

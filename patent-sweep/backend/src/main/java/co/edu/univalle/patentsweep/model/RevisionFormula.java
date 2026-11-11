@@ -42,6 +42,10 @@ public class RevisionFormula {
     @Column(name = "formula_id", nullable = false, length = 20)
     private String formulaId;
 
+    /** Versión de la fórmula que se evaluó; nula en las revisiones anteriores a V5. */
+    @Column(name = "version_formula", length = 20)
+    private String versionFormula;
+
     /** Nulo cuando la ejecuta el sistema (el PB lo muestra como "SISTEMA"). */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "usuario_id")
