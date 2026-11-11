@@ -9,6 +9,7 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withServerError;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
+import co.edu.univalle.patentsweep.config.JacksonConfig;
 import co.edu.univalle.patentsweep.exception.IntegracionExternaException;
 import co.edu.univalle.patentsweep.exception.ServicioNoDisponibleException;
 import co.edu.univalle.patentsweep.integration.dto.PatenteExternaDTO;
@@ -21,6 +22,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
+import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
+import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
 
@@ -33,7 +36,12 @@ class FuentePatentesClientTest {
 
     @BeforeEach
     void preparar() {
-        RestClient.Builder constructor = RestClient.builder().baseUrl("http://patentes.test");
+        // Mismo formato de fechas que la aplicación (JacksonConfig): dd/MM/yyyy
+        Jackson2ObjectMapperBuilder jackson = Jackson2ObjectMapperBuilder.json();
+        new JacksonConfig().formatoFechas().customize(jackson);
+        RestClient.Builder constructor = RestClient.builder().baseUrl("http://patentes.test")
+                .messageConverters(conversores -> conversores.add(0,
+                        new MappingJackson2HttpMessageConverter(jackson.build())));
         servidor = MockRestServiceServer.bindTo(constructor).build();
         cliente = new FuentePatentesClient(constructor.build());
     }
@@ -44,7 +52,7 @@ class FuentePatentesClientTest {
         // Arrange
         String json = """
                 [{"patenteId":"PAT-100001","tituloPatente":"Aleación de hierro y cobalto",
-                  "estadoPatente":"CONCEDIDA","fechaSolicitud":"2025-03-15","fechaConcesion":"2026-01-20",
+                  "estadoPatente":"CONCEDIDA","fechaSolicitud":"15/03/2025","fechaConcesion":"20/01/2026",
                   "campoDesconocido":"se ignora","reivindicaciones":["R1"],"clasificaciones":["C22C"]}]""";
         servidor.expect(requestToUriTemplate(RUTA + "?terminos={t}&clasificaciones={c}&fechaSolicitudDesde={f}",
                         "Hierro,Cobalto", "C22C,B24D", "2025-01-01"))
