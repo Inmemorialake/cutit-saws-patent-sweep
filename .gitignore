@@ -1,0 +1,10 @@
+# Volcados de la JVM tras un fallo (hs_err_pid<PID>.log)
+hs_err_pid*.log
+
+# Configuración local de los IDE
+.idea/
+.vscode/
+*.iml
+
+# Secretos y configuración local
+.env
