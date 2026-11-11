@@ -59,8 +59,8 @@ curl -s -X POST http://localhost:8085/api/v1/patentes/busqueda \
   -d '{"formulaId":"form-001"}'
 ```
 
-Fórmulas simuladas (`mocks/mappings`): `form-001` produce un conflicto con la patente `PAT-998822`; `form-002` no produce
-conflictos; `form-003` está DESCONTINUADA (409); cualquier otro código responde 404. En Swagger UI también puede
+Fórmulas simuladas (`mocks/mappings`): `form-001` produce dos conflictos (`PAT-100001` con 3 de 4 materiales y `PAT-100002` con justo el 50 %);
+`form-002` produce uno (`PAT-200001`; `PAT-200002` solo coincide en un material y se descarta); `form-003` está DESCONTINUADA (409); cualquier otro código responde 404. En Swagger UI también puede
 usar el botón **Authorize** con el token del login.
 
 Para detener: `docker compose down` (agregue `-v` para borrar también los datos de PostgreSQL).
@@ -102,7 +102,7 @@ marcar el workflow como verificación obligatoria en las reglas de protección d
 patent-sweep/
 ├── docker-compose.yml        postgres + api-patent-sweep + apis-simuladas (WireMock)
 ├── .env.example              variables de entorno documentadas
-├── mocks/mappings/           respuestas simuladas de Materiales/Fórmulas y Notificaciones
+├── mocks/mappings/           respuestas simuladas de Materiales/Fórmulas, Fuente de patentes y Notificaciones
 └── backend/
     ├── Dockerfile            multi-etapa, usuario sin privilegios
     ├── pom.xml
@@ -126,7 +126,7 @@ Las carpetas siguen el blueprint acordado con el DAS (secciones 2 a 4).
 |---|---|
 | DA-01 base de datos propia | `application.yml`, `db/migration/V1__esquema.sql` |
 | DA-02 multicapa, Java 21, Spring Boot 3 | paquetes `controller`, `service`, `integration`, `repository` |
-| DA-05 fuente de patentes detrás de un puerto | `integration/port/FuentePatentesPort`, `adapter/FuentePatentesDatasetAdapter` |
+| DA-05 fuente de patentes detrás de un puerto | `integration/port/FuentePatentesPort`, `integration/FuentePatentesClient` (HTTP contra la API simulada) |
 | DA-06 Resilience4j | `@Retry` y `@CircuitBreaker` en los clientes; configuración en `application.yml` |
 | DA-07 notificaciones por evento asíncrono | `ConflictoDetectadoEvent`, `NotificacionService` |
 | DA-08 estado de fórmula precalculado | `EstadoFormulaService` |

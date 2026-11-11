@@ -1,0 +1,14 @@
+{
+  "priority": 1,
+  "request": {
+    "method": "GET",
+    "urlPath": "/patentes/buscar",
+    "queryParameters": { "terminos": { "contains": "LENTA-SIMULADA" } }
+  },
+  "response": {
+    "status": 200,
+    "fixedDelayMilliseconds": 25000,
+    "headers": { "Content-Type": "application/json" },
+    "jsonBody": []
+  }
+}

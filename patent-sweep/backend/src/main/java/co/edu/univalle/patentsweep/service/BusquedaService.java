@@ -18,7 +18,7 @@ import java.util.Map;
 import org.springframework.stereotype.Service;
 
 /**
- * Búsqueda manual de patentes en conflicto con una fórmula (PB HU-02). Orquesta la consulta a
+ * Búsqueda manual de patentes en conflicto con una fórmula. Orquesta la consulta a
  * Materiales, la búsqueda en la fuente y el motor de coincidencias; la persistencia la hace
  * {@link RevisionService} en una transacción corta, para no retener una conexión durante las llamadas HTTP.
  */
@@ -58,21 +58,22 @@ public class BusquedaService {
         Configuracion configuracion = configuracionRepository.findByActivaTrue()
                 .orElseThrow(ConfiguracionNoEncontradaException::new);
         LocalDate desde = calcularFechaDesde(configuracion);
-        Map<String, Object> parametros = armarParametros(configuracion, desde);
+        List<String> terminos = motorCoincidencias.terminosDeBusqueda(formula);
+        Map<String, Object> parametros = armarParametros(configuracion, desde, formula, terminos);
 
         List<PatenteExternaDTO> candidatas;
         try {
-            candidatas = fuentePatentes.buscarPatentes(
-                    motorCoincidencias.terminosDeBusqueda(formula), configuracion.getClasificaciones(), desde);
+            candidatas = fuentePatentes.buscarPatentes(terminos, configuracion.getClasificaciones(), desde);
         } catch (RuntimeException e) {
             revisionService.registrarFalloTecnico(formula, username, e.getMessage(), parametros);
             throw new ServicioNoDisponibleException("No se pudo comunicar con la fuente externa de patentes", e);
         }
+        parametros.put("patentesCandidatas", candidatas.stream().map(PatenteExternaDTO::patenteId).toList());
         return revisionService.registrarBusqueda(
                 formula, username, motorCoincidencias.filtrarConflictos(formula, candidatas), parametros);
     }
 
-    /** El rango relativo se cuenta hacia atrás desde hoy y se aplica a la fecha de solicitud (PB HU-10, 2.2.3). */
+    /** El rango relativo se cuenta hacia atrás desde hoy y se aplica a la fecha de solicitud. */
     private LocalDate calcularFechaDesde(Configuracion configuracion) {
         if (configuracion.getRangoCantidad() == null || configuracion.getRangoUnidad() == null) {
             return null;
@@ -83,8 +84,12 @@ public class BusquedaService {
                 : hoy.minusYears(configuracion.getRangoCantidad());
     }
 
-    private static Map<String, Object> armarParametros(Configuracion configuracion, LocalDate desde) {
+    /** Evidencia de la revisión: foto de la fórmula, términos buscados y filtros usados. */
+    private static Map<String, Object> armarParametros(Configuracion configuracion, LocalDate desde,
+                                                       FormulaExternaDTO formula, List<String> terminos) {
         Map<String, Object> parametros = new LinkedHashMap<>();
+        parametros.put("formula", formula.foto());
+        parametros.put("terminosBusqueda", terminos);
         parametros.put("clasificaciones", configuracion.getClasificaciones());
         parametros.put("fechaSolicitudDesde", desde == null ? null : desde.toString());
         return parametros;

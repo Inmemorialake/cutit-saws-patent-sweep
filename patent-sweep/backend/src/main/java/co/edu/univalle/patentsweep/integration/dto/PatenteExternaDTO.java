@@ -5,7 +5,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.time.LocalDate;
 import java.util.List;
 
-/** Patente candidata devuelta por la fuente externa de patentes (PB HU-01, criterio 6.1). */
+/** Patente candidata devuelta por la fuente externa de patentes. */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record PatenteExternaDTO(
         String patenteId,

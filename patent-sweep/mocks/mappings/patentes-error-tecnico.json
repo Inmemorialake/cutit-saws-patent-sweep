@@ -1,0 +1,13 @@
+{
+  "priority": 1,
+  "request": {
+    "method": "GET",
+    "urlPath": "/patentes/buscar",
+    "queryParameters": { "terminos": { "contains": "FALLO-SIMULADO" } }
+  },
+  "response": {
+    "status": 503,
+    "headers": { "Content-Type": "application/json" },
+    "jsonBody": { "detalle": "Falla simulada de la fuente externa de patentes" }
+  }
+}

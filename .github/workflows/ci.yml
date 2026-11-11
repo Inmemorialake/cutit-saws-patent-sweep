@@ -4,13 +4,11 @@ on:
   push:
     branches:
       - main
-      - develop-v1
-      - develop-v2
+      - develop
   pull_request:
     branches:
       - main
-      - develop-v1
-      - develop-v2
+      - develop
   workflow_dispatch:
 
 permissions:
@@ -32,7 +30,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '21'
+          java-version: "21"
           cache: maven
           cache-dependency-path: patent-sweep/backend/pom.xml
 
@@ -54,3 +52,13 @@ jobs:
           name: patent-sweep-${{ github.sha }}
           path: patent-sweep/backend/target/patent-sweep.jar
           if-no-files-found: error
+
+      - name: Análisis estático de código con Sonar
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        run: |
+          mvn --batch-mode sonar:sonar \
+            -Dsonar.host.url=${SONAR_HOST_URL:-"https://sonarcloud.io"} \
+            -Dsonar.token=${SONAR_TOKEN}
+        continue-on-error: true

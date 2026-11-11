@@ -10,6 +10,8 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -32,9 +34,12 @@ public class Usuario {
     @Column(name = "usuario_id")
     private Long usuarioId;
 
+    @NotBlank(message = "El nombre de usuario es obligatorio")
+    @Size(max = 80, message = "El nombre de usuario no puede superar 80 caracteres")
     @Column(nullable = false, unique = true, length = 80)
     private String username;
 
+    @NotBlank(message = "La clave cifrada es obligatoria")
     @Column(name = "password_hash", nullable = false, length = 255)
     private String passwordHash;
 

@@ -74,7 +74,7 @@ patentsweep:
     porcentaje-minimo: 50
     minimo-materiales: 2
   fuente-patentes:
-    dataset: classpath:data/patentes_dataset.json
+    url-base: ${FUENTE_PATENTES_URL}
   async:
     nucleo: 2
     maximo: 4

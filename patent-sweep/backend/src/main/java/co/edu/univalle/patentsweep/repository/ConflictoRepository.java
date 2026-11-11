@@ -10,7 +10,9 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface ConflictoRepository extends JpaRepository<Conflicto, Long> {
 
-    Optional<Conflicto> findByFormula_FormulaIdAndPatente_PatenteId(String formulaId, Long patenteId);
+    Optional<Conflicto> findByFormulaIdAndPatente_PatenteIdAndVersionFormula(String formulaId, Long patenteId,
+                                                                              String versionFormula);
 
-    long countByFormula_FormulaIdAndEstado(String formulaId, EstadoConflicto estado);
+    long countByFormulaIdAndVersionFormulaAndEstado(String formulaId, String versionFormula,
+                                                    EstadoConflicto estado);
 }
