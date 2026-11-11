@@ -108,7 +108,7 @@ jobs:
       PLATAFORMAS: ${{ vars.IMAGE_PLATFORMS || 'linux/amd64' }}
     steps:
       - name: Descargar el código del commit
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ needs.preparar.outputs.sha }}
 
@@ -178,7 +178,7 @@ jobs:
 
       - name: Descargar los archivos de despliegue del commit
         if: steps.secretos.outputs.listos == 'true'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ needs.preparar.outputs.sha }}
           sparse-checkout: |

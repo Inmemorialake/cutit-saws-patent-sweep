@@ -24,13 +24,13 @@ jobs:
 
     steps:
       - name: Descargar el código
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           # Historial completo: Sonar lo usa para el blame y para detectar el código nuevo.
           fetch-depth: 0
 
       - name: Configurar Java 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "21"
@@ -50,14 +50,14 @@ jobs:
         run: mvn --batch-mode --no-transfer-progress package -DskipTests
 
       - name: Guardar el JAR generado
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: patent-sweep-${{ github.sha }}
           path: patent-sweep/backend/target/patent-sweep.jar
           if-no-files-found: error
 
       - name: Caché de SonarCloud
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.sonar/cache
           key: ${{ runner.os }}-sonar
