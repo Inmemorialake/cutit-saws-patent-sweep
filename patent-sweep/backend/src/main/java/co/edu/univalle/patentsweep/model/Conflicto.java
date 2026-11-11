@@ -15,6 +15,9 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -22,11 +25,11 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-/** Coincidencia entre una fórmula y una patente (ER: Conflicto; única por pareja fórmula-patente). */
+/** Coincidencia entre una fórmula y una patente (ER: Conflicto; única por fórmula, patente y versión, DA-17). */
 @Entity
 @Table(name = "conflicto",
-        uniqueConstraints = @UniqueConstraint(name = "uq_conflicto_formula_patente",
-                columnNames = {"formula_id", "patente_id"}))
+        uniqueConstraints = @UniqueConstraint(name = "uq_conflicto_formula_patente_version",
+                columnNames = {"formula_id", "patente_id", "version_formula"}))
 @Getter
 @Setter
 @NoArgsConstructor
@@ -44,13 +47,20 @@ public class Conflicto {
     @JoinColumn(name = "revision_id", nullable = false)
     private RevisionFormula revision;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "formula_id", nullable = false)
-    private Formula formula;
+    /** Código de la fórmula en Materiales/Fórmulas (form-NNN); la fórmula no se guarda aquí. */
+    @Pattern(regexp = "^form-\\d{3}$", message = "El código de la fórmula debe tener el formato form-NNN")
+    @Column(name = "formula_id", nullable = false, length = 20)
+    private String formulaId;
 
     @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "patente_id", nullable = false)
     private Patente patente;
+
+    /** Versión de la fórmula evaluada cuando se detectó el conflicto (DA-17). */
+    @NotBlank(message = "La versión de la fórmula es obligatoria")
+    @Size(max = 20, message = "La versión de la fórmula no puede superar 20 caracteres")
+    @Column(name = "version_formula", nullable = false, length = 20)
+    private String versionFormula;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "usuario_descarte_id")

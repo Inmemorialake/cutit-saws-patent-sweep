@@ -89,7 +89,10 @@ class BusquedaServiceTest {
         verify(revisionService).registrarBusqueda(eq(formula), eq("ingeniera"), anyList(), parametros.capture());
         assertThat(parametros.getValue())
                 .containsEntry("clasificaciones", CLASIFICACIONES)
-                .containsEntry("fechaSolicitudDesde", "2021-10-27");
+                .containsEntry("fechaSolicitudDesde", "2021-10-27")
+                .containsEntry("terminosBusqueda", List.of("Hierro"))
+                .containsEntry("patentesCandidatas", List.of(candidata.patenteId()))
+                .containsEntry("formula", formula.foto());
     }
 
     @Test

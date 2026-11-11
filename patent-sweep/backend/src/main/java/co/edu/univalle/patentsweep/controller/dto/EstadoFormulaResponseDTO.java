@@ -4,7 +4,7 @@ import co.edu.univalle.patentsweep.model.enums.EstadoFormula;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.LocalDateTime;
 
-/** Respuesta del estado precalculado de una fórmula para Fabricación (PB HU-04). */
+/** Respuesta del estado calculado de una fórmula para Fabricación (PB HU-04). */
 public record EstadoFormulaResponseDTO(
         @Schema(description = "Código de la fórmula consultada", example = "form-001")
         String formulaId,
