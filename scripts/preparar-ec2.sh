@@ -5,6 +5,7 @@
 #
 # - Instala Docker Engine y el plugin de Docker Compose desde el repositorio oficial de Docker.
 # - Crea 2 GB de swap en /swapfile (útil en instancias de 1–2 GB de RAM).
+# - Desactiva el acceso SSH con contraseña y de root, e instala fail2ban.
 # - Crea /opt/patent-sweep, cuyo dueño es el usuario del despliegue, y lo agrega al grupo docker.
 #
 # Es idempotente: se puede ejecutar varias veces; cada paso revisa si ya está hecho.
@@ -98,7 +99,67 @@ else
   sysctl -q -p /etc/sysctl.d/99-patent-sweep-swap.conf
 fi
 
-# --- 3. Carpeta de la aplicación y permisos --------------------------------------------
+# --- 3. SSH solo con llave y fail2ban ----------------------------------------------------
+# El puerto 22 queda abierto a internet para que GitHub Actions pueda desplegar (ver ADR-005),
+# así que se desactivan las contraseñas y el acceso de root, y fail2ban bloquea los ataques de fuerza bruta.
+info "SSH solo con llave y fail2ban"
+CONF_SSH="/etc/ssh/sshd_config.d/10-patent-sweep.conf"
+if [ -d /etc/ssh/sshd_config.d ] && command -v sshd > /dev/null 2>&1; then
+  # sshd usa el primer valor que encuentra: el prefijo 10- gana a 50-cloud-init.conf.
+  CONTENIDO_SSH="# Gestionado por scripts/preparar-ec2.sh (Patent Sweep)
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+PermitRootLogin no
+PubkeyAuthentication yes
+MaxAuthTries 3"
+  if [ "$(cat "$CONF_SSH" 2> /dev/null)" != "$CONTENIDO_SSH" ]; then
+    printf '%s\n' "$CONTENIDO_SSH" > "$CONF_SSH"
+    if sshd -t; then
+      if hay_systemd; then
+        systemctl reload ssh
+        echo "sshd endurecido y recargado."
+      else
+        echo "sshd endurecido (sin systemd: no se recargó)."
+      fi
+    else
+      rm -f "$CONF_SSH"
+      echo "La configuración de sshd no es válida; se deshizo el cambio." >&2
+      exit 1
+    fi
+  else
+    echo "sshd ya estaba endurecido."
+  fi
+else
+  aviso "no hay servidor SSH instalado; se omite el endurecimiento."
+fi
+
+if ! command -v fail2ban-client > /dev/null 2>&1; then
+  DEBIAN_FRONTEND=noninteractive apt-get install -y -q fail2ban
+fi
+CONF_F2B="/etc/fail2ban/jail.d/patent-sweep.local"
+if [ ! -f "$CONF_F2B" ]; then
+  cat > "$CONF_F2B" << 'EOF'
+# Gestionado por scripts/preparar-ec2.sh (Patent Sweep)
+[sshd]
+enabled = true
+backend = systemd
+maxretry = 5
+findtime = 10m
+bantime = 1h
+EOF
+  echo "Regla de fail2ban para sshd creada."
+else
+  echo "La regla de fail2ban ya existe."
+fi
+if hay_systemd; then
+  systemctl enable fail2ban > /dev/null
+  systemctl restart fail2ban
+  echo "fail2ban habilitado."
+else
+  aviso "sin systemd: no se inició fail2ban."
+fi
+
+# --- 4. Carpeta de la aplicación y permisos --------------------------------------------
 info "Carpeta $DIRECTORIO_APP y usuario '$USUARIO'"
 install -d -m 0750 -o "$USUARIO" -g "$USUARIO" "$DIRECTORIO_APP"
 echo "Carpeta lista (dueño: $USUARIO)."
