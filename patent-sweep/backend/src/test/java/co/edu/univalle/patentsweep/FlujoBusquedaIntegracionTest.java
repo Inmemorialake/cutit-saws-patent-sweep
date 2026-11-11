@@ -18,6 +18,7 @@ import co.edu.univalle.patentsweep.integration.dto.ComponenteExternoDTO;
 import co.edu.univalle.patentsweep.integration.dto.FormulaExternaDTO;
 import co.edu.univalle.patentsweep.integration.dto.PatenteExternaDTO;
 import co.edu.univalle.patentsweep.model.Notificacion;
+import co.edu.univalle.patentsweep.model.enums.EstadoConflicto;
 import co.edu.univalle.patentsweep.model.enums.EstadoFormula;
 import co.edu.univalle.patentsweep.model.enums.EstadoVigenciaPatente;
 import co.edu.univalle.patentsweep.model.enums.EstadoNotificacion;
@@ -32,7 +33,10 @@ import java.time.Duration;
 import java.time.LocalDate;
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestMethodOrder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -51,6 +55,7 @@ import org.springframework.test.web.servlet.MockMvc;
  */
 @SpringBootTest
 @AutoConfigureMockMvc
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @TestPropertySource(properties = {
     "spring.flyway.enabled=true",
     "patentsweep.seguridad.admin-usuario=admin",
@@ -86,6 +91,7 @@ class FlujoBusquedaIntegracionTest {
     private NotificacionesClient notificacionesClient;
 
     @Test
+    @Order(1)
     @DisplayName("Login, búsqueda con conflicto, idempotencia y notificación asíncrona sobre PostgreSQL real")
     void deberiaRecorrerElFlujoCompletoDeLaBusqueda() throws Exception {
         // Arrange
@@ -127,6 +133,40 @@ class FlujoBusquedaIntegracionTest {
     }
 
     @Test
+    @Order(2)
+    @DisplayName("Una versión nueva de la fórmula genera un conflicto nuevo con la misma patente (DA-17)")
+    void deberiaGenerarUnConflictoNuevoPorCadaVersionDeLaFormula() throws Exception {
+        // Arrange
+        when(materialesClient.obtenerFormula("form-020")).thenReturn(formulaConVersion("1"), formulaConVersion("1"),
+                formulaConVersion("2"));
+        when(fuentePatentesClient.buscarPatentes(any(), any(), any())).thenReturn(List.of(new PatenteExternaDTO(
+                "PAT-100001", "Aleación para cadenas de corte", "Materiales", EstadoVigenciaPatente.CONCEDIDA,
+                LocalDate.of(2025, 1, 10), LocalDate.of(2026, 6, 22), LocalDate.of(2031, 1, 10), "US",
+                "Aleación de Hierro, Cobalto y Níquel para cadenas de corte.",
+                List.of("Reivindicación 1: Composición con Hierro, Cobalto y Níquel."), List.of("B27B 17/00"))));
+        String token = iniciarSesion();
+
+        // Act: dos búsquedas con la versión 1 y una con la versión 2
+        mockMvc.perform(buscar("form-020", token)).andExpect(status().isOk());
+        mockMvc.perform(buscar("form-020", token)).andExpect(status().isOk());
+        mockMvc.perform(buscar("form-020", token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.conflictos.length()").value(1));
+
+        // Assert: un conflicto por versión, sin duplicados dentro de la misma versión
+        assertThat(conflictoRepository.countByFormula_FormulaIdAndVersionFormulaAndEstado("form-020", "1",
+                EstadoConflicto.DETECTADO)).isEqualTo(1);
+        assertThat(conflictoRepository.countByFormula_FormulaIdAndVersionFormulaAndEstado("form-020", "2",
+                EstadoConflicto.DETECTADO)).isEqualTo(1);
+    }
+
+    private static FormulaExternaDTO formulaConVersion(String version) {
+        return new FormulaExternaDTO("form-020", "Aleación con versión", "Cadena de corte", version, "APROBADA",
+                List.of(componente("Hierro"), componente("Cobalto"), componente("Níquel"), componente("Carbono")));
+    }
+
+    @Test
+    @Order(3)
     @DisplayName("Sin token la API responde 401 y con una fórmula inexistente o descontinuada responde 404 y 409")
     void deberiaAplicarSeguridadYErroresDeNegocio() throws Exception {
         // Arrange

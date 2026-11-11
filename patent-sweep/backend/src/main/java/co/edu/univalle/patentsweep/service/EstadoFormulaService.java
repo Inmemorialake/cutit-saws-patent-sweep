@@ -26,12 +26,13 @@ public class EstadoFormulaService {
     }
 
     /**
-     * Regla del PB (HU-04, 3.2): CONFLICTO_DETECTADO si hay al menos un conflicto DETECTADO; NO_PROCESADO
+     * Regla del PB (HU-04, 3.2): CONFLICTO_DETECTADO si hay al menos un conflicto DETECTADO de la versión evaluada; NO_PROCESADO
      * si la última revisión falló técnicamente; LIBRE en cualquier otro caso (ya fue revisada).
      */
-    public Formula actualizarEstado(Formula formula, ResultadoRevision ultimoResultado, LocalDateTime fechaRevision) {
-        long vigentes = conflictoRepository
-                .countByFormula_FormulaIdAndEstado(formula.getFormulaId(), EstadoConflicto.DETECTADO);
+    public Formula actualizarEstado(Formula formula, String versionFormula, ResultadoRevision ultimoResultado,
+                                    LocalDateTime fechaRevision) {
+        long vigentes = conflictoRepository.countByFormula_FormulaIdAndVersionFormulaAndEstado(
+                formula.getFormulaId(), versionFormula, EstadoConflicto.DETECTADO);
         EstadoFormula nuevoEstado;
         if (vigentes > 0) {
             nuevoEstado = EstadoFormula.CONFLICTO_DETECTADO;

@@ -22,6 +22,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import org.slf4j.MDC;
 import org.springframework.context.ApplicationEventPublisher;
@@ -37,6 +38,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class RevisionService {
 
     private static final String FUENTE_EXTERNA = "FUENTE_EXTERNA";
+    private static final String SIN_VERSION = "SIN_VERSION";
 
     private final FormulaRepository formulaRepository;
     private final UsuarioRepository usuarioRepository;
@@ -63,13 +65,14 @@ public class RevisionService {
 
     /**
      * Registra una búsqueda manual. Devuelve los conflictos de las patentes coincidentes, nuevos o ya
-     * existentes: nunca se duplica la pareja fórmula-patente, sin importar su estado (PB HU-01, 6.2).
+     * existentes: nunca se duplica la terna fórmula-patente-versión, sin importar su estado (DA-17).
      */
     @Transactional
     public List<Conflicto> registrarBusqueda(FormulaExternaDTO formulaExterna, String username,
                                              List<PatenteExternaDTO> coincidencias,
                                              Map<String, Object> parametros) {
         Formula formula = sincronizarFormula(formulaExterna);
+        String version = versionDe(formulaExterna);
         LocalDateTime ahora = LocalDateTime.now(reloj);
 
         List<Patente> patentes = new ArrayList<>();
@@ -79,12 +82,13 @@ public class RevisionService {
             Patente patente = guardada.orElseGet(() -> patenteRepository.save(aPatente(coincidencia)));
             patentes.add(patente);
             existentes.add(guardada.flatMap(p -> conflictoRepository
-                    .findByFormula_FormulaIdAndPatente_PatenteId(formula.getFormulaId(), p.getPatenteId())));
+                    .findByFormula_FormulaIdAndPatente_PatenteIdAndVersionFormula(
+                            formula.getFormulaId(), p.getPatenteId(), version)));
         }
 
         boolean hayNuevos = existentes.stream().anyMatch(Optional::isEmpty);
-        boolean hayVigentes = conflictoRepository
-                .countByFormula_FormulaIdAndEstado(formula.getFormulaId(), EstadoConflicto.DETECTADO) > 0;
+        boolean hayVigentes = conflictoRepository.countByFormula_FormulaIdAndVersionFormulaAndEstado(
+                formula.getFormulaId(), version, EstadoConflicto.DETECTADO) > 0;
         ResultadoRevision resultado = hayNuevos || hayVigentes
                 ? ResultadoRevision.CON_CONFLICTO : ResultadoRevision.SIN_CONFLICTO;
 
@@ -99,6 +103,7 @@ public class RevisionService {
                         .revision(revision)
                         .formula(formula)
                         .patente(patentes.get(i))
+                        .versionFormula(version)
                         .estado(EstadoConflicto.DETECTADO)
                         .fechaDeteccion(ahora)
                         .build());
@@ -107,7 +112,7 @@ public class RevisionService {
                         nuevo.getConflictoId(), formula.getFormulaId(), patentes.get(i).getCodigoPatente()));
             }
         }
-        estadoFormulaService.actualizarEstado(formula, resultado, ahora);
+        estadoFormulaService.actualizarEstado(formula, version, resultado, ahora);
         return conflictos;
     }
 
@@ -118,7 +123,12 @@ public class RevisionService {
         Formula formula = sincronizarFormula(formulaExterna);
         LocalDateTime ahora = LocalDateTime.now(reloj);
         guardarRevision(formula, username, ResultadoRevision.FALLO_TECNICO, parametros, mensajeError, ahora);
-        estadoFormulaService.actualizarEstado(formula, ResultadoRevision.FALLO_TECNICO, ahora);
+        estadoFormulaService.actualizarEstado(formula, versionDe(formulaExterna),
+                ResultadoRevision.FALLO_TECNICO, ahora);
+    }
+
+    private static String versionDe(FormulaExternaDTO formulaExterna) {
+        return Objects.toString(formulaExterna.version(), SIN_VERSION);
     }
 
     /** Crea o actualiza la copia local de la fórmula (la dueña de los datos es Materiales/Fórmulas). */

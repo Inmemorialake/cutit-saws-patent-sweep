@@ -89,7 +89,8 @@ class RevisionServiceTest {
             conflicto.setConflictoId(100001L);
             return conflicto;
         });
-        when(conflictoRepository.countByFormula_FormulaIdAndEstado(anyString(), eq(EstadoConflicto.DETECTADO)))
+        when(conflictoRepository.countByFormula_FormulaIdAndVersionFormulaAndEstado(anyString(), eq("1"),
+                eq(EstadoConflicto.DETECTADO)))
                 .thenReturn(0L);
         when(usuarioRepository.findByUsername("ingeniera"))
                 .thenReturn(Optional.of(Usuario.builder().username("ingeniera").build()));
@@ -128,7 +129,7 @@ class RevisionServiceTest {
         assertThat(evento.getValue().conflictoId()).isEqualTo(100001L);
         assertThat(evento.getValue().formulaId()).isEqualTo("form-001");
         assertThat(evento.getValue().patenteId()).isEqualTo("PAT-998822");
-        verify(estadoFormulaService).actualizarEstado(any(Formula.class), eq(ResultadoRevision.CON_CONFLICTO),
+        verify(estadoFormulaService).actualizarEstado(any(Formula.class), eq("1"), eq(ResultadoRevision.CON_CONFLICTO),
                 eq(AHORA));
     }
 
@@ -161,7 +162,7 @@ class RevisionServiceTest {
                 .estado(EstadoConflicto.DESCARTADO).build();
         when(formulaRepository.findById("form-001")).thenReturn(Optional.of(formulaLocal));
         when(patenteRepository.findByCodigoPatente("PAT-998822")).thenReturn(Optional.of(patente));
-        when(conflictoRepository.findByFormula_FormulaIdAndPatente_PatenteId("form-001", 7L))
+        when(conflictoRepository.findByFormula_FormulaIdAndPatente_PatenteIdAndVersionFormula("form-001", 7L, "1"))
                 .thenReturn(Optional.of(descartado));
 
         // Act
@@ -173,7 +174,7 @@ class RevisionServiceTest {
         verify(conflictoRepository, never()).save(any(Conflicto.class));
         verify(publicador, never()).publishEvent(any(Object.class));
         verify(patenteRepository, never()).save(any(Patente.class));
-        verify(estadoFormulaService).actualizarEstado(formulaLocal, ResultadoRevision.SIN_CONFLICTO, AHORA);
+        verify(estadoFormulaService).actualizarEstado(formulaLocal, "1", ResultadoRevision.SIN_CONFLICTO, AHORA);
     }
 
     @Test
@@ -184,9 +185,10 @@ class RevisionServiceTest {
         Conflicto vigente = Conflicto.builder().conflictoId(100050L).patente(patente)
                 .estado(EstadoConflicto.DETECTADO).build();
         when(patenteRepository.findByCodigoPatente("PAT-998822")).thenReturn(Optional.of(patente));
-        when(conflictoRepository.findByFormula_FormulaIdAndPatente_PatenteId("form-001", 7L))
+        when(conflictoRepository.findByFormula_FormulaIdAndPatente_PatenteIdAndVersionFormula("form-001", 7L, "1"))
                 .thenReturn(Optional.of(vigente));
-        when(conflictoRepository.countByFormula_FormulaIdAndEstado("form-001", EstadoConflicto.DETECTADO))
+        when(conflictoRepository.countByFormula_FormulaIdAndVersionFormulaAndEstado("form-001", "1",
+                EstadoConflicto.DETECTADO))
                 .thenReturn(1L);
 
         // Act
@@ -196,7 +198,7 @@ class RevisionServiceTest {
         // Assert
         assertThat(resultado).containsExactly(vigente);
         verify(conflictoRepository, never()).save(any(Conflicto.class));
-        verify(estadoFormulaService).actualizarEstado(any(Formula.class), eq(ResultadoRevision.CON_CONFLICTO),
+        verify(estadoFormulaService).actualizarEstado(any(Formula.class), eq("1"), eq(ResultadoRevision.CON_CONFLICTO),
                 eq(AHORA));
     }
 
@@ -206,7 +208,8 @@ class RevisionServiceTest {
         // Arrange
         Patente patente = Patente.builder().patenteId(7L).codigoPatente("PAT-998822").build();
         when(patenteRepository.findByCodigoPatente("PAT-998822")).thenReturn(Optional.of(patente));
-        when(conflictoRepository.findByFormula_FormulaIdAndPatente_PatenteId(anyString(), anyLong()))
+        when(conflictoRepository.findByFormula_FormulaIdAndPatente_PatenteIdAndVersionFormula(anyString(), anyLong(),
+                anyString()))
                 .thenReturn(Optional.empty());
 
         // Act
@@ -221,6 +224,41 @@ class RevisionServiceTest {
     }
 
     @Test
+    @DisplayName("La misma patente con otra versión de la fórmula crea un conflicto nuevo (DA-17)")
+    void deberiaCrearUnConflictoNuevoParaOtraVersionDeLaFormula() {
+        // Arrange
+        Patente patente = Patente.builder().patenteId(7L).codigoPatente("PAT-998822").build();
+        when(patenteRepository.findByCodigoPatente("PAT-998822")).thenReturn(Optional.of(patente));
+        when(conflictoRepository.findByFormula_FormulaIdAndPatente_PatenteIdAndVersionFormula("form-001", 7L, "2"))
+                .thenReturn(Optional.empty());
+
+        // Act
+        List<Conflicto> resultado = servicio.registrarBusqueda(formulaExterna("APROBADA", "2"), "ingeniera",
+                List.of(patenteExterna("PAT-998822", List.of())), PARAMETROS);
+
+        // Assert
+        assertThat(resultado).hasSize(1);
+        assertThat(resultado.get(0).getVersionFormula()).isEqualTo("2");
+        assertThat(resultado.get(0).getEstado()).isEqualTo(EstadoConflicto.DETECTADO);
+        verify(publicador).publishEvent(any(ConflictoDetectadoEvent.class));
+        verify(estadoFormulaService).actualizarEstado(any(Formula.class), eq("2"),
+                eq(ResultadoRevision.CON_CONFLICTO), eq(AHORA));
+    }
+
+    @Test
+    @DisplayName("Una fórmula sin versión se registra con la versión SIN_VERSION")
+    void deberiaUsarSinVersionCuandoLaFormulaNoTraeVersion() {
+        // Arrange / Act
+        List<Conflicto> resultado = servicio.registrarBusqueda(formulaExterna("APROBADA", null), "ingeniera",
+                List.of(patenteExterna("PAT-998822", List.of())), PARAMETROS);
+
+        // Assert
+        assertThat(resultado.get(0).getVersionFormula()).isEqualTo("SIN_VERSION");
+        verify(estadoFormulaService).actualizarEstado(any(Formula.class), eq("SIN_VERSION"),
+                eq(ResultadoRevision.CON_CONFLICTO), eq(AHORA));
+    }
+
+    @Test
     @DisplayName("Sin coincidencias el resultado es SIN_CONFLICTO y se registra igual el historial")
     void deberiaRegistrarHistorialSinConflictosCuandoNoHayCoincidencias() {
         // Arrange
@@ -231,7 +269,7 @@ class RevisionServiceTest {
 
         // Assert
         assertThat(resultado).isEmpty();
-        verify(estadoFormulaService).actualizarEstado(any(Formula.class), eq(ResultadoRevision.SIN_CONFLICTO),
+        verify(estadoFormulaService).actualizarEstado(any(Formula.class), eq("1"), eq(ResultadoRevision.SIN_CONFLICTO),
                 eq(AHORA));
         verify(publicador, never()).publishEvent(any(Object.class));
     }
@@ -240,14 +278,15 @@ class RevisionServiceTest {
     @DisplayName("Sin coincidencias pero con otro conflicto vigente en la fórmula el resultado es CON_CONFLICTO")
     void deberiaReportarConflictoCuandoLaFormulaTieneOtroConflictoVigente() {
         // Arrange
-        when(conflictoRepository.countByFormula_FormulaIdAndEstado("form-001", EstadoConflicto.DETECTADO))
+        when(conflictoRepository.countByFormula_FormulaIdAndVersionFormulaAndEstado("form-001", "1",
+                EstadoConflicto.DETECTADO))
                 .thenReturn(3L);
 
         // Act
         servicio.registrarBusqueda(formulaExterna("APROBADA"), "ingeniera", List.of(), PARAMETROS);
 
         // Assert
-        verify(estadoFormulaService).actualizarEstado(any(Formula.class), eq(ResultadoRevision.CON_CONFLICTO),
+        verify(estadoFormulaService).actualizarEstado(any(Formula.class), eq("1"), eq(ResultadoRevision.CON_CONFLICTO),
                 eq(AHORA));
     }
 
@@ -280,12 +319,16 @@ class RevisionServiceTest {
         verify(revisionRepository).save(revision.capture());
         assertThat(revision.getValue().getResultado()).isEqualTo(ResultadoRevision.FALLO_TECNICO);
         assertThat(revision.getValue().getMensajeError()).isEqualTo("La fuente no respondió");
-        verify(estadoFormulaService).actualizarEstado(any(Formula.class), eq(ResultadoRevision.FALLO_TECNICO),
+        verify(estadoFormulaService).actualizarEstado(any(Formula.class), eq("1"), eq(ResultadoRevision.FALLO_TECNICO),
                 eq(AHORA));
     }
 
     private static FormulaExternaDTO formulaExterna(String estado) {
-        return new FormulaExternaDTO("form-001", "Aleación Cuchilla Diamante A", "Cadena de corte", "1", estado,
+        return formulaExterna(estado, "1");
+    }
+
+    private static FormulaExternaDTO formulaExterna(String estado, String version) {
+        return new FormulaExternaDTO("form-001", "Aleación Cuchilla Diamante A", "Cadena de corte", version, estado,
                 List.of(new ComponenteExternoDTO("SKU-1", "Hierro", BigDecimal.TEN)));
     }
 

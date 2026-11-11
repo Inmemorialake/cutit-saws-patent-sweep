@@ -37,12 +37,13 @@ class EstadoFormulaServiceTest {
     void deberiaMarcarConflictoDetectadoCuandoHayConflictosVigentes() {
         // Arrange
         Formula formula = formula();
-        when(conflictoRepository.countByFormula_FormulaIdAndEstado("form-001", EstadoConflicto.DETECTADO))
+        when(conflictoRepository.countByFormula_FormulaIdAndVersionFormulaAndEstado("form-001", "1",
+                EstadoConflicto.DETECTADO))
                 .thenReturn(2L);
         when(formulaRepository.save(any(Formula.class))).thenAnswer(i -> i.getArgument(0));
 
         // Act
-        Formula resultado = servicio.actualizarEstado(formula, ResultadoRevision.CON_CONFLICTO, FECHA);
+        Formula resultado = servicio.actualizarEstado(formula, "1", ResultadoRevision.CON_CONFLICTO, FECHA);
 
         // Assert
         assertThat(resultado.getEstado()).isEqualTo(EstadoFormula.CONFLICTO_DETECTADO);
@@ -54,12 +55,13 @@ class EstadoFormulaServiceTest {
     void deberiaMarcarNoProcesadoCuandoLaUltimaRevisionFalloTecnicamente() {
         // Arrange
         Formula formula = formula();
-        when(conflictoRepository.countByFormula_FormulaIdAndEstado("form-001", EstadoConflicto.DETECTADO))
+        when(conflictoRepository.countByFormula_FormulaIdAndVersionFormulaAndEstado("form-001", "1",
+                EstadoConflicto.DETECTADO))
                 .thenReturn(0L);
         when(formulaRepository.save(any(Formula.class))).thenAnswer(i -> i.getArgument(0));
 
         // Act
-        Formula resultado = servicio.actualizarEstado(formula, ResultadoRevision.FALLO_TECNICO, FECHA);
+        Formula resultado = servicio.actualizarEstado(formula, "1", ResultadoRevision.FALLO_TECNICO, FECHA);
 
         // Assert
         assertThat(resultado.getEstado()).isEqualTo(EstadoFormula.NO_PROCESADO);
@@ -70,12 +72,13 @@ class EstadoFormulaServiceTest {
     void deberiaMarcarLibreCuandoNoHayConflictosVigentes() {
         // Arrange
         Formula formula = formula();
-        when(conflictoRepository.countByFormula_FormulaIdAndEstado("form-001", EstadoConflicto.DETECTADO))
+        when(conflictoRepository.countByFormula_FormulaIdAndVersionFormulaAndEstado("form-001", "1",
+                EstadoConflicto.DETECTADO))
                 .thenReturn(0L);
         when(formulaRepository.save(any(Formula.class))).thenAnswer(i -> i.getArgument(0));
 
         // Act
-        Formula resultado = servicio.actualizarEstado(formula, ResultadoRevision.SIN_CONFLICTO, FECHA);
+        Formula resultado = servicio.actualizarEstado(formula, "1", ResultadoRevision.SIN_CONFLICTO, FECHA);
 
         // Assert
         assertThat(resultado.getEstado()).isEqualTo(EstadoFormula.LIBRE);

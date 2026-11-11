@@ -22,11 +22,11 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-/** Coincidencia entre una fórmula y una patente (ER: Conflicto; única por pareja fórmula-patente). */
+/** Coincidencia entre una fórmula y una patente (ER: Conflicto; única por fórmula, patente y versión, DA-17). */
 @Entity
 @Table(name = "conflicto",
-        uniqueConstraints = @UniqueConstraint(name = "uq_conflicto_formula_patente",
-                columnNames = {"formula_id", "patente_id"}))
+        uniqueConstraints = @UniqueConstraint(name = "uq_conflicto_formula_patente_version",
+                columnNames = {"formula_id", "patente_id", "version_formula"}))
 @Getter
 @Setter
 @NoArgsConstructor
@@ -51,6 +51,10 @@ public class Conflicto {
     @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "patente_id", nullable = false)
     private Patente patente;
+
+    /** Versión de la fórmula evaluada cuando se detectó el conflicto (DA-17). */
+    @Column(name = "version_formula", nullable = false, length = 20)
+    private String versionFormula;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "usuario_descarte_id")
