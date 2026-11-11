@@ -1,0 +1,282 @@
+name: CD Despliegue en EC2
+
+# Despliega en el EC2 de producción (ver docs/despliegue/EC2.md y docs/adrs/ADR-005).
+# - Automático: cuando el workflow de CI termina con éxito en un push a main.
+# - Manual (workflow_dispatch desde main): sin "image_tag" construye y despliega el commit actual
+#   de main (si su CI pasó); con "image_tag" despliega una imagen ya publicada (rollback).
+# Mientras no existan los secretos EC2_* en el environment "production", la imagen se publica
+# pero el despliegue se omite con un aviso, sin marcar el workflow como fallido.
+
+on:
+  workflow_run:
+    workflows: ["CI Backend Patent Sweep"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Tag ya publicado en GHCR (SHA completo de un commit de main) para rollback. Vacío: construir y desplegar el commit actual de main."
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+# Nunca dos despliegues a la vez; el que llega espera al anterior.
+concurrency:
+  group: despliegue-produccion
+  cancel-in-progress: false
+
+env:
+  DIRECTORIO_APP: /opt/patent-sweep
+
+jobs:
+  preparar:
+    name: Preparar despliegue
+    if: >-
+      (github.event_name == 'workflow_run'
+        && github.event.workflow_run.conclusion == 'success'
+        && github.event.workflow_run.event == 'push')
+      || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      sha: ${{ steps.datos.outputs.sha }}
+      imagen: ${{ steps.datos.outputs.imagen }}
+      tag: ${{ steps.datos.outputs.tag }}
+      construir: ${{ steps.datos.outputs.construir }}
+    steps:
+      - name: Calcular commit, imagen y tag
+        id: datos
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENTO: ${{ github.event_name }}
+          SHA_CI: ${{ github.event.workflow_run.head_sha }}
+          TAG_MANUAL: ${{ inputs.image_tag }}
+        run: |
+          set -euo pipefail
+          imagen="ghcr.io/${GITHUB_REPOSITORY,,}"
+          if [ "$EVENTO" = "workflow_run" ]; then
+            sha="$SHA_CI"
+          else
+            sha="$GITHUB_SHA"
+          fi
+
+          if [ -n "$TAG_MANUAL" ]; then
+            # Rollback: se despliega una imagen ya publicada, sin construir.
+            if ! [[ "$TAG_MANUAL" =~ ^[A-Za-z0-9_.-]{1,128}$ ]]; then
+              echo "::error::image_tag no es un tag de Docker válido."
+              exit 1
+            fi
+            tag="$TAG_MANUAL"
+            construir=false
+          else
+            tag="$sha"
+            construir=true
+            if [ "$EVENTO" = "workflow_dispatch" ]; then
+              # Despliegue manual sin tag: exige que el CI de ese commit haya pasado.
+              conclusion="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow ci.yml --commit "$sha" \
+                --event push --json conclusion --jq '.[0].conclusion // ""')"
+              if [ "$conclusion" != "success" ]; then
+                echo "::error::El CI del commit $sha no terminó con éxito (estado: '${conclusion:-sin ejecutar}')."
+                exit 1
+              fi
+            fi
+          fi
+
+          {
+            echo "sha=$sha"
+            echo "imagen=$imagen"
+            echo "tag=$tag"
+            echo "construir=$construir"
+          } >> "$GITHUB_OUTPUT"
+          echo "Commit: $sha | Imagen: $imagen:$tag | Construir: $construir"
+
+  imagen:
+    name: Construir y publicar imagen en GHCR
+    needs: preparar
+    if: needs.preparar.outputs.construir == 'true'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    env:
+      # Plataformas de la imagen. Para un EC2 ARM/Graviton defina la variable del repositorio
+      # IMAGE_PLATFORMS=linux/arm64 (o linux/amd64,linux/arm64).
+      PLATAFORMAS: ${{ vars.IMAGE_PLATFORMS || 'linux/amd64' }}
+    steps:
+      - name: Descargar el código del commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.preparar.outputs.sha }}
+
+      - name: Configurar QEMU (solo para imágenes ARM)
+        if: contains(env.PLATAFORMAS, 'arm64')
+        uses: docker/setup-qemu-action@v3
+
+      - name: Configurar Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Iniciar sesión en GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Calcular etiquetas de la imagen
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ needs.preparar.outputs.imagen }}
+          tags: |
+            type=raw,value=${{ needs.preparar.outputs.tag }}
+            type=raw,value=latest
+
+      - name: Construir y publicar
+        uses: docker/build-push-action@v6
+        with:
+          context: patent-sweep/backend
+          platforms: ${{ env.PLATAFORMAS }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  desplegar:
+    name: Desplegar en EC2
+    needs: [preparar, imagen]
+    if: >-
+      always()
+      && needs.preparar.result == 'success'
+      && (needs.imagen.result == 'success' || needs.imagen.result == 'skipped')
+    runs-on: ubuntu-24.04
+    environment: production
+    permissions:
+      contents: read
+      packages: read
+    env:
+      EC2_HOST: ${{ secrets.EC2_HOST }}
+      EC2_USER: ${{ secrets.EC2_USER }}
+      EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+      EC2_KNOWN_HOSTS: ${{ secrets.EC2_KNOWN_HOSTS }}
+      IMAGEN: ${{ needs.preparar.outputs.imagen }}
+      TAG: ${{ needs.preparar.outputs.tag }}
+    steps:
+      - name: Verificar secretos del EC2
+        id: secretos
+        run: |
+          if [ -z "$EC2_HOST" ] || [ -z "$EC2_USER" ] || [ -z "$EC2_SSH_KEY" ]; then
+            echo "::notice title=Despliegue omitido::Faltan EC2_HOST, EC2_USER o EC2_SSH_KEY en el environment 'production'. La imagen $IMAGEN:$TAG quedó publicada, pero no se desplegó. Ver docs/despliegue/EC2.md."
+            echo "listos=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "listos=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Descargar los archivos de despliegue del commit
+        if: steps.secretos.outputs.listos == 'true'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.preparar.outputs.sha }}
+          sparse-checkout: |
+            patent-sweep/docker-compose.yml
+            patent-sweep/docker-compose.prod.yml
+            patent-sweep/mocks
+          sparse-checkout-cone-mode: false
+
+      - name: Configurar SSH
+        if: steps.secretos.outputs.listos == 'true'
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$EC2_SSH_KEY" > ~/.ssh/id_despliegue
+          chmod 600 ~/.ssh/id_despliegue
+          if [ -n "$EC2_KNOWN_HOSTS" ]; then
+            printf '%s\n' "$EC2_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          else
+            # Sin EC2_KNOWN_HOSTS se confía en la llave que el servidor presente ahora (TOFU).
+            ssh-keyscan -T 15 -H "$EC2_HOST" > ~/.ssh/known_hosts
+          fi
+          chmod 600 ~/.ssh/known_hosts
+          cat > ~/.ssh/config <<EOF
+          Host ec2
+            HostName $EC2_HOST
+            User $EC2_USER
+            IdentityFile ~/.ssh/id_despliegue
+            IdentitiesOnly yes
+            StrictHostKeyChecking yes
+            ServerAliveInterval 15
+            ConnectTimeout 20
+          EOF
+
+      - name: Copiar compose y APIs simuladas al servidor
+        if: steps.secretos.outputs.listos == 'true'
+        run: |
+          set -euo pipefail
+          # Se reemplazan los compose y los mocks; el .env de producción no se toca.
+          # La ruta se expande a propósito en el runner (SC2029).
+          # shellcheck disable=SC2029
+          tar -C patent-sweep -czf - docker-compose.yml docker-compose.prod.yml mocks \
+            | ssh ec2 "set -e; test -d '$DIRECTORIO_APP' || { echo 'Falta $DIRECTORIO_APP: ejecute scripts/preparar-ec2.sh'; exit 1; }; rm -rf '$DIRECTORIO_APP/mocks'; tar -C '$DIRECTORIO_APP' -xzf -"
+
+      - name: Iniciar sesión en GHCR desde el servidor
+        if: steps.secretos.outputs.listos == 'true'
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_USUARIO: ${{ github.actor }}
+        run: |
+          # El token viaja por stdin, no como argumento; el usuario se expande en el runner (SC2029).
+          # shellcheck disable=SC2029
+          printf '%s' "$GHCR_TOKEN" | ssh ec2 "docker login ghcr.io -u '$GHCR_USUARIO' --password-stdin"
+
+      - name: Descargar imagen, levantar servicios y verificar salud
+        if: steps.secretos.outputs.listos == 'true'
+        run: |
+          set -euo pipefail
+          # Las variables de la línea de ssh se expanden en el runner; las del script, en el servidor.
+          # shellcheck disable=SC2029
+          ssh ec2 "DIRECTORIO_APP='$DIRECTORIO_APP' IMAGE_NAME='$IMAGEN' IMAGE_TAG='$TAG' bash -s" <<'REMOTO'
+          set -euo pipefail
+          cd "$DIRECTORIO_APP"
+          if [ ! -f .env ]; then
+            echo "::error::No existe $DIRECTORIO_APP/.env. Créelo a mano (ver docs/despliegue/EC2.md)."
+            exit 1
+          fi
+
+          # Versión desplegada: se guarda para que un reinicio o un comando manual usen la misma imagen.
+          printf 'IMAGE_NAME=%s\nIMAGE_TAG=%s\n' "$IMAGE_NAME" "$IMAGE_TAG" > imagen.env
+
+          compose() {
+            docker compose --env-file .env --env-file imagen.env \
+              -f docker-compose.yml -f docker-compose.prod.yml "$@"
+          }
+
+          compose pull
+          compose up -d --no-build --remove-orphans
+
+          puerto="$(grep -E '^API_PUERTO=' .env | tail -n 1 | cut -d= -f2- | tr -d "\"' \r")"
+          puerto="${puerto:-8085}"
+          for intento in $(seq 1 30); do
+            if curl -fsS "http://localhost:${puerto}/actuator/health" 2>/dev/null | grep -q '"UP"'; then
+              echo "API saludable (intento $intento): $IMAGE_NAME:$IMAGE_TAG"
+              docker image prune -f > /dev/null
+              exit 0
+            fi
+            echo "Esperando a la API (intento $intento/30)..."
+            sleep 6
+          done
+
+          echo "::error::La API no respondió UP en /actuator/health."
+          compose ps
+          compose logs --tail=150 api-patent-sweep
+          exit 1
+          REMOTO
+
+      - name: Cerrar sesión de GHCR y borrar la llave
+        if: always() && steps.secretos.outputs.listos == 'true'
+        run: |
+          ssh ec2 "docker logout ghcr.io" || true
+          rm -f ~/.ssh/id_despliegue
