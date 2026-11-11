@@ -31,9 +31,9 @@ El ejemplo transaccional recorre todas las capas: `POST /api/v1/auth/login` → 
 ## 3. Inicio rápido
 
 ```bash
-git clone https://github.com/Inmemorialake/Desarrollo-II.git
-cd Desarrollo-II
-git checkout develop-v2
+git clone https://github.com/Inmemorialake/cutit-saws-patent-sweep.git
+cd cutit-saws-patent-sweep
+git checkout develop
 cd patent-sweep
 cp .env.example .env
 docker compose up --build
@@ -89,12 +89,34 @@ ramas es inferior al 81 % en los paquetes `service` y `service.event`.
 ## 6. Integración continua y estilo
 
 El workflow [../.github/workflows/ci.yml](../.github/workflows/ci.yml) se ejecuta en cada push y pull request hacia
-`main`, `develop-v1` y `develop-v2`. Ejecuta las pruebas, valida el umbral de cobertura con JaCoCo, revisa reglas
-básicas de estilo con Checkstyle y construye el artefacto Maven. La configuración de Checkstyle está en
-`backend/config/checkstyle/checkstyle.xml`.
+`main` y `develop`, y también se puede lanzar a mano (`workflow_dispatch`). Ejecuta las pruebas, valida el umbral de
+cobertura con JaCoCo, revisa reglas básicas de estilo con Checkstyle, construye el artefacto Maven y lo analiza con
+SonarCloud. La configuración de Checkstyle está en `backend/config/checkstyle/checkstyle.xml`.
 
-SonarCloud aún no está integrado. Además, para que un resultado fallido impida aceptar un pull request, hay que
-marcar el workflow como verificación obligatoria en las reglas de protección de ramas de GitHub.
+### SonarCloud
+
+- La organización, la clave del proyecto y la URL están en las propiedades de `backend/pom.xml`
+  (`sonar.organization`, `sonar.projectKey` y `sonar.host.url`). Si SonarCloud asigna otros valores, cámbielos ahí.
+- La cobertura llega desde el reporte XML de JaCoCo (`sonar.coverage.jacoco.xmlReportPaths`). Los paquetes `config`,
+  `model` y `dto` se excluyen **solo de la cobertura** (`sonar.coverage.exclusions`); su código sí se analiza, incluidos
+  `SecurityConfig`, `JwtProvider` y `JwtAuthFilter`.
+- El workflow descarga el historial completo (`fetch-depth: 0`) para que Sonar identifique el código nuevo, y guarda
+  en caché `~/.sonar/cache`.
+- Requisitos: el secreto `SONAR_TOKEN` en el repositorio y el **análisis automático desactivado** en SonarCloud
+  (*Administration → Analysis Method*). Si el análisis automático está activo, el análisis desde CI falla.
+- Para ejecutarlo en local: `mvn verify sonar:sonar -Dsonar.token=<SU_TOKEN>` desde `backend/`.
+
+### Hacer obligatorios el CI y SonarCloud
+
+Para que un resultado fallido impida aceptar un pull request, en GitHub vaya a *Settings → Rules → Rulesets* (o
+*Settings → Branches → Branch protection rules*) y cree una regla para `main` y `develop` que:
+
+1. Exija pull request antes de integrar.
+2. Exija que pasen estas verificaciones (*Require status checks to pass*): `build-test-and-quality` (el job del CI) y
+   `SonarCloud Code Analysis` (el check que publica SonarCloud con el resultado del Quality Gate).
+3. Exija que la rama esté al día con la rama destino antes de integrar.
+
+Los checks solo aparecen en la lista después de haberse ejecutado al menos una vez en el repositorio.
 
 ## 7. Estructura del proyecto
 
@@ -153,7 +175,7 @@ y el DAS difieren se resolvieron a favor del PB (prefijo `/api/v1`, formato de f
 - **Alcance del arquetipo:** solo HU-02 está implementada de punta a punta, más el envío de notificaciones de HU-12 que HU-02
   dispara. Faltan HU-01 (barrido y `BarridoScheduler`), HU-03 a HU-11, y el reintento de notificaciones `PENDIENTE_NOTIFICACION`
   al iniciar cada barrido.
-- **Pendiente:** SonarCloud y Grafana. El workflow de CI ejecuta pruebas, JaCoCo y Checkstyle, pero no despliega la
+- **Pendiente:** Grafana. El workflow de CI ejecuta pruebas, JaCoCo, Checkstyle y SonarCloud, pero no despliega la
   aplicación. Los endpoints de Actuator (`/actuator/health`, `/actuator/prometheus`) ya están expuestos.
 - **TimeLimiter:** se aplica como tiempo máximo de lectura del cliente HTTP (20 s por intento, según el PB), no como anotación
   `@TimeLimiter`, que exige métodos asíncronos.
