@@ -12,6 +12,8 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.PositiveOrZero;
 import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -38,6 +40,7 @@ public class Notificacion {
     @JoinColumn(name = "conflicto_id", nullable = false, unique = true)
     private Conflicto conflicto;
 
+    @NotBlank(message = "El tipo de notificación es obligatorio")
     @Column(nullable = false, length = 40)
     private String tipo;
 
@@ -51,6 +54,7 @@ public class Notificacion {
     @Column(name = "fecha_envio")
     private LocalDateTime fechaEnvio;
 
+    @PositiveOrZero(message = "Los intentos no pueden ser negativos")
     @Column(nullable = false)
     private int intentos;
 

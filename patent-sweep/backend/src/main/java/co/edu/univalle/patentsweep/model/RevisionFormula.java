@@ -13,6 +13,8 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import java.time.LocalDateTime;
 import java.util.Map;
 import lombok.AllArgsConstructor;
@@ -39,10 +41,12 @@ public class RevisionFormula {
     private Long revisionId;
 
     /** Código de la fórmula en Materiales/Fórmulas (form-NNN); la fórmula no se guarda aquí. */
+    @Pattern(regexp = "^form-\\d{3}$", message = "El código de la fórmula debe tener el formato form-NNN")
     @Column(name = "formula_id", nullable = false, length = 20)
     private String formulaId;
 
     /** Versión de la fórmula que se evaluó; nula en las revisiones anteriores a V5. */
+    @Size(max = 20, message = "La versión de la fórmula no puede superar 20 caracteres")
     @Column(name = "version_formula", length = 20)
     private String versionFormula;
 

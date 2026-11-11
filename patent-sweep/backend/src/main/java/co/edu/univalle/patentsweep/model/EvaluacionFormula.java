@@ -4,6 +4,8 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import java.util.UUID;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -28,9 +30,11 @@ public class EvaluacionFormula {
     @Column(name = "evaluacion_id")
     private UUID evaluacionId;
 
+    @Pattern(regexp = "^form-\\d{3}$", message = "El código de la fórmula debe tener el formato form-NNN")
     @Column(name = "formula_id", nullable = false, length = 20)
     private String formulaId;
 
+    @NotBlank(message = "El ticket es obligatorio")
     @Column(nullable = false, length = 100)
     private String ticket;
 

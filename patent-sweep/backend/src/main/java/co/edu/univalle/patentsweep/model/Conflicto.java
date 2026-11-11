@@ -15,6 +15,9 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -45,6 +48,7 @@ public class Conflicto {
     private RevisionFormula revision;
 
     /** Código de la fórmula en Materiales/Fórmulas (form-NNN); la fórmula no se guarda aquí. */
+    @Pattern(regexp = "^form-\\d{3}$", message = "El código de la fórmula debe tener el formato form-NNN")
     @Column(name = "formula_id", nullable = false, length = 20)
     private String formulaId;
 
@@ -53,6 +57,8 @@ public class Conflicto {
     private Patente patente;
 
     /** Versión de la fórmula evaluada cuando se detectó el conflicto (DA-17). */
+    @NotBlank(message = "La versión de la fórmula es obligatoria")
+    @Size(max = 20, message = "La versión de la fórmula no puede superar 20 caracteres")
     @Column(name = "version_formula", nullable = false, length = 20)
     private String versionFormula;
 

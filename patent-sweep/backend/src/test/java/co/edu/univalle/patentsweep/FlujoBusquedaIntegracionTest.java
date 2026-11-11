@@ -1,6 +1,7 @@
 package co.edu.univalle.patentsweep;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.timeout;
@@ -39,6 +40,7 @@ import org.junit.jupiter.api.TestMethodOrder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -180,6 +182,52 @@ class FlujoBusquedaIntegracionTest {
     private static FormulaExternaDTO formulaConVersion(String version) {
         return new FormulaExternaDTO("form-020", "Aleación con versión", "Cadena de corte", version, "APROBADA",
                 List.of(componente("Hierro"), componente("Cobalto"), componente("Níquel"), componente("Carbono")));
+    }
+
+    @Test
+    @Order(4)
+    @DisplayName("La base rechaza datos fuera de dominio y acepta los válidos (migración V6)")
+    void deberiaAplicarLasRestriccionesDeDatos() {
+        // Arrange: una patente y una revisión válidas sobre las que probar los conflictos
+        jdbcTemplate.update("INSERT INTO patente (codigo_patente, titulo, estado_vigencia, fecha_solicitud, "
+                + "fecha_concesion) VALUES ('PAT-900001', 'Patente de prueba', 'CONCEDIDA', DATE '2025-01-10', "
+                + "DATE '2026-01-10')");
+        jdbcTemplate.update("INSERT INTO revision_formula (formula_id, version_formula, origen, fecha_revision, "
+                + "resultado) VALUES ('form-099', '1', 'BUSQUEDA_MANUAL', now(), 'CON_CONFLICTO')");
+        String conflicto = "INSERT INTO conflicto (revision_id, formula_id, patente_id, version_formula, estado, "
+                + "fecha_deteccion, motivo_descarte, fecha_descarte) SELECT r.revision_id, 'form-099', p.patente_id, "
+                + "'1', %s, now(), %s, %s FROM revision_formula r, patente p WHERE r.formula_id = 'form-099' "
+                + "AND p.codigo_patente = 'PAT-900001'";
+
+        // Act / Assert: valores fuera de dominio
+        assertThatThrownBy(() -> jdbcTemplate.update("INSERT INTO patente (codigo_patente, titulo) "
+                + "VALUES ('PAT-2026-999', 'Código mal formado')")).isInstanceOf(DataIntegrityViolationException.class);
+        assertThatThrownBy(() -> jdbcTemplate.update("INSERT INTO patente (codigo_patente, titulo, fecha_solicitud, "
+                + "fecha_concesion) VALUES ('PAT-900002', 'Concesión antes de la solicitud', DATE '2025-01-10', "
+                + "DATE '2024-01-10')")).isInstanceOf(DataIntegrityViolationException.class);
+        assertThatThrownBy(() -> jdbcTemplate.update(String.format(conflicto, "'detectado'", "NULL", "NULL")))
+                .isInstanceOf(DataIntegrityViolationException.class);
+        assertThatThrownBy(() -> jdbcTemplate.update("INSERT INTO revision_formula (formula_id, origen, "
+                + "fecha_revision, resultado) VALUES ('FORM-1', 'BUSQUEDA_MANUAL', now(), 'CON_CONFLICTO')"))
+                .isInstanceOf(DataIntegrityViolationException.class);
+        assertThatThrownBy(() -> jdbcTemplate.update("INSERT INTO usuario (username, password_hash, rol) "
+                + "VALUES ('intruso', 'hash', 'ROOT')")).isInstanceOf(DataIntegrityViolationException.class);
+        assertThatThrownBy(() -> jdbcTemplate.update("INSERT INTO configuracion (frecuencia_valor, "
+                + "frecuencia_unidad, frecuencia_horas, clasificaciones, activa, vigente_desde) "
+                + "VALUES (0, 'DIAS', 24, '[]'::jsonb, FALSE, now())")).isInstanceOf(DataIntegrityViolationException.class);
+        assertThatThrownBy(() -> jdbcTemplate.update("INSERT INTO clasificacion_patente (codigo, tipo) "
+                + "VALUES ('X 1/00', 'XXX')")).isInstanceOf(DataIntegrityViolationException.class);
+
+        // Act / Assert: un descarte exige motivo y fecha, y un conflicto detectado no los tiene
+        assertThatThrownBy(() -> jdbcTemplate.update(String.format(conflicto, "'DESCARTADO'", "NULL", "NULL")))
+                .isInstanceOf(DataIntegrityViolationException.class);
+        assertThatThrownBy(() -> jdbcTemplate.update(String.format(conflicto, "'DETECTADO'", "'sin sustento'", "now()")))
+                .isInstanceOf(DataIntegrityViolationException.class);
+
+        // Assert: los valores válidos sí se guardan
+        assertThat(jdbcTemplate.update(String.format(conflicto, "'DETECTADO'", "NULL", "NULL"))).isEqualTo(1);
+        assertThat(jdbcTemplate.update(String.format(conflicto.replace("'1', %s", "'2', %s"), "'DESCARTADO'",
+                "'Patente propia de Cutit'", "now()"))).isEqualTo(1);
     }
 
     @Test

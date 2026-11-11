@@ -16,6 +16,7 @@ El versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 - Versión de la fórmula en cada conflicto (migración V3, DA-17): el conflicto es único por fórmula, patente y versión, y un descarte solo vale para la versión juzgada.
 - Auditoría de cada revisión (migración V5): se guarda la versión y una foto de la fórmula (composición con porcentajes), los términos buscados, los filtros y las patentes candidatas (HU-02).
 - Estado `PENDIENTE_REVISION` de HU-04, calculado a partir de las evaluaciones abiertas (`EvaluacionFormula`, solo lectura hasta HU-03).
+- Restricciones de datos (migración V6): `CHECK` en la base para los estados, los formatos `form-NNN` y `PAT-NNNNNN`, la coherencia del descarte, las fechas de la patente y los valores numéricos de la configuración; las mismas reglas como validaciones en las entidades.
 
 ### Cambiado
 
