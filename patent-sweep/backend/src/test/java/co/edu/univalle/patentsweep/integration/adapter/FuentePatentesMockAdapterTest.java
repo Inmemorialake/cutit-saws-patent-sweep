@@ -29,7 +29,7 @@ class FuentePatentesMockAdapterTest {
 
         // Assert
         assertThat(resultado).extracting(PatenteExternaDTO::patenteId)
-                .containsExactly("PAT-2026-999", "PAT-2025-888", "PAT-2024-111");
+                .containsExactly("PAT-2026-999", "PAT-2025-888", "PAT-2024-111", "PAT-2025-333");
         assertThat(resultado.get(0).fechaSolicitud()).isEqualTo(LocalDate.of(2025, 3, 15));
     }
 
@@ -41,7 +41,7 @@ class FuentePatentesMockAdapterTest {
 
         // Assert
         assertThat(resultado).extracting(PatenteExternaDTO::patenteId)
-                .containsExactly("PAT-2026-999", "PAT-2025-888");
+                .containsExactly("PAT-2026-999", "PAT-2025-888", "PAT-2025-333");
     }
 
     @Test
@@ -52,7 +52,7 @@ class FuentePatentesMockAdapterTest {
 
         // Assert
         assertThat(resultado).extracting(PatenteExternaDTO::patenteId)
-                .containsExactly("PAT-2026-999");
+                .containsExactly("PAT-2026-999", "PAT-2025-333");
     }
 
     @Test

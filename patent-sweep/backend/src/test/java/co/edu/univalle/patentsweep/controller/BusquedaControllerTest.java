@@ -4,6 +4,8 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 
 import co.edu.univalle.patentsweep.config.JacksonConfig;
 import co.edu.univalle.patentsweep.config.JwtProvider;
@@ -57,7 +59,7 @@ class BusquedaControllerTest {
         Patente patente = Patente.builder().codigoPatente("PAT-998822").titulo("Aleación para cadenas de corte")
                 .tipoProducto("Aleación metálica").estadoVigencia(EstadoVigenciaPatente.CONCEDIDA)
                 .fechaConcesion(LocalDate.of(2025, 6, 22)).build();
-        when(busquedaService.buscar("form-001", "ingeniera"))
+        when(busquedaService.buscar(eq("form-001"), anyString()))
                 .thenReturn(List.of(Conflicto.builder().conflictoId(100001L).patente(patente).build()));
 
         // Act / Assert
@@ -112,8 +114,7 @@ class BusquedaControllerTest {
     @DisplayName("404: la fórmula no existe en Materiales")
     void deberiaResponder404CuandoLaFormulaNoExiste() throws Exception {
         // Arrange
-        when(busquedaService.buscar("form-404", "ingeniera")).thenThrow(new FormulaNoEncontradaException());
-
+        when(busquedaService.buscar(eq("form-404"), anyString())).thenThrow(new FormulaNoEncontradaException());
         // Act / Assert
         mockMvc.perform(solicitud("{\"formulaId\":\"form-404\"}"))
                 .andExpect(status().isNotFound())
@@ -124,8 +125,7 @@ class BusquedaControllerTest {
     @DisplayName("409: la fórmula está DESCONTINUADA")
     void deberiaResponder409CuandoLaFormulaEstaDescontinuada() throws Exception {
         // Arrange
-        when(busquedaService.buscar("form-003", "ingeniera")).thenThrow(new FormulaDescontinuadaException());
-
+        when(busquedaService.buscar(eq("form-003"), anyString())).thenThrow(new FormulaDescontinuadaException());
         // Act / Assert
         mockMvc.perform(solicitud("{\"formulaId\":\"form-003\"}"))
                 .andExpect(status().isConflict())
@@ -136,8 +136,7 @@ class BusquedaControllerTest {
     @DisplayName("503: Materiales o la fuente no responden tras los reintentos")
     void deberiaResponder503CuandoUnServicioExternoNoResponde() throws Exception {
         // Arrange
-        when(busquedaService.buscar("form-001", "ingeniera")).thenThrow(new ServicioNoDisponibleException("timeout"));
-
+        when(busquedaService.buscar(eq("form-001"), anyString())).thenThrow(new ServicioNoDisponibleException("timeout"));
         // Act / Assert
         mockMvc.perform(solicitud("{\"formulaId\":\"form-001\"}"))
                 .andExpect(status().isServiceUnavailable())
@@ -148,8 +147,7 @@ class BusquedaControllerTest {
     @DisplayName("500: un fallo interno no expone detalles técnicos")
     void deberiaResponder500ConUnFalloInterno() throws Exception {
         // Arrange
-        when(busquedaService.buscar("form-001", "ingeniera")).thenThrow(new IllegalStateException("detalle interno"));
-
+        when(busquedaService.buscar(eq("form-001"), anyString())).thenThrow(new IllegalStateException("detalle interno"));
         // Act / Assert
         mockMvc.perform(solicitud("{\"formulaId\":\"form-001\"}"))
                 .andExpect(status().isInternalServerError())

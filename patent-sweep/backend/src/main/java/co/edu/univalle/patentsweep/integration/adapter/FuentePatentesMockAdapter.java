@@ -79,7 +79,7 @@ public class FuentePatentesMockAdapter implements FuentePatentesPort {
                         List.of("F16H")
                 ),
                 new PatenteExternaDTO(
-                        "PAT-100000",
+                        "PAT-2025-333",
                         "Aleación para cadenas de corte",
                         "Materiales",
                         EstadoVigenciaPatente.CONCEDIDA,
