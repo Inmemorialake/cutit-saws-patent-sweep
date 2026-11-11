@@ -4,13 +4,11 @@ on:
   push:
     branches:
       - main
-      - develop-v1
-      - develop-v2
+      - develop
   pull_request:
     branches:
       - main
-      - develop-v1
-      - develop-v2
+      - develop
   workflow_dispatch:
 
 permissions:
