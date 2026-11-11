@@ -118,7 +118,21 @@ Para que un resultado fallido impida aceptar un pull request, en GitHub vaya a *
 
 Los checks solo aparecen en la lista después de haberse ejecutado al menos una vez en el repositorio.
 
-## 7. Estructura del proyecto
+## 7. Despliegue en AWS (EC2)
+
+La aplicación se despliega en una instancia EC2 con el mismo `docker-compose.yml`, más el override
+[`docker-compose.prod.yml`](docker-compose.prod.yml) (imagen de GHCR y límites de memoria):
+
+- El workflow [`../.github/workflows/cd.yml`](../.github/workflows/cd.yml) corre cuando el CI pasa en un push a `main`
+  (o a mano). Construye la imagen, la publica en `ghcr.io/inmemorialake/cutit-saws-patent-sweep` con el SHA y
+  `latest`, y la despliega por SSH en el environment `production`, verificando `/actuator/health`. El rollback se
+  hace con el mismo workflow, indicando un SHA anterior en `image_tag`.
+- [`../scripts/preparar-ec2.sh`](../scripts/preparar-ec2.sh) prepara el servidor (Docker, swap, SSH solo con llave y
+  fail2ban). El `.env` de producción vive solo en el servidor.
+- Guía paso a paso: [docs/despliegue/EC2.md](../docs/despliegue/EC2.md). Decisión y alternativas:
+  [ADR-005](../docs/adrs/ADR-005-despliegue-ec2-compose-ghcr.md).
+
+## 8. Estructura del proyecto
 
 ```
 patent-sweep/
@@ -142,7 +156,7 @@ patent-sweep/
 
 Las carpetas siguen el blueprint acordado con el DAS (secciones 2 a 4).
 
-## 8. Decisiones arquitectónicas clave (DAS)
+## 9. Decisiones arquitectónicas clave (DAS)
 
 | Decisión | Dónde se ve en el código |
 |---|---|
@@ -170,13 +184,12 @@ y el DAS difieren se resolvieron a favor del PB (prefijo `/api/v1`, formato de f
 | WireMock (`apis-simuladas`) | Permite que el ejemplo corra sin las APIs de otros equipos |
 | PostgreSQL embebido (solo pruebas) | Prueba de integración sin Docker |
 
-## 9. Limitaciones conocidas y siguientes pasos
+## 10. Limitaciones conocidas y siguientes pasos
 
 - **Alcance del arquetipo:** solo HU-02 está implementada de punta a punta, más el envío de notificaciones de HU-12 que HU-02
   dispara. Faltan HU-01 (barrido y `BarridoScheduler`), HU-03 a HU-11, y el reintento de notificaciones `PENDIENTE_NOTIFICACION`
   al iniciar cada barrido.
-- **Pendiente:** Grafana. El workflow de CI ejecuta pruebas, JaCoCo, Checkstyle y SonarCloud, pero no despliega la
-  aplicación. Los endpoints de Actuator (`/actuator/health`, `/actuator/prometheus`) ya están expuestos.
+- **Pendiente:** Grafana. Los endpoints de Actuator (`/actuator/health`, `/actuator/prometheus`) ya están expuestos.
 - **TimeLimiter:** se aplica como tiempo máximo de lectura del cliente HTTP (20 s por intento, según el PB), no como anotación
   `@TimeLimiter`, que exige métodos asíncronos.
 - **Caffeine:** `CacheConfig` está lista, pero se usará cuando se implemente la validación de clasificaciones (HU-10).
