@@ -4,8 +4,9 @@ API REST del módulo de **Patent Sweep (Equipo 1)** para la plataforma modular d
 
 [![License](https://img.shields.io/badge/license-Academica--Univalle-blue.svg)](#licencia)
 [![Status](https://img.shields.io/badge/status-Desarrollo%20--%20HU--02-green.svg)]()
-[![CI](https://github.com/inmemorialake/patent-sweep/actions/workflows/ci.yml/badge.svg?branch=develop)]()
-[![Quality Gate](https://img.shields.io/badge/quality%20gate-passed-brightgreen.svg)]()
+[![CI](https://github.com/Inmemorialake/cutit-saws-patent-sweep/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Inmemorialake/cutit-saws-patent-sweep/actions/workflows/ci.yml)
+[![CD](https://github.com/Inmemorialake/cutit-saws-patent-sweep/actions/workflows/cd.yml/badge.svg)](https://github.com/Inmemorialake/cutit-saws-patent-sweep/actions/workflows/cd.yml)
+[![Quality Gate](https://sonarcloud.io/api/project_badges/measure?project=Inmemorialake_cutit-saws-patent-sweep&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=Inmemorialake_cutit-saws-patent-sweep)
 [![Coverage JaCoCo](https://img.shields.io/badge/coverage-98%25-brightgreen.svg)](#cobertura-de-tests)
 
 ---
@@ -89,8 +90,8 @@ FuentePatentesClient(HTTP)  PostgreSQL 16 (Flyway)
 
 ### 1. Clonar el repositorio
 ```bash
-git clone https://github.com/inmemorialake/patent-sweep.git
-cd patent-sweep/backend
+git clone https://github.com/Inmemorialake/cutit-saws-patent-sweep.git
+cd cutit-saws-patent-sweep/patent-sweep/backend
 ```
 
 ### 2. Configurar variables de entorno
@@ -117,6 +118,7 @@ Abre tu navegador en: **http://localhost:8085/swagger-ui.html**
 ## 🐳 Ejecución con Docker Compose
 
 ```bash
+# Desde la carpeta patent-sweep/ (con .env creado a partir de .env.example)
 # 1. Construir las imágenes
 docker compose build
 
@@ -134,7 +136,8 @@ docker compose ps
 1. Trabajar en rama personal (`primerainicialnombre` + `primerapellido`).
 2. Validar cambios localmente con `mvn clean verify` (incluye Checkstyle y JaCoCo).
 3. Crear Pull Request hacia `develop`.
-4. Pipeline automático en GitHub Actions valida compilación, pruebas y Quality Gate.
+4. El CI (`.github/workflows/ci.yml`) valida compilación, pruebas, cobertura (JaCoCo), estilo (Checkstyle) y el Quality Gate de SonarCloud en cada PR hacia `develop` y `main`.
+5. Al integrar en `main`, el CD (`.github/workflows/cd.yml`) publica la imagen en GHCR y la despliega en el EC2 de AWS. Guía: [docs/despliegue/EC2.md](docs/despliegue/EC2.md) · Decisión: [ADR-005](docs/adrs/ADR-005-despliegue-ec2-compose-ghcr.md).
 
 ---
 
@@ -146,7 +149,6 @@ docker compose ps
 | `co.edu.univalle.patentsweep.controller` | 100% | ✅ Supera umbral |
 | `co.edu.univalle.patentsweep.integration.adapter` | 99% | ✅ Supera umbral |
 | `co.edu.univalle.patentsweep.model` | 88% | ✅ Supera umbral |
-| `co.edu.univalle.patentsweep.integration.adapter` | 99% | ✅ Supera umbral |
 | **Global del Proyecto** | **98% (Instrucciones) / 94% (Ramas)** | **✅ Quality Gate Aprobado** |
 
 ---

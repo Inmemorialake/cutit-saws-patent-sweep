@@ -11,6 +11,9 @@ El versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 ### Añadido
 
+- Análisis de SonarCloud en el CI (organización, clave y URL en `pom.xml`); el Quality Gate se publica en cada PR. Solo `config`, `model` y `dto` se excluyen de la cobertura, no del análisis.
+- Despliegue continuo en AWS (`.github/workflows/cd.yml`): imagen en GHCR (SHA y `latest`) y despliegue por SSH en un EC2 con Docker Compose, con health check y rollback por SHA.
+- `docker-compose.prod.yml` (imagen de GHCR y límites de memoria), `scripts/preparar-ec2.sh` (Docker, swap, SSH solo con llave y fail2ban), guía `docs/despliegue/EC2.md` y ADR-005.
 - API simulada de la fuente de patentes con WireMock (`GET /patentes/buscar`), con respuestas preconfiguradas: conflicto claro, límite del 50 %, patente con un material menos, fórmula sin conflicto, falla 503 y respuesta lenta para probar reintentos (HU-02).
 - `FuentePatentesClient`: cliente HTTP de la fuente de patentes con Retry (3 intentos cada 5 s), Circuit Breaker y traducción de errores; se configura con `FUENTE_PATENTES_URL` (HU-02).
 - Versión de la fórmula en cada conflicto (migración V3, DA-17): el conflicto es único por fórmula, patente y versión, y un descarte solo vale para la versión juzgada.
@@ -21,6 +24,8 @@ El versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 ### Cambiado
 
+- Acciones de GitHub actualizadas a las versiones vigentes (`checkout`, `setup-java`, `cache`, `upload-artifact`).
+- Limpieza del repositorio: los prompts pasan a `docs/ia/` y el análisis de HU a `docs/backlog/`; `.idea/`, `.vscode/` y los volcados `hs_err_pid*.log` dejan de versionarse.
 - El estado de la fórmula (HU-04) se calcula en cada consulta y ya no se guarda; la consulta verifica la fórmula en Materiales y devuelve `NO_PROCESADO` si la versión vigente no se ha revisado.
 - `conflicto` y `revision_formula` guardan solo el código de la fórmula (migración V4).
 
@@ -81,6 +86,6 @@ El versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
-[Unreleased]: https://github.com/inmemorialake/patent-sweep/compare/v1.0.0-beta.2...HEAD
-[0.1.0-beta.2]: https://github.com/inmemorialake/patent-sweep/compare/v1.0.0-beta.1...v1.0.0-beta.2
-[0.2.0-beta.1]: https://github.com/inmemorialake/patent-sweep/releases/tag/v1.0.0-beta.1
+[Unreleased]: https://github.com/Inmemorialake/cutit-saws-patent-sweep/compare/v1.0.0-beta.2...HEAD
+[0.1.0-beta.2]: https://github.com/Inmemorialake/cutit-saws-patent-sweep/compare/v1.0.0-beta.1...v1.0.0-beta.2
+[0.2.0-beta.1]: https://github.com/Inmemorialake/cutit-saws-patent-sweep/releases/tag/v1.0.0-beta.1
