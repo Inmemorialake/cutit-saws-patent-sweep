@@ -1,0 +1,66 @@
+{
+  "priority": 1,
+  "request": {
+    "method": "GET",
+    "urlPath": "/patentes/buscar",
+    "queryParameters": { "terminos": { "contains": "Ripit 5000" } }
+  },
+  "response": {
+    "status": 200,
+    "headers": { "Content-Type": "application/json" },
+    "jsonBody": [
+      {
+        "patenteId": "PAT-100001",
+        "tituloPatente": "Aleación de hierro, cobalto y níquel para cadenas de corte",
+        "tipoProducto": "Materiales",
+        "estadoPatente": "CONCEDIDA",
+        "fechaSolicitud": "2025-03-15",
+        "fechaConcesion": "2026-01-20",
+        "fechaVencimiento": "2045-03-15",
+        "jurisdiccion": "US",
+        "resumen": "Composición metálica con hierro, cobalto y níquel para cadenas de motosierra.",
+        "reivindicaciones": ["Reivindicación 1: Aleación con hierro, cobalto y níquel."],
+        "clasificaciones": ["B27B 17/00", "C22C"]
+      },
+      {
+        "patenteId": "PAT-100002",
+        "tituloPatente": "Cuchilla reforzada con hierro y cobalto",
+        "tipoProducto": "Materiales",
+        "estadoPatente": "CONCEDIDA",
+        "fechaSolicitud": "2025-05-10",
+        "fechaConcesion": "2026-02-11",
+        "fechaVencimiento": "2045-05-10",
+        "jurisdiccion": "CO",
+        "resumen": "Cuchilla de corte fabricada con hierro y cobalto.",
+        "reivindicaciones": ["Reivindicación 1: Cuchilla con base de hierro y cobalto."],
+        "clasificaciones": ["B27B 17/00"]
+      },
+      {
+        "patenteId": "PAT-100003",
+        "tituloPatente": "Cuchilla reforzada con cobalto",
+        "tipoProducto": "Materiales",
+        "estadoPatente": "CONCEDIDA",
+        "fechaSolicitud": "2025-05-10",
+        "fechaConcesion": "2026-02-11",
+        "fechaVencimiento": "2045-05-10",
+        "jurisdiccion": "CO",
+        "resumen": "Cuchilla de corte fabricada con cobalto.",
+        "reivindicaciones": ["Reivindicación 1: Cuchilla con base de cobalto."],
+        "clasificaciones": ["B27B 17/00"]
+      },
+      {
+        "patenteId": "PAT-100004",
+        "tituloPatente": "Sistema de poleas para motores de corte",
+        "tipoProducto": "Mecánica",
+        "estadoPatente": "EN_TRAMITE",
+        "fechaSolicitud": "2024-01-15",
+        "fechaConcesion": null,
+        "fechaVencimiento": null,
+        "jurisdiccion": "EP",
+        "resumen": "Transmisión de potencia para maquinaria de corte.",
+        "reivindicaciones": ["Reivindicación 1: Ensamblaje de poleas dentadas."],
+        "clasificaciones": ["F16H"]
+      }
+    ]
+  }
+}
