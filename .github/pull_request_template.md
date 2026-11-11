@@ -4,20 +4,20 @@
 
 <!-- Lista de HUs que cierra este PR. Una por línea. -->
 
-- HU-NN: [título]
+- HU-NN: [título de la historia]
 
 ## Descripción
 
-<!-- Resumen breve de los cambios. -->
+<!-- Resumen breve de los cambios realizados y justificación técnica. -->
 
 ## Tipo de cambio
 
-- [ ] feat — Nueva funcionalidad
-- [ ] fix — Corrección de bug
-- [ ] docs — Solo documentación
-- [ ] refactor — Refactor sin cambio funcional
-- [ ] test — Añade o ajusta tests
-- [ ] chore — Mantenimiento (deps, configs, CI)
+- [ ] `feat` — Nueva funcionalidad
+- [ ] `fix` — Corrección de bug
+- [ ] `docs` — Solo documentación
+- [ ] `refactor` — Refactor sin cambio funcional
+- [ ] `test` — Añade o ajusta tests
+- [ ] `chore` — Mantenimiento (deps, configs, CI)
 
 ## Checklist de criterios de aceptación
 
@@ -27,24 +27,22 @@
 - [ ] CA-02: ...
 - [ ] CA-03: ...
 
-## Calidad
+## Calidad y Pruebas
 
-- [ ] Tests unitarios añadidos sobre el código nuevo
-- [ ] Cobertura local ≥ 80% sobre código nuevo
-- [ ] `ruff check` pasa sin errores
-- [ ] `mypy` pasa sin errores (desde Sprint 2)
-- [ ] `import-linter` pasa sin errores (desde Sprint 2)
+- [ ] Pruebas unitarias e integración ejecutadas localmente con éxito (`mvn clean verify`)
+- [ ] Cobertura de JaCoCo verificada (cumpliendo el umbral exigido, actual ~98% instrucciones)
+- [ ] `mvn checkstyle:check` pasa sin errores (`0 violations`)
+- [ ] Configuración e imágenes Docker probadas correctamente (`docker compose up`)
 
 ## Documentación
 
-- [ ] OpenAPI actualizado (si toca endpoints)
-- [ ] README actualizado (si cambia el flujo de instalación)
-- [ ] Nuevo ADR creado (si introduce decisión arquitectónica)
-- [ ] Bitácora del sprint actualizada
+- [ ] Swagger / OpenAPI actualizado (si afecta endpoints REST)
+- [ ] README.md o CHANGELOG.md actualizados (si aplica)
+- [ ] DAS V3.0 / ADR actualizado (si introduce decisiones de arquitectura)
 
 ## Evidencia
 
-<!-- Capturas, logs, salidas de tests. Lo que demuestre que funciona. -->
+<!-- Capturas, logs o salidas de tests que demuestren el correcto funcionamiento. -->
 
 ## Notas para el revisor
 

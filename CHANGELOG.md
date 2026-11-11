@@ -1,6 +1,6 @@
 # Changelog
 
-Todos los cambios notables del proyecto nutrI-plantA se documentan en este archivo.
+Todos los cambios notables del proyecto **Patent Sweep (Equipo 1)** se documentan en este archivo.
 
 El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 El versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
@@ -11,63 +11,51 @@ El versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 ### En progreso
 
-- HU-02: Login con JWT y refresh tokens (Sprint 2).
-- HU-03: Logout seguro con blacklist (Sprint 2).
-- Gateway como proxy real con validación JWT (Sprint 3).
-- diagnostico-service: estructura base y CRUD cultivos (Sprint 4).
+- Adecuación y evaluación del arquetipo de la plataforma del servicio Patent Sweep de Cutit Saws Ltd., bajo la adaptación de una única transacción funcional y verificable.
 
 ---
 
-## [0.2.0] — Sprint 1
+## [0.2.0-beta.1] — Sprint 0
 
 ### Añadido
 
-- `auth-service` completo con arquitectura hexagonal (Ports and Adapters).
-- Modelo de dominio `User` con estados `PENDIENTE_APROBACION`, `APROBADO`, `RECHAZADO`, `DESACTIVADO`.
-- `AuthService` con operaciones `register()` y `authenticate()`.
-- `TokenService` con emisión de JWT HS256, expiración configurable y `jti` único por token.
-- Endpoint `POST /api/v1/auth/register` (HU-01) con validación Pydantic.
-- Hash de contraseñas con Argon2id via `pwdlib` (recomendación OWASP 2025).
-- `IUserRepository` con implementaciones `PostgresUserRepository` e `InMemoryUserRepository`.
-- `IPasswordHasher` con implementación `Argon2PasswordHasher`.
-- Exception handler global: traduce excepciones de dominio a HTTP con mensajes en español.
-- Migración Alembic `0001_create_users_table` en esquema `auth`.
-- 49 tests unitarios y de integración. Cobertura 82%.
-- Tres contratos de import-linter que verifican la arquitectura hexagonal.
-- `docker-compose.yml` actualizado con `auth-migrations` y `auth-service`.
-- CI workflow actualizado con jobs de ruff, mypy, import-linter, tests y Docker build.
-- `psycopg2-binary` como driver síncrono para Alembic (separado de `asyncpg` para FastAPI).
+- Módulo completo de **Patent Sweep** implementado bajo arquitectura multicapa (Controller, Service, Integration, Repository) sobre Java 21 y Spring Boot 3.5.16.
+- Endpoint `POST /api/v1/patentes/busqueda` para la ejecución de búsqueda y detección de conflictos de patentes por fórmula.
+- Endpoint `GET /api/v1/patentes/estado` para la consulta del estado precalculado de la fórmula con tiempos de respuesta óptimos.
+- Autenticación y control de acceso basado en roles (`ADMINISTRADOR`, `SERVICIO`) mediante tokens de sesión JWT (`POST /auth/login`).
+- Adaptador robusto de fuentes externas de patentes (`FuentePatentesMockAdapter`) desacoplado mediante puertos.
+- Persistencia transaccional con PostgreSQL 16 y migraciones automatizadas gestionadas mediante Flyway.
+- Manejo global de excepciones estandarizado bajo el formato **ProblemDetail (RFC 9457)** con correlación de `traceId`.
+- Suite completa de pruebas unitarias y de integración alcanzando un **98% de cobertura en instrucciones** y **94% en ramas** con JaCoCo.
+- Verificación estática de calidad de código con Checkstyle cumpliendo el estándar sin violaciones (`0 violations`).
+- `docker-compose.yml` configurado con contenedor backend, base de datos PostgreSQL local y stack de monitoreo.
+- Pipeline de CI/CD en GitHub Actions (`ci.yml`) con validación automática de compilación, estilo y pruebas.
 
-### Decisiones arquitectónicas
+### Decisiones arquitectónicas (DAS V3.0)
 
-- ADR-05 (ya existente): DI Container con dependency-injector.
-- Ajuste operacional: puerto de PostgreSQL en 2332 (no 5432) para evitar colisiones locales.
-- Ajuste operacional: puerto de Gateway en 8085 (no 8080).
+- **DA-01:** API REST independiente con base de datos propia en PostgreSQL 16, garantizando el desacoplamiento de la plataforma SOA de Cutit Saws.
+- **DA-02:** Arquitectura multicapa (Controller - Service - Integration - Repository) sobre Java 21 y Spring Boot 3.5.16 para una estricta separación de responsabilidades.
+- **DA-05:** Abstracción de la fuente externa de patentes detrás de un puerto (`FuentePatentesPort`) con un adaptador intercambiable para el dataset local.
+- **DA-12:** Manejo de errores unificado mediante el estándar **ProblemDetail (RFC 9457)** acompañado de identificadores de correlación (`traceId`).
 
 ### Corregido
 
-- Healthcheck de MinIO: añadido `start_period: 30s` para tolerancia en arranque frío.
-- Dependencia faltante: `psycopg2-binary` necesario para Alembic en modo síncrono.
+- Corrección de desajustes en las rutas de JSON Path y matchers de Mockito en las pruebas de integración de controladores.
+- Ajuste de saltos de línea al final de los archivos (`NewlineAtEndOfFile`) exigidos estrictamente por Checkstyle.
 
 ---
 
-## [0.1.0] — Sprint 0
+## [0.1.0-beta.2] — Sprint 0
 
 ### Añadido
 
-- Estructura inicial del monorepo: `services/`, `frontend/`, `gateway/`, `docs/`.
-- `docker-compose.yml` con PostgreSQL 16, MinIO y gateway hello-world.
-- Gateway con endpoint `GET /api/v1/health` (FastAPI 0.115).
-- Script `scripts/dev/init-db.sql`: crea esquemas `auth` y `diagnostico`.
-- `minio-init`: crea bucket `diagnosticos` automáticamente.
-- CI workflow `.github/workflows/ci-pr-to-develop.yml` con linter y validación de compose.
-- Plantillas de PR e issues en `.github/`.
-- Configuración de Qodo Merge (`.pr_agent.toml`).
-- Documentación base: `README.md`, `CONTRIBUTING.md`, `docs/arquitectura/`, `docs/backlog/`.
-- Estrategia de ramas: `main` ← `develop` ← `mpastrana`.
+- Estructura inicial del repositorio backend (`patent-sweep/backend/`).
+- Definición formal del Documento de Arquitectura de Software (DAS V3.0) y especificación de contratos de integración con los demás equipos.
+- Configuración base de Maven con dependencias de Spring Security, Spring Data JPA y Lombok.
+- Configuración inicial de la estrategia de ramificación (`main` ← `develop`).
 
 ---
 
-[Unreleased]: https://github.com/manusixx/nutrIplantA/compare/v0.2.0...HEAD
-[0.2.0]: https://github.com/manusixx/nutrIplantA/compare/v0.1.0...v0.2.0
-[0.1.0]: https://github.com/manusixx/nutrIplantA/releases/tag/v0.1.0
+[Unreleased]: https://github.com/inmemorialake/patent-sweep/compare/v1.0.0-beta.2...HEAD
+[0.1.0-beta.2]: https://github.com/inmemorialake/patent-sweep/compare/v1.0.0-beta.1...v1.0.0-beta.2
+[0.2.0-beta.1]: https://github.com/inmemorialake/patent-sweep/releases/tag/v1.0.0-beta.1

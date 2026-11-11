@@ -1,196 +1,105 @@
-# Guía de contribución
+# Guía de contribución — Patent Sweep API
 
-Este documento describe el flujo de trabajo para colaborar en nutrI-plantA. Toda contribución debe seguir este proceso.
+Este documento describe el flujo de trabajo y los estándares de calidad para colaborar en el módulo **Patent Sweep (Equipo 1)** de Cutit Saws. Toda contribución debe seguir rigurosamente este proceso para asegurar la compatibilidad con el Documento de Arquitectura de Software (DAS V3.0) y el éxito en la integración continua.
 
-## Estrategia de ramas
+## Estrategia de ramas (Git Flow)
 
 ```
-main         ──●──────────●──────●──── (releases tagged: v0.1.0, v0.2.0)
+main         ──●──────────●──────●──── (releases tagados: v1.0.0-beta.1, v1.0.0-beta.2)
                 ↑          ↑      ↑
                 PR         PR     PR
                 │          │      │
-develop      ──●──●──●──●──●──●──●──── (integración estable)
+develop      ──●──●──●──●──●──●──●──── (integración estable del equipo)
                 ↑  ↑  ↑     ↑
                 PR PR PR    PR
                 │  │  │     │
-mpastrana    ──●──●──●──●───────────── (rama del director)
+napellido     ──●──●──●──●───────────── (ramas personales de desarrollo, etiquetadas con la primera letra del nombre y el primer apellido del desarrollador)
 ```
 
 ### Ramas principales
 
-- **`main`**: rama de producción. Solo se actualiza al cerrar un sprint completo y validado. Cada merge a `main` lleva un tag semántico (`v0.1.0`, `v0.2.0`, etc.). Protegida.
-- **`develop`**: rama de integración. Aquí confluye el trabajo validado y listo para integración. Protegida con regla de PR obligatorio.
-- **`mpastrana`**: rama personal del director del proyecto. Aquí se desarrolla todo el trabajo de un sprint completo antes de promoverlo a `develop`.
+- **`main`**: Rama de producción y versiones estables. Solo se actualiza al cerrar un sprint completo y validado. Cada merge a `main` lleva un tag semántico (`v1.0.0-beta.X`). Se encuentra protegida.
+- **`develop`**: Rama de integración. Aquí confluye todo el trabajo validado por el equipo listo para pruebas globales. Se encuentra protegida con regla de Pull Request obligatorio y aprobación por pares.
+- **`primerainicialnombre` + `primerapellido`**: Ramas personales o de subtareas para el desarrollo de historias de usuario específicas.
 
 ### Reglas de los flujos
 
-#### Trabajo dentro de `mpastrana`
+#### Trabajo en ramas de desarrollo (`primerainicialnombre` + `primerapellido`)
+- Hacer commits frecuentes con mensajes claros y descriptivos.
+- Validar y compilar localmente antes de realizar cualquier `git push`.
+- Mantener la rama sincronizada con `develop` frecuentemente mediante rebase o merge para evitar conflictos mayores.
 
-- Hacer commits frecuentes con mensajes claros (ver Conventional Commits abajo).
-- Validar localmente antes de cada push.
-- Push directo a `mpastrana` permitido (no requiere PR).
-- Mantener `mpastrana` sincronizada con `develop`: hacer `git pull origin develop` y rebase al menos una vez por semana.
-
-#### Promoción de `mpastrana` a `develop`
-
-- Solo cuando el sprint esté completo y estable.
-- Apertura de PR desde `mpastrana` a `develop`.
-- El PR debe describir las historias de usuario completadas.
-- CI debe pasar todos los gates (ver abajo).
-- Qodo Merge revisa automáticamente y publica observaciones.
-- Atender hallazgos de Qodo antes de mergear.
-- Squash merge (un commit en `develop` por sprint).
+#### Promoción a `develop`
+- Apertura obligatoria de un **Pull Request (PR)** desde la rama de feature hacia **`develop`**.
+- El PR debe detallar claramente la Historia de Usuario asociada y los criterios de aceptación resueltos.
+- El pipeline de CI/CD debe pasar de manera exitosa (compilación, pruebas, checkstyle y quality gate).
+- Se requiere al menos **una aprobación obligatoria** por parte de un compañero del equipo antes de realizar el *merge*.
 
 #### Promoción de `develop` a `main`
+- Al cierre de un sprint validado y con entrega funcional aprobada.
+- PR desde `develop` hacia `main` acompañado de su respectivo tag semántico.
+- Actualización obligatoria del archivo `CHANGELOG.md` con los cambios incorporados en la versión.
 
-- Solo al cierre de un sprint validado y con demo funcional.
-- PR desde `develop` a `main` con tag semántico (`v0.X.0`).
-- Actualizar `CHANGELOG.md` con los cambios del sprint.
-- Actualizar documentos de arquitectura si hubo nuevos ADRs.
+---
 
-## Gates de calidad
+## Gates de calidad y validación
 
-### Gate 1: validación local antes de push a `mpastrana`
+### Gate 1: Validación local previa al Push
+Antes de subir código al repositorio remoto, debes ejecutar localmente el ciclo completo de Maven para asegurar que todo compila y pasa las reglas de calidad:
 
-Antes de cualquier push, ejecutar localmente:
+```bash
+# Limpiar, compilar y ejecutar pruebas unitarias/integración con JaCoCo
+mvn clean verify
 
-```powershell
-# Tests unitarios
-make test
-
-# Linter
-make lint
-
-# Type checker
-make typecheck
-
-# Validación de arquitectura (import-linter)
-make arch-check
+# Validar el cumplimiento de las reglas de estilo de código con Checkstyle
+mvn checkstyle:check
 ```
+Si cualquiera de los dos comandos arroja errores o violaciones, el código no debe subirse.
 
-Si cualquiera falla, no hacer push.
+### Gate 2: Pipeline de CI/CD en GitHub Actions (`ci.yml`)
+Al abrir un Pull Request hacia `develop`, GitHub Actions ejecuta de forma automatizada:
+1. Compilación del proyecto backend sobre **Java 21**.
+2. Ejecución de toda la suite de pruebas unitarias y de integración.
+3. Verificación estática de estilo mediante **Checkstyle** (exigiendo cero violaciones).
+4. Auditoría del Quality Gate y cobertura de código con **JaCoCo** (superando el umbral establecido).
 
-### Gate 2: pipeline CI al abrir PR a `develop`
+Si el pipeline falla, el PR queda bloqueado y no podrá ser fusionado.
 
-GitHub Actions ejecuta automáticamente:
-
-1. Instalación de dependencias.
-2. `ruff check` (linter).
-3. `mypy` (type checker estricto).
-4. `import-linter` (reglas de arquitectura hexagonal).
-5. `pytest --cov` (cobertura mínima 80% sobre código nuevo).
-6. Build de imágenes Docker.
-7. Qodo Merge analiza el diff y publica review en el PR.
-
-Si el pipeline falla, el PR no puede mergearse.
-
-### Gate 3: revisión humana antes de merge
-
-Aunque CI pase, el director del proyecto debe:
-
-1. Leer el diff completo línea por línea.
-2. Revisar las observaciones de Qodo Merge.
-3. Atender al menos las observaciones marcadas como "critical" o "major".
-4. Verificar que los criterios de aceptación de las HUs están cubiertos.
-5. Aprobar el PR explícitamente antes de mergear.
+---
 
 ## Convención de commits
 
-Usar [Conventional Commits](https://www.conventionalcommits.org/):
+Usa un formato estructurado para los mensajes de tus commits:
 
-```
+```text
 <tipo>(<alcance opcional>): <descripción corta>
 
-[cuerpo opcional con detalle]
+[cuerpo opcional con detalle técnico]
 
 [footer opcional con referencias]
 ```
 
 ### Tipos permitidos
 
-| Tipo | Uso |
+| Tipo | Uso principal |
 |---|---|
-| `feat` | Nueva funcionalidad (corresponde a una HU) |
-| `fix` | Corrección de bug |
-| `docs` | Cambios de documentación |
-| `refactor` | Refactor sin cambio funcional |
-| `test` | Añadir o ajustar tests |
-| `chore` | Tareas de mantenimiento (deps, configs) |
-| `style` | Formato, sin cambio de lógica |
-| `perf` | Mejora de performance |
-| `ci` | Cambios en CI/CD |
+| `feat` | Nueva funcionalidad (corresponde a una Historia de Usuario) |
+| `fix` | Corrección de un error o bug |
+| `docs` | Cambios exclusivos en documentación (`README`, `DAS`, etc.) |
+| `refactor` | Refactorización de código sin alterar la funcionalidad externa |
+| `test` | Adición, ajuste o corrección de pruebas unitarias/integración |
+| `chore` | Tareas de mantenimiento, configuración de dependencias o plugins |
+| `style` | Cambios de formato, espacios o saltos de línea (sin afectar lógica) |
+| `ci` | Modificaciones en los workflows de GitHub Actions |
 
-### Ejemplos
-
-```
-feat(auth): implementa registro de usuarios con Argon2id
-
-Cierra HU-01. Incluye:
-- Endpoint POST /auth/register
-- Validación con Pydantic
-- Hash Argon2id con pwdlib
-- Estado inicial PENDIENTE_APROBACION
-
-Refs: HU-01
-```
-
-```
-fix(diagnostico): corrige timeout en CNN provider
-
-El timeout no se aplicaba correctamente al servicio externo.
-Ahora se respeta CNN_VISION_TIMEOUT.
-```
-
-```
-docs(adr): añade ADR-07 sobre manejo de imágenes inválidas
-```
-
-## Plantilla de PR
-
-Al abrir un PR, llenar la plantilla `pull_request_template.md` que aparece automáticamente. Debe incluir:
-
-- Historias de usuario cerradas.
-- Criterios de aceptación verificados.
-- Tests añadidos.
-- Documentación actualizada (si aplica).
-- ADR creado (si la PR introduce decisión arquitectónica).
-- Screenshots o evidencia de pruebas manuales.
-
-## Issues
-
-Cada historia de usuario del backlog se materializa como un Issue en GitHub:
-
-- Título: `[HU-NN] Título de la historia`.
-- Cuerpo: usar la plantilla `historia-usuario.md`.
-- Labels: `epic:E1`, `priority:must`, `points:5`.
-- Milestone: `Sprint NN`.
-
-## Definición de Listo (DoR)
-
-Una historia está Ready cuando:
-
-- Tiene narrativa Mike Cohn completa.
-- Tiene al menos 5 criterios de aceptación verificables.
-- Está estimada en story points.
-- Tiene prioridad MoSCoW.
-- Sus dependencias están resueltas o planificadas antes.
+---
 
 ## Definición de Hecho (DoD)
 
-Una historia está Done cuando:
-
-- Código commiteado en rama feature.
-- PR abierto y descripción enlazada al Issue.
-- Todos los criterios de aceptación pasan (verificados con tests).
-- Cobertura mínima 80% sobre código nuevo.
-- ruff, mypy, import-linter pasan sin errores.
-- Qodo Merge revisó el PR y los hallazgos relevantes fueron atendidos.
-- OpenAPI actualizado si aplica.
-- ADR actualizado si introduce decisión arquitectónica.
-- PR aprobado y mergeado a `develop`.
-- Demo funcional registrado en bitácora.
-
-## Soporte y dudas
-
-- Issues técnicos: abrir issue en GitHub con label `question`.
-- Dudas arquitectónicas: discutir antes de codear, no después.
+Una Historia de Usuario se considera completamente **Done** cuando cumple con lo siguiente:
+- [ ] Código implementado bajo la arquitectura multicapa establecida (Controller, Service, Integration, Repository).
+- [ ] Pruebas unitarias e de integración añadidas y pasando exitosamente.
+- [ ] Cobertura de JaCoCo validada localmente y en el pipeline.
+- [ ] Cero violaciones reportadas por Checkstyle.
+- [ ] Pull Request abierto, revisado, aprobado por pares y fusionado en `develop`.
+- [ ] Documentación de contratos o endpoints (Swagger/OpenAPI) actualizada correctamente.
