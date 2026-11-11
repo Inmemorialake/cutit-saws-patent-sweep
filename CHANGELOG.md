@@ -17,6 +17,7 @@ El versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 - Auditoría de cada revisión (migración V5): se guarda la versión y una foto de la fórmula (composición con porcentajes), los términos buscados, los filtros y las patentes candidatas (HU-02).
 - Estado `PENDIENTE_REVISION` de HU-04, calculado a partir de las evaluaciones abiertas (`EvaluacionFormula`, solo lectura hasta HU-03).
 - Restricciones de datos (migración V6): `CHECK` en la base para los estados, los formatos `form-NNN` y `PAT-NNNNNN`, la coherencia del descarte, las fechas de la patente y los valores numéricos de la configuración; las mismas reglas como validaciones en las entidades.
+- ADR-001 a ADR-004 en `docs/adrs/`: API simulada de patentes, conflicto único por versión, estado calculado sin tabla `formula` y foto de la fórmula en la revisión.
 
 ### Cambiado
 
