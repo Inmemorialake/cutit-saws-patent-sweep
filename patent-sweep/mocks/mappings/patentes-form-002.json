@@ -1,0 +1,40 @@
+{
+  "priority": 1,
+  "request": {
+    "method": "GET",
+    "urlPath": "/patentes/buscar",
+    "queryParameters": { "terminos": { "contains": "Disco de corte liviano" } }
+  },
+  "response": {
+    "status": 200,
+    "headers": { "Content-Type": "application/json" },
+    "jsonBody": [
+      {
+        "patenteId": "PAT-200001",
+        "tituloPatente": "Recubrimiento de titanio y aluminio para discos",
+        "tipoProducto": "Materiales",
+        "estadoPatente": "CONCEDIDA",
+        "fechaSolicitud": "01/02/2025",
+        "fechaConcesion": "05/03/2026",
+        "fechaVencimiento": "01/02/2045",
+        "jurisdiccion": "US",
+        "resumen": "Disco de corte con capa de titanio y aluminio.",
+        "reivindicaciones": ["Reivindicación 1: Disco con recubrimiento de titanio y aluminio."],
+        "clasificaciones": ["B24D 3/00"]
+      },
+      {
+        "patenteId": "PAT-200002",
+        "tituloPatente": "Recubrimiento de titanio para discos",
+        "tipoProducto": "Materiales",
+        "estadoPatente": "CONCEDIDA",
+        "fechaSolicitud": "01/02/2025",
+        "fechaConcesion": "05/03/2026",
+        "fechaVencimiento": "01/02/2045",
+        "jurisdiccion": "US",
+        "resumen": "Disco de corte con capa de titanio.",
+        "reivindicaciones": ["Reivindicación 1: Disco con recubrimiento de titanio."],
+        "clasificaciones": ["B24D 3/00"]
+      }
+    ]
+  }
+}

@@ -111,6 +111,7 @@ SERVICIO_CLAVE=cambiar_clave_del_servicio
 # URL base de las APIs de otros equipos. Por defecto apuntan a las APIs simuladas (WireMock).
 MATERIALES_URL=http://apis-simuladas:8080
 NOTIFICACIONES_URL=http://apis-simuladas:8080
+FUENTE_PATENTES_URL=http://apis-simuladas:8080
 ```
 
 | Variable | Qué controla |
@@ -120,7 +121,7 @@ NOTIFICACIONES_URL=http://apis-simuladas:8080
 | `DB_*` | Conexión a PostgreSQL (la base se crea con estos datos) |
 | `JWT_SECRET`, `JWT_EXPIRACION_MINUTOS` | Firma y vigencia del token de sesión |
 | `ADMIN_*`, `SERVICIO_*` | Usuarios iniciales: `admin` (rol ADMINISTRADOR) y `servicio` (rol SERVICIO) |
-| `MATERIALES_URL`, `NOTIFICACIONES_URL` | Dónde están las APIs de otros equipos. Cámbielas por las reales cuando existan |
+| `MATERIALES_URL`, `NOTIFICACIONES_URL`, `FUENTE_PATENTES_URL` | Dónde están las APIs externas (por defecto, la API simulada). Cámbielas por las reales cuando existan |
 
 Si el puerto `8085` está ocupado, cambie `API_PUERTO` y use ese puerto en todas las URL de esta guía.
 Si despliega en un servidor compartido, cambie siempre `DB_PASSWORD`, `JWT_SECRET`, `ADMIN_CLAVE` y `SERVICIO_CLAVE`.

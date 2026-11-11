@@ -1,0 +1,13 @@
+{
+  "priority": 1,
+  "request": {
+    "method": "GET",
+    "urlPath": "/patentes/buscar",
+    "queryParameters": { "terminos": { "contains": "Línea retirada" } }
+  },
+  "response": {
+    "status": 200,
+    "headers": { "Content-Type": "application/json" },
+    "jsonBody": []
+  }
+}
