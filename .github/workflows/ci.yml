@@ -56,6 +56,17 @@ jobs:
           cache: maven
           cache-dependency-path: patent-sweep/backend/pom.xml
 
+      # Maven Central limita las descargas (HTTP 429) desde las IP compartidas de los runners. Las dependencias
+      # (y los plugins, incluido el de Sonar) se bajan antes, con reintentos; después setup-java las deja en caché.
+      - name: Descargar dependencias (con reintentos)
+        run: |
+          for espera in 0 30 90; do
+            sleep "$espera"
+            mvn --batch-mode --no-transfer-progress --quiet dependency:go-offline && exit 0
+            echo "::warning::Descarga de dependencias fallida (posible HTTP 429 de Maven Central); se reintenta."
+          done
+          exit 1
+
       # "verify" ejecuta las pruebas, el reporte y el umbral de JaCoCo, Checkstyle y el empaquetado (ver pom.xml).
       - name: Pruebas, cobertura, estilo y empaquetado
         run: mvn --batch-mode --no-transfer-progress clean verify
