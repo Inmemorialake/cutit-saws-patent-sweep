@@ -1,6 +1,5 @@
 package co.edu.univalle.patentsweep.integration.port;
 
-import co.edu.univalle.patentsweep.integration.dto.PatenteExternaDTO;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -17,6 +16,6 @@ public interface FuentePatentesPort {
      * @param clasificaciones códigos IPC/CPC activos en la configuración
      * @param fechaSolicitudDesde fecha mínima de solicitud, o {@code null} si no se limita por fecha
      */
-    List<PatenteExternaDTO> buscarPatentes(List<String> terminos, List<String> clasificaciones,
-                                           LocalDate fechaSolicitudDesde);
+    List<String> buscarPatentes(List<String> terminos, List<String> clasificaciones,
+                                LocalDate fechaSolicitudDesde);
 }
