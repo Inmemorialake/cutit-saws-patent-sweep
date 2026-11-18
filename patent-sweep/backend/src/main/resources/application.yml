@@ -48,15 +48,3 @@ management:
 logging:
   pattern:
     level: "%5p [${spring.application.name:},%X{traceId:-}]"
-
-# Parámetros propios de Patent Sweep usados por RestClientConfig.
-patentsweep:
-  materiales:
-    url-base: ${MATERIALES_URL:http://localhost:8081}
-  notificaciones:
-    url-base: ${NOTIFICACIONES_URL:http://localhost:8082}
-  fuente-patentes:
-    url-base: ${FUENTE_PATENTES_URL:http://localhost:8083}
-  http:
-    timeout-conexion-segundos: 5
-    timeout-lectura-segundos: 20

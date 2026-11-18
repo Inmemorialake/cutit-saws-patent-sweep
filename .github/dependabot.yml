@@ -1,0 +1,33 @@
+# Actualizaciones automáticas de dependencias (PR semanales hacia develop).
+# - github-actions: mantiene al día los SHA fijados en ci.yml y cd.yml.
+# - maven: dependencias y plugins del backend.
+# - docker: imágenes base del Dockerfile.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    target-branch: develop
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: ci
+    groups:
+      actions:
+        patterns: ["*"]
+
+  - package-ecosystem: maven
+    directory: /patent-sweep/backend
+    target-branch: develop
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: chore
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: docker
+    directory: /patent-sweep/backend
+    target-branch: develop
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: chore

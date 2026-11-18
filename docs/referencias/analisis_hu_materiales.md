@@ -1,4 +1,6 @@
-# Análisis de pasos por Historia de Usuario (HU-01 a HU-10)
+# Análisis de pasos por Historia de Usuario — equipo de Materiales/Fórmulas (HU-01 a HU-10)
+
+> **Nota:** este análisis corresponde al backlog del equipo de **Materiales/Fórmulas**, no al de Patent Sweep. Se conserva como referencia de los contratos que Patent Sweep consume (HU-09 y HU-10 de Materiales invocan a Patent Sweep).
 
 Fuente: backlog refinado (páginas 1 y 2 del PDF). No se asume nada que no esté en el backlog; cuando algo no está definido se indica como **"No definido en el backlog"**.
 

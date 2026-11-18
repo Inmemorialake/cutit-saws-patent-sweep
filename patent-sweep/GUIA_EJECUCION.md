@@ -1,47 +1,30 @@
-# Cómo ejecutar y probar la API Patent Sweep (Equipo 2)
+# Cómo ejecutar y probar la API Patent Sweep
 
-Versión 1.0.0 del arquetipo — rama actual `develop-v2`. Curso 750021C Desarrollo de Software II, Universidad del Valle, 2026-2.
+Arquetipo Sprint 0 (versión 1.0.0), rama `main`. Curso 750021C Desarrollo de Software II, Universidad del Valle, 2026-2.
 
 ---
 
 ## 1. Qué trae esta versión
 
-Esta versión es el **arquetipo (línea base)** del backend: la estructura del DAS V3.0 hecha código, con un ejemplo
-transaccional completo y sus pruebas.
-
-### Funcionalidad implementada
-
-| Historia | Qué hace | Endpoint |
+| Funcionalidad | Qué hace | Endpoint |
 |---|---|---|
-| Acceso (DA-11) | Login básico que emite un JWT; roles `ADMINISTRADOR` y `SERVICIO` | `POST /api/v1/auth/login` |
-| **HU-02** Búsqueda manual | Consulta la fórmula en Materiales, busca patentes, detecta conflictos, guarda historial y estado de la fórmula | `POST /api/v1/patentes/busqueda` |
-| **HU-12** Notificación (parcial) | Al detectar un conflicto nuevo envía la alerta a la API de Notificaciones en segundo plano, con 3 reintentos | interno (evento asíncrono) |
+| Registrar patente | Valida los datos, verifica que el código no exista y guarda la patente en estado `EN_TRAMITE` | `POST /api/v1/patentes/busqueda` |
+| Consultar patente | Devuelve la patente y su estado de vigencia | `GET /api/v1/patentes/estado/{id}` |
 | Operación | Health check y métricas para Prometheus | `GET /actuator/health`, `GET /actuator/prometheus` |
 | Documentación | Swagger UI y contrato OpenAPI | `/swagger-ui.html`, `/v3/api-docs` |
 
-### Tecnología
+**Tecnología:** Java 21, Spring Boot 3.5, arquitectura multicapa, PostgreSQL 16 con Flyway, errores ProblemDetail
+(RFC 9457) con `traceId`, Docker multi-etapa y Docker Compose.
 
-Java 21, Spring Boot 3.5, arquitectura multicapa (controller, service, integration, repository/model, config/exception),
-PostgreSQL 16 con migraciones Flyway, Spring Security con JWT, Resilience4j (reintentos y Circuit Breaker), Caffeine,
-errores en formato ProblemDetail (RFC 9457) con `traceId`, Docker multi-etapa y Docker Compose.
-
-### Calidad
-
-- Pruebas automatizadas con JUnit 5 y Mockito, más una prueba de integración con PostgreSQL embebido.
-- JaCoCo exige al menos 81 % de cobertura de líneas y ramas en los paquetes `service` y `service.event`.
-- El workflow de GitHub Actions ejecuta pruebas, cobertura, Checkstyle y empaqueta el backend en cada PR a las ramas configuradas.
-
-### Qué **no** trae todavía
-
-HU-01 (barrido automático y `BarridoScheduler`), HU-03 a HU-11 (evaluación de fórmulas, estado, historial, conflictos y
-configuración), integración de SonarCloud, despliegue automatizado y monitoreo con Grafana. Los demás detalles están en el `README.md`.
+**Qué no trae todavía:** las historias HU-01 a HU-12 (barrido, búsqueda de conflictos, estado de fórmulas, historial,
+configuración y notificaciones) ni la autenticación JWT. Empiezan en el Sprint 1 (ver ADR-006).
 
 ---
 
 ## 2. Requisitos
 
 - Git
-- Docker Desktop, o Docker Engine 24.0+ con Docker Compose v2.20+ (comando `docker compose`)
+- Docker Desktop, o Docker Engine 24+ con Docker Compose v2.24+ (comando `docker compose`)
 
 No hace falta instalar Java, Maven ni PostgreSQL para usar la API.
 
@@ -50,121 +33,77 @@ No hace falta instalar Java, Maven ni PostgreSQL para usar la API.
 ## 3. Ejecutar la API
 
 ```bash
-git clone https://github.com/Inmemorialake/Desarrollo-II.git
-cd Desarrollo-II
-git checkout develop-v2
-cd patent-sweep
+git clone https://github.com/Inmemorialake/cutit-saws-patent-sweep.git
+cd cutit-saws-patent-sweep/patent-sweep
 cp .env.example .env
-docker compose up --build
+docker compose up -d --build --wait
 ```
 
-En PowerShell, en lugar de `cp` use: `Copy-Item .env.example .env`.
+En PowerShell, en lugar de `cp` use `Copy-Item .env.example .env`.
 
-La primera vez tarda unos minutos porque compila el proyecto. Cuando el contenedor `api-patent-sweep` esté `healthy`
-la API está lista. Se levantan tres servicios:
+La primera vez tarda unos minutos porque compila el proyecto. Cuando `--wait` termina, la API está lista. Se levantan tres servicios:
 
 | Servicio | Para qué sirve |
 |---|---|
 | `postgres` | Base de datos PostgreSQL 16 (solo accesible dentro de la red de Docker) |
-| `apis-simuladas` | WireMock que simula las APIs de Materiales/Fórmulas y Notificaciones de otros equipos |
+| `apis-simuladas` | WireMock con las APIs simuladas de otros equipos (para las HU de integración; el arquetipo aún no las usa) |
 | `api-patent-sweep` | La API Patent Sweep, expuesta en el puerto `API_PUERTO` |
 
 Para detener: `docker compose down` (con `-v` también borra los datos de la base).
 
 ---
 
-## 4. Archivo `.env` (datos de configuración)
+## 4. Archivo `.env`
 
-Copie `.env.example` como `.env`. Estos son los valores que trae; funcionan tal cual para pruebas locales.
-**Nunca suba el `.env` al repositorio** (ya está en el `.gitignore`).
-
-```dotenv
-# Perfil de Spring activo: dev (más logs) o prod.
-SPRING_PROFILES_ACTIVE=dev
-
-# Puerto en el que se expone la API. Se evita el 8080 por defecto (recomendación OWASP).
-API_PUERTO=8085
-
-# Base de datos PostgreSQL. DB_HOST es el nombre del servicio en docker-compose.yml.
-DB_HOST=postgres
-DB_PORT=5432
-DB_NAME=patent_sweep
-DB_USER=patent_sweep_usuario
-# Cambie esta clave.
-DB_PASSWORD=cambiar_clave_de_la_base_de_datos
-# Máximo de conexiones del pool HikariCP.
-DB_POOL_MAX=10
-
-# Clave con la que se firman los JWT. Debe tener al menos 32 caracteres. Cámbiela.
-JWT_SECRET=cambiar-por-un-secreto-aleatorio-de-al-menos-32-caracteres
-# Minutos de vigencia del token de sesión.
-JWT_EXPIRACION_MINUTOS=60
-
-# Usuarios iniciales que se crean al arrancar (si la variable está vacía, el usuario no se crea).
-ADMIN_USUARIO=admin
-# Cambie esta clave.
-ADMIN_CLAVE=cambiar_clave_del_administrador
-SERVICIO_USUARIO=servicio
-# Cambie esta clave.
-SERVICIO_CLAVE=cambiar_clave_del_servicio
-
-# URL base de las APIs de otros equipos. Por defecto apuntan a las APIs simuladas (WireMock).
-MATERIALES_URL=http://apis-simuladas:8080
-NOTIFICACIONES_URL=http://apis-simuladas:8080
-FUENTE_PATENTES_URL=http://apis-simuladas:8080
-```
+Copie `.env.example` como `.env`. Los valores que trae funcionan tal cual para pruebas locales.
+**Nunca suba el `.env` al repositorio** (está en el `.gitignore`).
 
 | Variable | Qué controla |
 |---|---|
-| `SPRING_PROFILES_ACTIVE` | Perfil de Spring (`dev` o `prod`) |
-| `API_PUERTO` | Puerto de la API (Swagger y endpoints se abren en ese puerto) |
-| `DB_*` | Conexión a PostgreSQL (la base se crea con estos datos) |
-| `JWT_SECRET`, `JWT_EXPIRACION_MINUTOS` | Firma y vigencia del token de sesión |
-| `ADMIN_*`, `SERVICIO_*` | Usuarios iniciales: `admin` (rol ADMINISTRADOR) y `servicio` (rol SERVICIO) |
-| `MATERIALES_URL`, `NOTIFICACIONES_URL`, `FUENTE_PATENTES_URL` | Dónde están las APIs externas (por defecto, la API simulada). Cámbielas por las reales cuando existan |
+| `SPRING_PROFILES_ACTIVE` | Perfil de Spring: `dev` (más logs) o `prod` |
+| `API_PUERTO` | Puerto de la API (8085 por defecto; se evita el 8080, por recomendación de OWASP) |
+| `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` | Conexión a PostgreSQL (la base se crea con estos datos) |
+| `DB_POOL_MAX` | Máximo de conexiones del pool HikariCP |
 
 Si el puerto `8085` está ocupado, cambie `API_PUERTO` y use ese puerto en todas las URL de esta guía.
-Si despliega en un servidor compartido, cambie siempre `DB_PASSWORD`, `JWT_SECRET`, `ADMIN_CLAVE` y `SERVICIO_CLAVE`.
 
 ---
 
 ## 5. Probar desde Swagger
 
-Abra **http://localhost:8085/swagger-ui.html**
+Abra **http://localhost:8085/swagger-ui.html**, despliegue el endpoint y pulse *Try it out*.
 
-1. En `POST /api/v1/auth/login` pulse *Try it out* y envíe:
-   ```json
-   { "usuario": "admin", "clave": "cambiar_clave_del_administrador" }
-   ```
-   (usuario y clave son `ADMIN_USUARIO` y `ADMIN_CLAVE` del `.env`). Copie el `token` de la respuesta.
-2. Pulse **Authorize** (arriba a la derecha), pegue el token sin escribir "Bearer" y confirme.
-3. En `POST /api/v1/patentes/busqueda` pruebe estos casos:
+### `POST /api/v1/patentes/busqueda`
 
-| `formulaId` | Resultado esperado |
+| Cuerpo | Resultado esperado |
 |---|---|
-| `form-001` | 200 con un conflicto: patente "Aleación para cadenas de corte" (`conflictoId` de 6 dígitos, desde 100000) |
-| `form-002` | 200 con lista vacía y el mensaje "No se detectaron conflictos relacionados con su búsqueda" |
-| `form-003` | 409: "No se puede buscar patentes para una fórmula DESCONTINUADA" |
-| `form-999` | 404: "La fórmula consultada no fue encontrada" |
-| `FORM-1` o vacío | 400: "El código de la fórmula es obligatorio y debe tener el formato form-NNN" |
-| (sin token) | 401 |
+| `{"codigoPatente":"PAT-000123","titulo":"Cuchilla de diamante segmentada"}` | **201** con la patente, `patenteId` y `estadoVigencia: "EN_TRAMITE"` |
+| El mismo cuerpo otra vez | **409** "Ya existe una patente registrada con el código: PAT-000123" |
+| `{"codigoPatente":"PAT-12","titulo":"X"}` | **400** "El código debe tener el formato PAT-NNNNNN" |
+| `{"codigoPatente":"PAT-000124","titulo":""}` | **400** "El título es obligatorio" |
+| Cuerpo que no es JSON | **400** "El cuerpo de la petición no es válido" |
 
-Repetir `form-001` devuelve el mismo conflicto y no crea otro. La notificación se envía en segundo plano a la API
-simulada; se puede ver en el log con `docker compose logs api-patent-sweep`.
+### `GET /api/v1/patentes/estado/{id}`
+
+| `id` | Resultado esperado |
+|---|---|
+| El `patenteId` que devolvió el POST (por ejemplo `1`) | **200** con la patente |
+| `999` | **404** "Patente no encontrada con ID: 999" |
+
+Todos los errores vienen en formato ProblemDetail con un `traceId`, que también aparece en el log
+(`docker compose logs api-patent-sweep`).
 
 ### Alternativa con `curl`
 
 ```bash
-TOKEN=$(curl -s -X POST http://localhost:8085/api/v1/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"usuario":"admin","clave":"cambiar_clave_del_administrador"}' | sed -E 's/.*"token":"([^"]+)".*/\1/')
-
 curl -s -X POST http://localhost:8085/api/v1/patentes/busqueda \
-  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-  -d '{"formulaId":"form-001"}'
+  -H "Content-Type: application/json" \
+  -d '{"codigoPatente":"PAT-000123","titulo":"Cuchilla de diamante segmentada"}'
+
+curl -s http://localhost:8085/api/v1/patentes/estado/1
 ```
 
-En PowerShell use `curl.exe` y escriba el token manualmente en el encabezado `Authorization`.
+En PowerShell use `curl.exe` y escape las comillas del JSON, o use `Invoke-RestMethod`.
 
 ---
 
@@ -174,11 +113,11 @@ Requiere JDK 21 y Maven 3.9 o superior (no requiere Docker):
 
 ```bash
 cd backend
-mvn verify
+mvn clean verify
 ```
 
-El reporte de cobertura queda en `backend/target/site/jacoco/index.html`. La compilación falla si la capa `service`
-baja del 80 % de líneas o ramas.
+Ejecuta las pruebas, Checkstyle y JaCoCo. El reporte de cobertura queda en `backend/target/site/jacoco/index.html`.
+La compilación falla si `service` o `exception` bajan del 80 % de líneas o ramas.
 
 ---
 
@@ -187,7 +126,6 @@ baja del 80 % de líneas o ramas.
 | Problema | Qué hacer |
 |---|---|
 | La API no queda `healthy` | `docker compose logs api-patent-sweep` y revise el error |
-| Puerto ocupado | Cambie `API_PUERTO` en `.env` y vuelva a ejecutar `docker compose up` |
-| Quiere empezar de cero | `docker compose down -v` y luego `docker compose up --build` |
-| Error de clave JWT | `JWT_SECRET` debe tener al menos 32 caracteres |
-| 401 en Swagger | El token venció (60 min) o no pulsó **Authorize**; vuelva a iniciar sesión |
+| Puerto ocupado | Cambie `API_PUERTO` en `.env` y vuelva a ejecutar `docker compose up -d --wait` |
+| Quiere empezar de cero | `docker compose down -v` y luego `docker compose up -d --build --wait` |
+| `failed to add the host <=> sandbox pair interfaces: operation not supported` (Linux) | El kernel se actualizó y no se ha reiniciado: reinicie el equipo |

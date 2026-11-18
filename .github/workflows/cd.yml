@@ -1,0 +1,284 @@
+name: CD Despliegue en EC2
+
+# Despliega en el EC2 de producción (ver docs/despliegue/EC2.md y docs/adrs/ADR-007).
+# - Automático: cuando el workflow de CI termina con éxito en un push a main.
+# - Manual (workflow_dispatch desde main): sin "image_tag" construye y despliega el commit actual
+#   de main (si su CI pasó); con "image_tag" (SHA completo de un commit de main) hace rollback.
+#
+# Seguridad (ADR-007):
+# - Sin llaves ni contraseñas guardadas: el job "desplegar" pide un token OIDC a GitHub y AWS lo
+#   cambia por credenciales temporales de un rol que solo puede enviar un comando SSM a ese EC2.
+# - El servidor no expone el puerto 22: el comando llega por AWS Systems Manager.
+# - La imagen se despliega por digest (inmutable), no por tag.
+# - Las actions se fijan por SHA; Dependabot las mantiene al día.
+# Mientras falte la configuración de AWS en el environment "production", la imagen se publica
+# pero el despliegue se omite con un aviso, sin marcar el workflow como fallido.
+
+on:
+  workflow_run:
+    workflows: ["CI Backend Patent Sweep"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Rollback: SHA completo (40 caracteres) de un commit de main ya publicado en GHCR. Vacío: construir y desplegar el commit actual de main."
+        required: false
+        default: ""
+
+permissions: {}
+
+# Nunca dos despliegues a la vez; el que llega espera al anterior.
+concurrency:
+  group: despliegue-produccion
+  cancel-in-progress: false
+
+jobs:
+  preparar:
+    name: Preparar despliegue
+    if: >-
+      (github.event_name == 'workflow_run'
+        && github.event.workflow_run.conclusion == 'success'
+        && github.event.workflow_run.event == 'push')
+      || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      actions: read
+    outputs:
+      sha: ${{ steps.datos.outputs.sha }}
+      imagen: ${{ steps.datos.outputs.imagen }}
+      construir: ${{ steps.datos.outputs.construir }}
+    steps:
+      - name: Calcular commit e imagen
+        id: datos
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENTO: ${{ github.event_name }}
+          SHA_CI: ${{ github.event.workflow_run.head_sha }}
+          TAG_MANUAL: ${{ inputs.image_tag }}
+        run: |
+          set -euo pipefail
+          imagen="ghcr.io/${GITHUB_REPOSITORY,,}"
+          if [ -n "$TAG_MANUAL" ]; then
+            # Rollback: se despliega una imagen ya publicada, sin construir, con los compose de ese commit.
+            if ! [[ "$TAG_MANUAL" =~ ^[0-9a-f]{40}$ ]]; then
+              echo "::error::image_tag debe ser el SHA completo (40 caracteres hexadecimales) de un commit de main."
+              exit 1
+            fi
+            sha="$TAG_MANUAL"
+            construir=false
+          elif [ "$EVENTO" = "workflow_run" ]; then
+            sha="$SHA_CI"
+            construir=true
+          else
+            sha="$GITHUB_SHA"
+            construir=true
+            # Despliegue manual sin tag: exige que el CI de ese commit haya pasado.
+            conclusion="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow ci.yml --commit "$sha" \
+              --event push --json conclusion --jq '.[0].conclusion // ""')"
+            if [ "$conclusion" != "success" ]; then
+              echo "::error::El CI del commit $sha no terminó con éxito (estado: '${conclusion:-sin ejecutar}')."
+              exit 1
+            fi
+          fi
+
+          {
+            echo "sha=$sha"
+            echo "imagen=$imagen"
+            echo "construir=$construir"
+          } >> "$GITHUB_OUTPUT"
+          echo "Commit: $sha | Imagen: $imagen:$sha | Construir: $construir"
+
+  imagen:
+    name: Construir y publicar imagen en GHCR
+    needs: preparar
+    if: needs.preparar.outputs.construir == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      digest: ${{ steps.construir.outputs.digest }}
+    env:
+      # Plataformas de la imagen. Para un EC2 ARM/Graviton defina la variable del repositorio
+      # IMAGE_PLATFORMS=linux/arm64 (o linux/amd64,linux/arm64).
+      PLATAFORMAS: ${{ vars.IMAGE_PLATFORMS || 'linux/amd64' }}
+    steps:
+      - name: Descargar el código del commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.preparar.outputs.sha }}
+          persist-credentials: false
+
+      - name: Configurar QEMU (solo para imágenes ARM)
+        if: contains(env.PLATAFORMAS, 'arm64')
+        uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
+
+      - name: Configurar Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - name: Iniciar sesión en GHCR
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Calcular etiquetas de la imagen
+        id: meta
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
+        with:
+          images: ${{ needs.preparar.outputs.imagen }}
+          tags: |
+            type=raw,value=${{ needs.preparar.outputs.sha }}
+            type=raw,value=latest
+
+      - name: Construir y publicar
+        id: construir
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: patent-sweep/backend
+          platforms: ${{ env.PLATAFORMAS }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  desplegar:
+    name: Desplegar en EC2 (SSM)
+    needs: [preparar, imagen]
+    if: >-
+      always()
+      && needs.preparar.result == 'success'
+      && (needs.imagen.result == 'success' || needs.imagen.result == 'skipped')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    # El environment solo acepta la rama main y guarda AWS_ROLE_ARN, AWS_REGION y EC2_INSTANCE_ID.
+    environment: production
+    permissions:
+      contents: read
+      packages: read
+      id-token: write # token OIDC para asumir el rol de AWS
+    env:
+      AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      EC2_INSTANCE_ID: ${{ vars.EC2_INSTANCE_ID }}
+      IMAGEN: ${{ needs.preparar.outputs.imagen }}
+      SHA: ${{ needs.preparar.outputs.sha }}
+      DIGEST_CONSTRUIDO: ${{ needs.imagen.outputs.digest }}
+    steps:
+      - name: Verificar la configuración de AWS
+        id: config
+        run: |
+          if [ -z "$AWS_ROLE_ARN" ] || [ -z "$AWS_REGION" ] || [ -z "$EC2_INSTANCE_ID" ]; then
+            echo "::notice title=Despliegue omitido::Faltan el secreto AWS_ROLE_ARN o las variables AWS_REGION / EC2_INSTANCE_ID en el environment 'production'. La imagen $IMAGEN:$SHA quedó publicada, pero no se desplegó. Ver docs/despliegue/EC2.md."
+            echo "listos=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "listos=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Iniciar sesión en GHCR (para leer el digest en un rollback)
+        if: steps.config.outputs.listos == 'true' && env.DIGEST_CONSTRUIDO == ''
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Fijar la imagen por digest
+        id: imagen
+        if: steps.config.outputs.listos == 'true'
+        run: |
+          set -euo pipefail
+          digest="$DIGEST_CONSTRUIDO"
+          if [ -z "$digest" ]; then
+            digest="$(docker buildx imagetools inspect "$IMAGEN:$SHA" --format '{{json .Manifest}}' | jq -r '.digest')"
+          fi
+          if ! [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            echo "::error::No se encontró el digest de $IMAGEN:$SHA (¿existe esa imagen en GHCR?)."
+            exit 1
+          fi
+          echo "ref=$IMAGEN@$digest" >> "$GITHUB_OUTPUT"
+          echo "Imagen a desplegar: $IMAGEN@$digest"
+
+      # El script de despliegue sale del commit del workflow (main), no del commit a desplegar,
+      # para que un rollback a un commit viejo use el procedimiento vigente.
+      - name: Descargar el script de despliegue
+        if: steps.config.outputs.listos == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: scripts/desplegar-ec2.sh
+          sparse-checkout-cone-mode: false
+
+      - name: Obtener credenciales temporales de AWS (OIDC)
+        if: steps.config.outputs.listos == 'true'
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: patent-sweep-cd-${{ github.run_id }}
+          role-duration-seconds: 1800
+          mask-aws-account-id: true
+
+      - name: Desplegar con SSM Run Command y verificar salud
+        if: steps.config.outputs.listos == 'true'
+        env:
+          IMAGEN_REF: ${{ steps.imagen.outputs.ref }}
+        run: |
+          set -euo pipefail
+          # Los valores se validan antes de armar el comando que se ejecutará en el servidor.
+          [[ "$GITHUB_REPOSITORY" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]]
+          [[ "$SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$IMAGEN_REF" =~ ^[a-z0-9._/-]+@sha256:[0-9a-f]{64}$ ]]
+          [[ "$EC2_INSTANCE_ID" =~ ^i-[0-9a-f]{8,17}$ ]]
+
+          script="$(base64 -w0 scripts/desplegar-ec2.sh)"
+          comando="echo '${script}' | base64 -d > /tmp/desplegar-patent-sweep.sh && bash /tmp/desplegar-patent-sweep.sh '${GITHUB_REPOSITORY}' '${SHA}' '${IMAGEN_REF}'"
+          jq -n --arg c "$comando" '{commands: [$c], executionTimeout: ["900"]}' > parametros.json
+
+          id="$(aws ssm send-command \
+            --instance-ids "$EC2_INSTANCE_ID" \
+            --document-name AWS-RunShellScript \
+            --comment "Patent Sweep ${SHA:0:12} (run ${GITHUB_RUN_ID})" \
+            --timeout-seconds 300 \
+            --parameters file://parametros.json \
+            --query Command.CommandId --output text)"
+          echo "Comando SSM: $id"
+
+          estado=Pending
+          for _ in $(seq 1 120); do
+            sleep 10
+            estado="$(aws ssm get-command-invocation --command-id "$id" --instance-id "$EC2_INSTANCE_ID" \
+              --query Status --output text 2>/dev/null || echo Pending)"
+            case "$estado" in
+              Pending|InProgress|Delayed) ;;
+              *) break ;;
+            esac
+          done
+
+          echo "::group::Salida del servidor"
+          aws ssm get-command-invocation --command-id "$id" --instance-id "$EC2_INSTANCE_ID" \
+            --query StandardOutputContent --output text || true
+          echo "::endgroup::"
+          errores="$(aws ssm get-command-invocation --command-id "$id" --instance-id "$EC2_INSTANCE_ID" \
+            --query StandardErrorContent --output text || true)"
+          if [ -n "$errores" ] && [ "$errores" != "None" ]; then
+            echo "::group::Errores del servidor"
+            echo "$errores"
+            echo "::endgroup::"
+          fi
+
+          if [ "$estado" != "Success" ]; then
+            echo "::error::El despliegue terminó con estado '$estado'. Revise la salida del servidor."
+            exit 1
+          fi
+          {
+            echo "### Despliegue completado"
+            echo ""
+            echo "- Commit: \`$SHA\`"
+            echo "- Imagen: \`$IMAGEN_REF\`"
+          } >> "$GITHUB_STEP_SUMMARY"
