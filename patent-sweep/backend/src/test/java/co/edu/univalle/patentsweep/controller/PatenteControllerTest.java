@@ -9,7 +9,6 @@ import co.edu.univalle.patentsweep.service.PatenteService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
@@ -24,7 +23,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(PatenteController.class)
-@AutoConfigureMockMvc(addFilters = false)
 @Import(GlobalExceptionHandler.class)
 class PatenteControllerTest {
 
@@ -50,7 +48,7 @@ class PatenteControllerTest {
 
         String jsonRequest = "{\"codigoPatente\":\"PAT-123456\",\"titulo\":\"Cuchilla láser\",\"tipoProducto\":\"Mecanizado\",\"resumen\":\"Resumen de prueba\"}";
 
-        mockMvc.perform(post("/patentes/busqueda")
+        mockMvc.perform(post("/api/v1/patentes/busqueda")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(jsonRequest))
                 .andExpect(status().isCreated())
@@ -64,7 +62,7 @@ class PatenteControllerTest {
     void deberiaFallarConDatosInvalidos() throws Exception {
         String jsonRequest = "{\"codigoPatente\":\"INVALIDO\",\"titulo\":\"\"}";
 
-        mockMvc.perform(post("/patentes/busqueda")
+        mockMvc.perform(post("/api/v1/patentes/busqueda")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(jsonRequest))
                 .andExpect(status().isBadRequest())
@@ -79,7 +77,7 @@ class PatenteControllerTest {
 
         String jsonRequest = "{\"codigoPatente\":\"PAT-123456\",\"titulo\":\"Cuchilla láser\"}";
 
-        mockMvc.perform(post("/patentes/busqueda")
+        mockMvc.perform(post("/api/v1/patentes/busqueda")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(jsonRequest))
                 .andExpect(status().isConflict());
@@ -97,7 +95,7 @@ class PatenteControllerTest {
 
         when(patenteService.obtenerPorId(1L)).thenReturn(patente);
 
-        mockMvc.perform(get("/patentes/estado/1"))
+        mockMvc.perform(get("/api/v1/patentes/estado/1"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.patenteId").value(1))
                 .andExpect(jsonPath("$.codigoPatente").value("PAT-123456"));
@@ -109,7 +107,7 @@ class PatenteControllerTest {
         when(patenteService.obtenerPorId(99L))
                 .thenThrow(new PatenteNoEncontradaException("Patente no encontrada"));
 
-        mockMvc.perform(get("/patentes/estado/99"))
+        mockMvc.perform(get("/api/v1/patentes/estado/99"))
                 .andExpect(status().isNotFound());
     }
 }

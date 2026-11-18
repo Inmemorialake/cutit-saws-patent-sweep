@@ -17,9 +17,10 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+/** Transacción del arquetipo Sprint 0: registrar una patente y consultarla por su ID. */
 @RestController
-@RequestMapping("/patentes")
-@Tag(name = "Patentes", description = "Endpoint transaccional principal de Patent Sweep (Sprint 0)")
+@RequestMapping("/api/v1/patentes")
+@Tag(name = "Patentes", description = "Registro y consulta de patentes (arquetipo Sprint 0)")
 public class PatenteController {
 
     private final PatenteService patenteService;
@@ -29,10 +30,11 @@ public class PatenteController {
     }
 
     @PostMapping("/busqueda")
-    @Operation(summary = "Registrar o buscar patente en el arquetipo")
-    @ApiResponse(responseCode = "201", description = "Patente procesada con éxito")
+    @Operation(summary = "Registrar una patente",
+            description = "Valida los datos, verifica que el código no exista y guarda la patente en estado EN_TRAMITE.")
+    @ApiResponse(responseCode = "201", description = "Patente registrada")
     @ApiResponse(responseCode = "400", description = "Datos inválidos")
-    @ApiResponse(responseCode = "409", description = "Patente ya existe")
+    @ApiResponse(responseCode = "409", description = "Ya existe una patente con ese código")
     public ResponseEntity<PatenteResponseDTO> registrarPatente(@Valid @RequestBody PatenteRequestDTO request) {
         Patente patente = Patente.builder()
                 .codigoPatente(request.codigoPatente())
@@ -42,35 +44,25 @@ public class PatenteController {
                 .build();
 
         Patente guardada = patenteService.registrar(patente);
-
-        PatenteResponseDTO response = new PatenteResponseDTO(
-                guardada.getPatenteId(),
-                guardada.getCodigoPatente(),
-                guardada.getTitulo(),
-                guardada.getTipoProducto(),
-                guardada.getResumen(),
-                guardada.getEstadoVigencia().name()
-        );
-
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        return ResponseEntity.status(HttpStatus.CREATED).body(aRespuesta(guardada));
     }
 
     @GetMapping("/estado/{id}")
-    @Operation(summary = "Consultar estado de patente por ID")
+    @Operation(summary = "Consultar una patente por su ID",
+            description = "Devuelve los datos de la patente y su estado de vigencia.")
     @ApiResponse(responseCode = "200", description = "Patente encontrada")
     @ApiResponse(responseCode = "404", description = "Patente no encontrada")
     public ResponseEntity<PatenteResponseDTO> obtenerEstado(@PathVariable Long id) {
-        Patente patente = patenteService.obtenerPorId(id);
+        return ResponseEntity.ok(aRespuesta(patenteService.obtenerPorId(id)));
+    }
 
-        PatenteResponseDTO response = new PatenteResponseDTO(
+    private static PatenteResponseDTO aRespuesta(Patente patente) {
+        return new PatenteResponseDTO(
                 patente.getPatenteId(),
                 patente.getCodigoPatente(),
                 patente.getTitulo(),
                 patente.getTipoProducto(),
                 patente.getResumen(),
-                patente.getEstadoVigencia().name()
-        );
-
-        return ResponseEntity.ok(response);
+                patente.getEstadoVigencia().name());
     }
 }
