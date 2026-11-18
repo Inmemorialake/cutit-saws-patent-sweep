@@ -9,5 +9,6 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface PatenteRepository extends JpaRepository<Patente, Long> {
 
+    /** Spring Data genera la consulta a partir del nombre del método. */
     Optional<Patente> findByCodigoPatente(String codigoPatente);
 }

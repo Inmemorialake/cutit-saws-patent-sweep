@@ -118,6 +118,7 @@ patent-sweep/
         ├── main/java/co/edu/univalle/patentsweep/
         │   ├── controller/   Controllers Layer: PatenteController y dto/
         │   ├── service/      Logic Layer: PatenteService
+        │   ├── integration/  Integration Layer: clientes de APIs externas (vacía en el Sprint 0, ver su LEEME.txt)
         │   ├── repository/   Data Access Layer: PatenteRepository
         │   ├── model/        Data Access Layer: entidad Patente y enums
         │   ├── config/       Utility Layer: OpenApiConfig

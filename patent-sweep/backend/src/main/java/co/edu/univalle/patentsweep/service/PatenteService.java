@@ -9,7 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Caso de uso base del Arquetipo (Sprint 0): registro y consulta simple de patentes.
- * Equivale exactamente al EquipoService del arquetipo exonerado.
+ * La regla de negocio vive aquí; el controller no accede a la base de datos.
  */
 @Service
 public class PatenteService {
@@ -20,6 +20,7 @@ public class PatenteService {
         this.patenteRepository = patenteRepository;
     }
 
+    /** Registra la patente; lanza 409 si el código ya existe. */
     @Transactional
     public Patente registrar(Patente patente) {
         if (patenteRepository.findByCodigoPatente(patente.getCodigoPatente()).isPresent()) {
@@ -28,6 +29,7 @@ public class PatenteService {
         return patenteRepository.save(patente);
     }
 
+    /** Busca por ID; lanza 404 si no existe. */
     @Transactional(readOnly = true)
     public Patente obtenerPorId(Long id) {
         return patenteRepository.findById(id)

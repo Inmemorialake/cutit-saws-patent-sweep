@@ -83,6 +83,7 @@ public class Patente {
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    /** Antes de insertar: fija la fecha y deja EN_TRAMITE si no se indicó vigencia. */
     @PrePersist
     void alCrear() {
         createdAt = LocalDateTime.now();
