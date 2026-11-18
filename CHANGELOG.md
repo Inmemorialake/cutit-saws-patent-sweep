@@ -9,6 +9,14 @@ El versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 ## [Unreleased]
 
+_Sin cambios todavía._
+
+---
+
+## [1.0.0-beta.1] — 2026-11-18 · Cierre del Sprint 0
+
+Primera versión desplegada en producción (AWS EC2) por el CD.
+
 ### Añadido
 
 - Despliegue continuo en AWS (`.github/workflows/cd.yml`): imagen en GHCR (SHA y `latest`) desplegada **por digest** en un EC2 con Docker Compose, con health check, prueba de humo y rollback por SHA (ADR-005).
@@ -106,4 +114,7 @@ conservan; el código Java se recupera desde `5d13af5`.
 
 ---
 
-<!-- Aún no hay etiquetas de versión en el repositorio: al crear la primera (por ejemplo v1.0.0 al cerrar el Sprint 0), agregue aquí los enlaces de comparación. -->
+[Unreleased]: https://github.com/Inmemorialake/cutit-saws-patent-sweep/compare/v1.0.0-beta.1...HEAD
+[1.0.0-beta.1]: https://github.com/Inmemorialake/cutit-saws-patent-sweep/tree/v1.0.0-beta.1
+
+<!-- Las entradas 0.2.0-beta.1 y 0.1.0-beta.2 son anteriores a la primera etiqueta y no tienen enlace. -->

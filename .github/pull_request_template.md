@@ -30,7 +30,7 @@
 ## Calidad y Pruebas
 
 - [ ] Pruebas unitarias e integración ejecutadas localmente con éxito (`mvn clean verify`)
-- [ ] Cobertura de JaCoCo verificada (cumpliendo el umbral exigido, actual ~98% instrucciones)
+- [ ] Cobertura de JaCoCo verificada (umbral: 80 % de líneas y ramas en `service` y `exception`)
 - [ ] `mvn checkstyle:check` pasa sin errores (`0 violations`)
 - [ ] Configuración e imágenes Docker probadas correctamente (`docker compose up`)
 
