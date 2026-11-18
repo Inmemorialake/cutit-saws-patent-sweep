@@ -8,3 +8,9 @@ hs_err_pid*.log
 
 # Secretos y configuración local
 .env
+# Imagen fijada por digest que escribe el despliegue (docker-compose.prod.yml)
+imagen.env
+
+# Workspace local de Postman (colecciones, entornos y variables globales: pueden contener tokens)
+postman/
+.postman/
