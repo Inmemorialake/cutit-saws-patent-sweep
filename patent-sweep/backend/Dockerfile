@@ -18,7 +18,7 @@ COPY src ./src
 RUN mvn -B -q -Dmaven.test.skip=true package
 
 # --- Etapa 2: ejecución ---------------------------------------------------------------
-FROM eclipse-temurin:21.0.12.1_1-jre-alpine-3.23 AS ejecucion
+FROM eclipse-temurin:24-jre-alpine-3.22 AS ejecucion
 # La aplicación corre con un usuario sin privilegios.
 RUN addgroup -S patentsweep && adduser -S patentsweep -G patentsweep
 WORKDIR /app
