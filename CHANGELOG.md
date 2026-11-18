@@ -11,6 +11,42 @@ El versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 ### Añadido
 
+- Despliegue continuo en AWS (`.github/workflows/cd.yml`): imagen en GHCR (SHA y `latest`) desplegada **por digest** en un EC2 con Docker Compose, con health check, prueba de humo y rollback por SHA (ADR-005).
+- Despliegue **sin SSH** con SSM Run Command: GitHub solo puede lanzar el documento `PatentSweep-Desplegar` (procedimiento fijo, parámetros validados y solo commits de `main`) en la instancia del proyecto, con un usuario IAM de permiso mínimo. Es compatible con la experiencia de Proyectos de AWS, que bloquea OIDC (ADR-007).
+- Plantilla CloudFormation `infra/aws/cd-ssm.yml`: documento SSM de despliegue, usuario IAM de CD y perfil de instancia para SSM.
+- `docker-compose.prod.yml` (imagen de GHCR y límites de memoria), `scripts/preparar-ec2.sh` (Docker, swap, agente SSM, SSH endurecido y fail2ban) y guía `docs/despliegue/EC2.md`.
+- Job de CI que construye la imagen Docker en cada PR.
+- Dependabot semanal para GitHub Actions, Maven y Docker.
+- ADR-005 (EC2 + Compose + GHCR), ADR-006 (arquetipo Sprint 0) y ADR-007 (CD por SSM sin SSH).
+
+### Cambiado
+
+- **Arquetipo Sprint 0 de una sola transacción** (ADR-006): el backend queda en registrar (`POST /api/v1/patentes/busqueda`) y consultar (`GET /api/v1/patentes/estado/{id}`) una patente.
+- Las rutas usan el prefijo `/api/v1` que exige el PB.
+- El CI ejecuta un solo `mvn verify` (pruebas, JaCoCo, Checkstyle y JAR), con las actions fijadas por SHA, concurrencia por PR y timeouts.
+- SonarCloud configurado en `pom.xml` (organización, clave, URL y `sonar.qualitygate.wait`). Solo `config`, `model` y `dto` se excluyen de la cobertura, no del análisis.
+- Limpieza del repositorio: los prompts pasan a `docs/ia/` y el análisis de HU de Materiales a `docs/referencias/`. `.idea/`, `.vscode/` y los volcados `hs_err_pid*.log` dejan de versionarse.
+- README, `patent-sweep/README.md` y `GUIA_EJECUCION.md` reescritos para el alcance real del Sprint 0.
+
+### Eliminado
+
+- Spring Security, JWT (jjwt), Resilience4j, caché (Caffeine), AOP y PostgreSQL embebido, que el arquetipo no usa.
+- `RestClientConfig`, `FuentePatentesPort` y el esquema de seguridad Bearer de OpenAPI.
+- Variables `JWT_*`, `ADMIN_*`, `SERVICIO_*` y las URL de otras APIs en `docker-compose.yml` y `.env.example`.
+- La búsqueda de conflictos, el estado de fórmulas, las notificaciones y la autenticación de `develop`. Se recuperan desde el commit `5d13af5` cuando las pida cada HU.
+
+### Corregido
+
+- La API respondía **401 en todos los endpoints**, incluido `/actuator/health`: quedaba Spring Security sin configuración tras el recorte, y por eso fallaban los healthcheck de Docker y del CD.
+- SonarCloud fallaba en silencio (`continue-on-error` sin organización ni clave) y nunca había analizado el proyecto. Ahora el CI falla si el quality gate no pasa.
+- El procesador de anotaciones usaba Lombok 1.18.34 fijo, que no compila con JDK 25. Ahora toma la versión de Spring Boot.
+- Los badges de cobertura (98 %) y quality gate del README eran fijos. Ahora se leen de SonarCloud.
+
+### Histórico: funcionalidad de `develop` retirada por el arquetipo
+
+Estas entradas describen trabajo integrado en `develop` antes del recorte (ADR-006). Las migraciones V3 a V6 se
+conservan; el código Java se recupera desde `5d13af5`.
+
 - API simulada de la fuente de patentes con WireMock (`GET /patentes/buscar`), con respuestas preconfiguradas: conflicto claro, límite del 50 %, patente con un material menos, fórmula sin conflicto, falla 503 y respuesta lenta para probar reintentos (HU-02).
 - `FuentePatentesClient`: cliente HTTP de la fuente de patentes con Retry (3 intentos cada 5 s), Circuit Breaker y traducción de errores; se configura con `FUENTE_PATENTES_URL` (HU-02).
 - Versión de la fórmula en cada conflicto (migración V3, DA-17): el conflicto es único por fórmula, patente y versión, y un descarte solo vale para la versión juzgada.
@@ -18,14 +54,8 @@ El versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 - Estado `PENDIENTE_REVISION` de HU-04, calculado a partir de las evaluaciones abiertas (`EvaluacionFormula`, solo lectura hasta HU-03).
 - Restricciones de datos (migración V6): `CHECK` en la base para los estados, los formatos `form-NNN` y `PAT-NNNNNN`, la coherencia del descarte, las fechas de la patente y los valores numéricos de la configuración; las mismas reglas como validaciones en las entidades.
 - ADR-001 a ADR-004 en `docs/adrs/`: API simulada de patentes, conflicto único por versión, estado calculado sin tabla `formula` y foto de la fórmula en la revisión.
-
-### Cambiado
-
 - El estado de la fórmula (HU-04) se calcula en cada consulta y ya no se guarda; la consulta verifica la fórmula en Materiales y devuelve `NO_PROCESADO` si la versión vigente no se ha revisado.
 - `conflicto` y `revision_formula` guardan solo el código de la fórmula (migración V4).
-
-### Eliminado
-
 - Tabla `formula` y su repositorio: Materiales/Fórmulas es la dueña de los datos de la fórmula.
 - `FuentePatentesMockAdapter` y `patentes_dataset.json`, reemplazados por la API simulada.
 
@@ -33,10 +63,6 @@ El versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 - DA-17 se aparta del PB (HU-01, 6.2 y HU-09, 3.2): el descarte de un conflicto vale solo para la versión de la fórmula juzgada.
 - HU-04 devuelve `NO_PROCESADO` cuando la última revisión es de otra versión; el PB no define ese caso.
-
-### En progreso
-
-- Adecuación y evaluación del arquetipo de la plataforma del servicio Patent Sweep de Cutit Saws Ltd., bajo la adaptación de una única transacción funcional y verificable.
 
 ---
 
@@ -81,6 +107,4 @@ El versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
-[Unreleased]: https://github.com/inmemorialake/patent-sweep/compare/v1.0.0-beta.2...HEAD
-[0.1.0-beta.2]: https://github.com/inmemorialake/patent-sweep/compare/v1.0.0-beta.1...v1.0.0-beta.2
-[0.2.0-beta.1]: https://github.com/inmemorialake/patent-sweep/releases/tag/v1.0.0-beta.1
+<!-- Aún no hay etiquetas de versión en el repositorio: al crear la primera (por ejemplo v1.0.0 al cerrar el Sprint 0), agregue aquí los enlaces de comparación. -->

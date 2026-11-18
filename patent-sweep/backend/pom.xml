@@ -20,18 +20,19 @@
 
     <properties>
         <java.version>21</java.version>
-        <resilience4j.version>2.4.0</resilience4j.version>
         <springdoc.version>2.10.0</springdoc.version>
-        <jjwt.version>0.13.0</jjwt.version>
         <jacoco.version>0.8.16</jacoco.version>
-        <embedded-postgres.version>2.2.2</embedded-postgres.version>
-        <embedded-postgres-binarios.version>16.15.0</embedded-postgres-binarios.version>
         <sonar.version>5.0.0.4389</sonar.version>
-        <!-- Propiedades predeterminadas para SonarQube -->
-        <sonar.java.coveragePlugin>jacoco</sonar.java.coveragePlugin>
-        <sonar.dynamicAnalysis>reuseReports</sonar.dynamicAnalysis>
+        <!-- SonarCloud: organización y clave del proyecto (cámbielas aquí si SonarCloud asigna otras). -->
+        <sonar.organization>inmemorialake</sonar.organization>
+        <sonar.projectKey>Inmemorialake_cutit-saws-patent-sweep</sonar.projectKey>
+        <sonar.host.url>https://sonarcloud.io</sonar.host.url>
+        <!-- Reporte XML de JaCoCo que genera "mvn jacoco:report" (o "mvn verify"). -->
         <sonar.coverage.jacoco.xmlReportPaths>${project.build.directory}/site/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
-        <sonar.exclusions>**/config/**, **/model/**, **/dto/**, **/*Application.java</sonar.exclusions>
+        <!-- Solo se excluyen de la cobertura: el código sigue analizándose (bugs, vulnerabilidades, code smells). -->
+        <sonar.coverage.exclusions>**/config/**, **/model/**, **/dto/**, **/*Application.java</sonar.coverage.exclusions>
+        <!-- El análisis espera el resultado del quality gate: si no pasa, el CI falla. -->
+        <sonar.qualitygate.wait>true</sonar.qualitygate.wait>
     </properties>
 
     <dependencies>
@@ -69,45 +70,7 @@
             <artifactId>flyway-database-postgresql</artifactId>
         </dependency>
 
-        <!-- Utility Layer -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-security</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.jsonwebtoken</groupId>
-            <artifactId>jjwt-api</artifactId>
-            <version>${jjwt.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>io.jsonwebtoken</groupId>
-            <artifactId>jjwt-impl</artifactId>
-            <version>${jjwt.version}</version>
-            <scope>runtime</scope>
-        </dependency>
-        <dependency>
-            <groupId>io.jsonwebtoken</groupId>
-            <artifactId>jjwt-jackson</artifactId>
-            <version>${jjwt.version}</version>
-            <scope>runtime</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-cache</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.github.ben-manes.caffeine</groupId>
-            <artifactId>caffeine</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-aop</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.github.resilience4j</groupId>
-            <artifactId>resilience4j-spring-boot3</artifactId>
-            <version>${resilience4j.version}</version>
-        </dependency>
+        <!-- Utility Layer: salud, métricas y traceId (P19, P23, P28) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
@@ -130,29 +93,6 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.security</groupId>
-            <artifactId>spring-security-test</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>io.zonky.test</groupId>
-            <artifactId>embedded-postgres</artifactId>
-            <version>${embedded-postgres.version}</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>io.zonky.test.postgres</groupId>
-            <artifactId>embedded-postgres-binaries-windows-amd64</artifactId>
-            <version>${embedded-postgres-binarios.version}</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>io.zonky.test.postgres</groupId>
-            <artifactId>embedded-postgres-binaries-linux-amd64</artifactId>
-            <version>${embedded-postgres-binarios.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -262,7 +202,7 @@
                         <path>
                             <groupId>org.projectlombok</groupId>
                             <artifactId>lombok</artifactId>
-                            <version>1.18.34</version>
+                            <version>${lombok.version}</version>
                         </path>
                     </annotationProcessorPaths>
                 </configuration>

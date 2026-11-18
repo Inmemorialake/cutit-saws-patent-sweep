@@ -1,5 +1,10 @@
 name: CI Backend Patent Sweep
 
+# Integración continua: corre en cada PR y en cada push a main/develop.
+# - backend: pruebas, cobertura mínima (JaCoCo), estilo (Checkstyle) y análisis de SonarCloud.
+# - docker: construye la imagen (sin publicarla) para que un PR no pueda romper el despliegue.
+# Las actions se fijan por SHA (el comentario indica la versión); Dependabot las mantiene al día.
+
 on:
   push:
     branches:
@@ -14,51 +19,105 @@ on:
 permissions:
   contents: read
 
+# En un PR, un push nuevo cancela la ejecución anterior; en main/develop cada push corre completo.
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
-  build-test-and-quality:
+  backend:
+    name: Pruebas, cobertura, estilo y Sonar
     runs-on: ubuntu-24.04
+    timeout-minutes: 20
 
     defaults:
       run:
         working-directory: patent-sweep/backend
 
+    env:
+      # Los secretos no llegan a los PR de forks ni a los de Dependabot: en ese caso Sonar se omite.
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      # El plan gratuito de SonarCloud analiza solo la rama principal (main) y los PR:
+      # en un push a develop el análisis se omite (el PR que llevó el cambio ya lo analizó).
+      SONAR_APLICA: ${{ github.event_name == 'pull_request' || github.ref == 'refs/heads/main' }}
+
     steps:
       - name: Descargar el código
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Historial completo: Sonar lo usa para el blame y para detectar el código nuevo.
+          fetch-depth: 0
 
       - name: Configurar Java 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
         with:
           distribution: temurin
           java-version: "21"
           cache: maven
           cache-dependency-path: patent-sweep/backend/pom.xml
 
-      - name: Ejecutar pruebas unitarias y de integración
-        run: mvn --batch-mode --no-transfer-progress clean test
+      # Maven Central limita las descargas (HTTP 429) desde las IP compartidas de los runners. Las dependencias
+      # (y los plugins, incluido el de Sonar) se bajan antes, con reintentos; después setup-java las deja en caché.
+      - name: Descargar dependencias (con reintentos)
+        run: |
+          for espera in 0 30 90; do
+            sleep "$espera"
+            mvn --batch-mode --no-transfer-progress --quiet dependency:go-offline && exit 0
+            echo "::warning::Descarga de dependencias fallida (posible HTTP 429 de Maven Central); se reintenta."
+          done
+          exit 1
 
-      - name: Validar cobertura mínima con JaCoCo
-        run: mvn --batch-mode --no-transfer-progress jacoco:report jacoco:check
-
-      - name: Inspeccionar estilo con Checkstyle
-        run: mvn --batch-mode --no-transfer-progress checkstyle:check
-
-      - name: Construir el artefacto
-        run: mvn --batch-mode --no-transfer-progress package -DskipTests
+      # "verify" ejecuta las pruebas, el reporte y el umbral de JaCoCo, Checkstyle y el empaquetado (ver pom.xml).
+      - name: Pruebas, cobertura, estilo y empaquetado
+        run: mvn --batch-mode --no-transfer-progress clean verify
 
       - name: Guardar el JAR generado
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: patent-sweep-${{ github.sha }}
           path: patent-sweep/backend/target/patent-sweep.jar
           if-no-files-found: error
+          retention-days: 14
 
-      - name: Análisis estático de código con Sonar
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+      - name: Caché de SonarCloud
+        if: env.SONAR_TOKEN != '' && env.SONAR_APLICA == 'true'
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.sonar/cache
+          key: ${{ runner.os }}-sonar
+          restore-keys: ${{ runner.os }}-sonar
+
+      # La organización, la clave del proyecto y la espera del quality gate están en pom.xml.
+      # Si el quality gate no pasa, este paso (y el CI) falla.
+      - name: Análisis estático con SonarCloud
+        if: env.SONAR_TOKEN != '' && env.SONAR_APLICA == 'true'
+        run: mvn --batch-mode --no-transfer-progress sonar:sonar
+
+      - name: Aviso si Sonar se omitió
+        if: env.SONAR_TOKEN == '' || env.SONAR_APLICA != 'true'
         run: |
-          mvn --batch-mode sonar:sonar \
-            -Dsonar.host.url=${SONAR_HOST_URL:-"https://sonarcloud.io"} \
-            -Dsonar.token=${SONAR_TOKEN}
-        continue-on-error: true
+          if [ "$SONAR_APLICA" != "true" ]; then
+            echo "::notice title=SonarCloud omitido::El plan gratuito solo analiza main y los PR; ${GITHUB_REF_NAME} se analizó en su PR."
+          else
+            echo "::notice title=SonarCloud omitido::Esta ejecución no tiene acceso a SONAR_TOKEN (PR de un fork o de Dependabot)."
+          fi
+
+  docker:
+    name: Construir imagen Docker
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    steps:
+      - name: Descargar el código
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Configurar Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - name: Construir la imagen (sin publicar)
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: patent-sweep/backend
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
