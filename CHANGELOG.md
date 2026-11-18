@@ -16,7 +16,6 @@ El versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 - Plantilla CloudFormation `infra/aws/cd-ssm.yml`: documento SSM de despliegue, usuario IAM de CD y perfil de instancia para SSM.
 - `docker-compose.prod.yml` (imagen de GHCR y límites de memoria), `scripts/preparar-ec2.sh` (Docker, swap, agente SSM, SSH endurecido y fail2ban) y guía `docs/despliegue/EC2.md`.
 - Job de CI que construye la imagen Docker en cada PR.
-- Dependabot semanal para GitHub Actions, Maven y Docker.
 - ADR-005 (EC2 + Compose + GHCR), ADR-006 (arquetipo Sprint 0) y ADR-007 (CD por SSM sin SSH).
 
 ### Cambiado

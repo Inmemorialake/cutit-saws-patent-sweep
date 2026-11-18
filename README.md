@@ -128,7 +128,6 @@ rama personal ─PR─► develop ─PR─► main ─► CD ─► EC2 (AWS)
 2. Valide en local con `mvn clean verify`.
 3. Abra un PR hacia `develop` con la [plantilla](.github/pull_request_template.md). El **CI** ([`ci.yml`](.github/workflows/ci.yml)) debe pasar: pruebas, cobertura, estilo, el quality gate de SonarCloud y el build de la imagen Docker.
 4. `develop` se integra en `main` por PR. Con el CI en verde en `main`, el **CD** ([`cd.yml`](.github/workflows/cd.yml)) publica la imagen en GHCR y la despliega en el EC2 **sin SSH** con AWS Systems Manager: GitHub solo puede lanzar un documento de despliegue fijo, con el SHA de `main` y el digest de la imagen como únicos parámetros. Incluye health check y prueba de humo, y el rollback se hace con el mismo workflow. Ver [ADR-007](docs/adrs/ADR-007-cd-con-ssm-sin-ssh.md).
-5. Dependabot propone actualizaciones semanales de actions, Maven y Docker hacia `develop`.
 
 Convenciones de commits y ramas: [`CONTRIBUTING.md`](CONTRIBUTING.md) · Historial de cambios: [`CHANGELOG.md`](CHANGELOG.md).
 
@@ -138,7 +137,7 @@ Convenciones de commits y ramas: [`CONTRIBUTING.md`](CONTRIBUTING.md) · Histori
 
 ```
 .
-├── .github/          workflows (ci.yml, cd.yml), dependabot.yml, plantilla de PR
+├── .github/          workflows (ci.yml, cd.yml) y plantilla de PR
 ├── docs/
 │   ├── adrs/         decisiones de arquitectura (ADR-001 a ADR-007)
 │   ├── arquitectura/ DAS V3.0

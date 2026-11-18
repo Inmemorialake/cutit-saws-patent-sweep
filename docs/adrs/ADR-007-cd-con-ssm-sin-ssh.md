@@ -35,7 +35,7 @@ La experiencia de Proyectos sí permite usuarios y roles IAM para acceso program
    instancia**, más la lectura del resultado. No puede usar `AWS-RunShellScript` ni ningún otro servicio. Su llave
    se guarda como secreto del environment `production`, que solo acepta la rama `main`.
 5. **Imagen por digest** e imagen pública en GHCR: el servidor no recibe tokens de GitHub.
-6. **Actions fijadas por SHA**, `permissions` mínimos por job y Dependabot.
+6. **Actions fijadas por SHA** (se actualizan a mano) y `permissions` mínimos por job.
 7. La infraestructura vive como código en `infra/aws/cd-ssm.yml` (CloudFormation). La llave de acceso no se crea en la
    plantilla (quedaría visible en las salidas del stack): se crea con el CLI y va directo a GitHub.
 
