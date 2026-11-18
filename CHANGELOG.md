@@ -12,12 +12,12 @@ El versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 ### Añadido
 
 - Despliegue continuo en AWS (`.github/workflows/cd.yml`): imagen en GHCR (SHA y `latest`) desplegada **por digest** en un EC2 con Docker Compose, con health check, prueba de humo y rollback por SHA (ADR-005).
-- Despliegue **sin SSH ni llaves guardadas**: credenciales temporales de AWS por OIDC y ejecución de `scripts/desplegar-ec2.sh` con SSM Run Command. El rol solo puede asumirlo el environment `production` y solo puede actuar sobre la instancia del proyecto (ADR-007).
-- Plantilla CloudFormation `infra/aws/cd-oidc-ssm.yml`: proveedor OIDC de GitHub, rol de despliegue con permisos mínimos y perfil de instancia para SSM.
+- Despliegue **sin SSH** con SSM Run Command: GitHub solo puede lanzar el documento `PatentSweep-Desplegar` (procedimiento fijo, parámetros validados y solo commits de `main`) en la instancia del proyecto, con un usuario IAM de permiso mínimo. Es compatible con la experiencia de Proyectos de AWS, que bloquea OIDC (ADR-007).
+- Plantilla CloudFormation `infra/aws/cd-ssm.yml`: documento SSM de despliegue, usuario IAM de CD y perfil de instancia para SSM.
 - `docker-compose.prod.yml` (imagen de GHCR y límites de memoria), `scripts/preparar-ec2.sh` (Docker, swap, agente SSM, SSH endurecido y fail2ban) y guía `docs/despliegue/EC2.md`.
 - Job de CI que construye la imagen Docker en cada PR.
 - Dependabot semanal para GitHub Actions, Maven y Docker.
-- ADR-005 (EC2 + Compose + GHCR), ADR-006 (arquetipo Sprint 0) y ADR-007 (CD con OIDC y SSM).
+- ADR-005 (EC2 + Compose + GHCR), ADR-006 (arquetipo Sprint 0) y ADR-007 (CD por SSM sin SSH).
 
 ### Cambiado
 

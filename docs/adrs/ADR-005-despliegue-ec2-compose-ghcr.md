@@ -1,7 +1,7 @@
 # ADR-005: Despliegue en un EC2 con Docker Compose, imagen en GHCR y entrega por SSH
 
 - **Estado:** Aceptada. Los puntos 3 y 5 (entrega por SSH con el puerto 22 abierto) fueron **reemplazados por
-  [ADR-007](ADR-007-cd-con-oidc-y-ssm.md)** (OIDC + SSM). El resto (EC2, Compose, GHCR y el `.env` en el servidor) sigue vigente.
+  [ADR-007](ADR-007-cd-con-ssm-sin-ssh.md)** (SSM Run Command, sin SSH). El resto (EC2, Compose, GHCR y el `.env` en el servidor) sigue vigente.
 - **Relacionado con:** DA-01, P22 (contenedores), guía [docs/despliegue/EC2.md](../despliegue/EC2.md)
 
 ## Contexto

@@ -16,7 +16,7 @@ services:
   api-patent-sweep:
     # En producción no se construye la imagen: se elimina "build" del archivo base y se usa la de GHCR.
     build: !reset null
-    # IMAGE_REF lo escribe scripts/desplegar-ec2.sh en imagen.env con el digest exacto (nombre@sha256:...).
+    # IMAGE_REF lo escribe el documento SSM PatentSweep-Desplegar (infra/aws/cd-ssm.yml) en imagen.env con el digest exacto (nombre@sha256:...).
     image: ${IMAGE_REF:-ghcr.io/inmemorialake/cutit-saws-patent-sweep:latest}
     pull_policy: missing
     mem_limit: 768m

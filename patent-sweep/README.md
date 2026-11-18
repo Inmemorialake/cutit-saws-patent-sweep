@@ -87,13 +87,14 @@ imagen Docker** (*Settings → Rules → Rulesets*). Los checks aparecen en la l
 
 - [`../.github/workflows/cd.yml`](../.github/workflows/cd.yml) corre cuando el CI pasa en un push a `main` (o a mano).
   Publica la imagen en `ghcr.io/inmemorialake/cutit-saws-patent-sweep` (SHA y `latest`) y la despliega **por digest**.
-- **Sin SSH ni llaves guardadas**: el job obtiene credenciales temporales de AWS por **OIDC** y ejecuta
-  [`../scripts/desplegar-ec2.sh`](../scripts/desplegar-ec2.sh) en el EC2 con **SSM Run Command**. El puerto 22 queda cerrado.
+- **Sin SSH**: el job lanza en el EC2, con **SSM Run Command**, el documento `PatentSweep-Desplegar`. Su procedimiento
+  es fijo y solo recibe el SHA (que debe pertenecer a `main`) y el digest de la imagen. El usuario IAM de GitHub no puede
+  ejecutar nada más. El puerto 22 queda cerrado.
 - El script verifica `/actuator/health` y hace una prueba de humo contra la API. El rollback es el mismo workflow con `image_tag=<SHA>`.
 - En el servidor se usa `docker-compose.yml` más [`docker-compose.prod.yml`](docker-compose.prod.yml) (imagen de GHCR
   y límites de memoria). El `.env` de producción vive solo en el servidor.
-- La infraestructura de IAM está en [`../infra/aws/cd-oidc-ssm.yml`](../infra/aws/cd-oidc-ssm.yml).
-- Guía paso a paso: [docs/despliegue/EC2.md](../docs/despliegue/EC2.md). Decisiones: [ADR-005](../docs/adrs/ADR-005-despliegue-ec2-compose-ghcr.md) y [ADR-007](../docs/adrs/ADR-007-cd-con-oidc-y-ssm.md).
+- La infraestructura (documento SSM, usuario de CD y perfil de instancia) está en [`../infra/aws/cd-ssm.yml`](../infra/aws/cd-ssm.yml).
+- Guía paso a paso: [docs/despliegue/EC2.md](../docs/despliegue/EC2.md). Decisiones: [ADR-005](../docs/adrs/ADR-005-despliegue-ec2-compose-ghcr.md) y [ADR-007](../docs/adrs/ADR-007-cd-con-ssm-sin-ssh.md).
 
 ## 7. Estructura
 
