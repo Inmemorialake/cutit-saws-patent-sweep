@@ -37,6 +37,9 @@ jobs:
     env:
       # Los secretos no llegan a los PR de forks ni a los de Dependabot: en ese caso Sonar se omite.
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      # El plan gratuito de SonarCloud analiza solo la rama principal (main) y los PR:
+      # en un push a develop el análisis se omite (el PR que llevó el cambio ya lo analizó).
+      SONAR_APLICA: ${{ github.event_name == 'pull_request' || github.ref == 'refs/heads/main' }}
 
     steps:
       - name: Descargar el código
@@ -66,7 +69,7 @@ jobs:
           retention-days: 14
 
       - name: Caché de SonarCloud
-        if: env.SONAR_TOKEN != ''
+        if: env.SONAR_TOKEN != '' && env.SONAR_APLICA == 'true'
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.sonar/cache
@@ -76,12 +79,17 @@ jobs:
       # La organización, la clave del proyecto y la espera del quality gate están en pom.xml.
       # Si el quality gate no pasa, este paso (y el CI) falla.
       - name: Análisis estático con SonarCloud
-        if: env.SONAR_TOKEN != ''
+        if: env.SONAR_TOKEN != '' && env.SONAR_APLICA == 'true'
         run: mvn --batch-mode --no-transfer-progress sonar:sonar
 
       - name: Aviso si Sonar se omitió
-        if: env.SONAR_TOKEN == ''
-        run: echo "::notice title=SonarCloud omitido::Esta ejecución no tiene acceso a SONAR_TOKEN (PR de un fork o de Dependabot)."
+        if: env.SONAR_TOKEN == '' || env.SONAR_APLICA != 'true'
+        run: |
+          if [ "$SONAR_APLICA" != "true" ]; then
+            echo "::notice title=SonarCloud omitido::El plan gratuito solo analiza main y los PR; ${GITHUB_REF_NAME} se analizó en su PR."
+          else
+            echo "::notice title=SonarCloud omitido::Esta ejecución no tiene acceso a SONAR_TOKEN (PR de un fork o de Dependabot)."
+          fi
 
   docker:
     name: Construir imagen Docker
