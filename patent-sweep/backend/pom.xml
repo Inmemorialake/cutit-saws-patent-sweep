@@ -179,12 +179,17 @@
                 <artifactId>jacoco-maven-plugin</artifactId>
                 <version>${jacoco.version}</version>
                 <configuration>
+                    <excludes>
+                        <exclude>co/edu/univalle/patentsweep/config/**</exclude>
+                        <exclude>co/edu/univalle/patentsweep/model/**</exclude>
+                        <exclude>co/edu/univalle/patentsweep/PatentSweepApplication.class</exclude>
+                    </excludes>
                     <rules>
                         <rule>
                             <element>PACKAGE</element>
                             <includes>
                                 <include>co.edu.univalle.patentsweep.service</include>
-                                <include>co.edu.univalle.patentsweep.service.event</include>
+                                <include>co.edu.univalle.patentsweep.exception</include>
                             </includes>
                             <limits>
                                 <limit>
