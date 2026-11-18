@@ -2,7 +2,7 @@
 # Imágenes con versión fija: nunca se usa "latest".
 
 # --- Etapa 1: compilación -------------------------------------------------------------
-FROM maven:3.9.16-eclipse-temurin-21 AS construccion
+FROM maven:3.9-eclipse-temurin-26 AS construccion
 WORKDIR /app
 COPY pom.xml .
 # Capa de dependencias: solo se vuelve a descargar cuando cambia pom.xml (la caché de capas la conserva
