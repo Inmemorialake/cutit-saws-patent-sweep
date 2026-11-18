@@ -1,11 +1,11 @@
 # Guía de contribución — Patent Sweep API
 
-Este documento describe el flujo de trabajo y los estándares de calidad para colaborar en el módulo **Patent Sweep (Equipo 1)** de Cutit Saws. Toda contribución debe seguir rigurosamente este proceso para asegurar la compatibilidad con el Documento de Arquitectura de Software (DAS V3.0) y el éxito en la integración continua.
+Este documento describe el flujo de trabajo y los estándares de calidad para colaborar en el módulo **Patent Sweep (Equipo 1)** de Cutit Saws. Toda contribución sigue este proceso para mantener la compatibilidad con el Documento de Arquitectura de Software (DAS V3.0) y el CI/CD verde.
 
 ## Estrategia de ramas (Git Flow)
 
 ```
-main         ──●──────────●──────●──── (releases tagados: v1.0.0-beta.1, v1.0.0-beta.2)
+main         ──●──────────●──────●──── (versiones etiquetadas: v1.0.0-beta.1, v1.0.0-beta.2…) ─► despliegue en AWS
                 ↑          ↑      ↑
                 PR         PR     PR
                 │          │      │
@@ -13,93 +13,120 @@ develop      ──●──●──●──●──●──●──●─�
                 ↑  ↑  ↑     ↑
                 PR PR PR    PR
                 │  │  │     │
-napellido     ──●──●──●──●───────────── (ramas personales de desarrollo, etiquetadas con la primera letra del nombre y el primer apellido del desarrollador)
+napellido     ──●──●──●──●───────────── (ramas personales: primera letra del nombre + primer apellido)
 ```
 
 ### Ramas principales
 
-- **`main`**: Rama de producción y versiones estables. Solo se actualiza al cerrar un sprint completo y validado. Cada merge a `main` lleva un tag semántico (`v1.0.0-beta.X`). Se encuentra protegida.
-- **`develop`**: Rama de integración. Aquí confluye todo el trabajo validado por el equipo listo para pruebas globales. Se encuentra protegida con regla de Pull Request obligatorio y aprobación por pares.
-- **`primerainicialnombre` + `primerapellido`**: Ramas personales o de subtareas para el desarrollo de historias de usuario específicas.
+- **`main`**: producción. Solo se actualiza al cerrar un sprint validado, y **cada merge se despliega automáticamente en el EC2** (ver [CD](#gate-4-despliegue-continuo-cd)). Cada versión lleva una etiqueta semántica (`v1.0.0-beta.X`).
+- **`develop`**: integración. Aquí confluye el trabajo validado del equipo.
+- **`primerainicialnombre` + `primerapellido`** (por ejemplo, `agonzalez`): ramas personales para las historias de usuario.
+
+`main` y `develop` están protegidas con un *ruleset*: exigen **Pull Request con al menos una aprobación** de otra persona, y no permiten borrar la rama ni hacer *force-push*. Una aprobación se descarta si se suben commits nuevos al PR.
 
 ### Reglas de los flujos
 
-#### Trabajo en ramas de desarrollo (`primerainicialnombre` + `primerapellido`)
-- Hacer commits frecuentes con mensajes claros y descriptivos.
-- Validar y compilar localmente antes de realizar cualquier `git push`.
-- Mantener la rama sincronizada con `develop` frecuentemente mediante rebase o merge para evitar conflictos mayores.
+#### Trabajo en ramas personales
+- Commits frecuentes con mensajes claros (ver [Convención de commits](#convención-de-commits)).
+- Validar localmente antes de cada `git push` ([Gate 1](#gate-1-validación-local-previa-al-push)).
+- Mantener la rama sincronizada con `develop` (rebase o merge) para evitar conflictos mayores.
 
 #### Promoción a `develop`
-- Apertura obligatoria de un **Pull Request (PR)** desde la rama de feature hacia **`develop`**.
-- El PR debe detallar claramente la Historia de Usuario asociada y los criterios de aceptación resueltos.
-- El pipeline de CI/CD debe pasar de manera exitosa (compilación, pruebas, checkstyle y quality gate).
-- Se requiere al menos **una aprobación obligatoria** por parte de un compañero del equipo antes de realizar el *merge*.
+- **Pull Request** desde la rama personal hacia **`develop`**, usando la [plantilla](.github/pull_request_template.md): historia de usuario, criterios de aceptación y evidencia.
+- El CI debe quedar **en verde**: pruebas, cobertura, Checkstyle, **quality gate de SonarCloud** y build de la imagen Docker.
+- Se requiere **una aprobación** de un compañero antes del *merge*.
 
-#### Promoción de `develop` a `main`
-- Al cierre de un sprint validado y con entrega funcional aprobada.
-- PR desde `develop` hacia `main` acompañado de su respectivo tag semántico.
-- Actualización obligatoria del archivo `CHANGELOG.md` con los cambios incorporados en la versión.
+#### Promoción de `develop` a `main` (cierre de sprint)
+1. PR de `develop` hacia `main` con el resumen del sprint, y el CI en verde.
+2. Fusionar con **Create a merge commit**, nunca con *Squash* ni *Rebase*: así `main` y `develop` mantienen la misma historia y el siguiente PR de promoción no arrastra commits repetidos.
+3. Comprobar que el **CD** termine en verde (*Actions → CD Despliegue en EC2*) y que la API responda en `/actuator/health`.
+4. Crear la etiqueta de la versión sobre el merge commit de `main` y subirla:
+   ```bash
+   git fetch origin
+   git tag -a v1.0.0-beta.N origin/main -m "Patent Sweep v1.0.0-beta.N — cierre del Sprint N"
+   git push origin v1.0.0-beta.N
+   ```
+5. Actualizar `CHANGELOG.md`: la sección `[Unreleased]` pasa a `[1.0.0-beta.N] — fecha`, y se agrega su enlace al final.
 
 ---
 
 ## Gates de calidad y validación
 
-### Gate 1: Validación local previa al Push
-Antes de subir código al repositorio remoto, debes ejecutar localmente el ciclo completo de Maven para asegurar que todo compila y pasa las reglas de calidad:
+### Gate 1: Validación local previa al push
 
 ```bash
-# Limpiar, compilar y ejecutar pruebas unitarias/integración con JaCoCo
-mvn clean verify
-
-# Validar el cumplimiento de las reglas de estilo de código con Checkstyle
-mvn checkstyle:check
+cd patent-sweep/backend
+mvn clean verify     # compila, ejecuta las pruebas y verifica JaCoCo (≥ 80 %) y Checkstyle (0 violaciones)
 ```
-Si cualquiera de los dos comandos arroja errores o violaciones, el código no debe subirse.
 
-### Gate 2: Pipeline de CI/CD en GitHub Actions (`ci.yml`)
-Al abrir un Pull Request hacia `develop`, GitHub Actions ejecuta de forma automatizada:
-1. Compilación del proyecto backend sobre **Java 21**.
-2. Ejecución de toda la suite de pruebas unitarias y de integración.
-3. Verificación estática de estilo mediante **Checkstyle** (exigiendo cero violaciones).
-4. Auditoría del Quality Gate y cobertura de código con **JaCoCo** (superando el umbral establecido).
+Si el comando falla, el código no se sube. Para probar la API completa: `docker compose up -d --build --wait` desde `patent-sweep/` (ver [GUIA_EJECUCION.md](patent-sweep/GUIA_EJECUCION.md)).
 
-Si el pipeline falla, el PR queda bloqueado y no podrá ser fusionado.
+### Gate 2: Integración continua (`ci.yml`)
+
+Corre en cada PR y en cada push a `main` y `develop`:
+
+| Job | Qué verifica |
+|---|---|
+| **Pruebas, cobertura, estilo y Sonar** | `mvn verify` sobre **Java 21**: pruebas, JaCoCo (80 % de líneas y ramas en `service` y `exception`) y Checkstyle sin violaciones. Después, el análisis de **SonarCloud**, que **falla si el quality gate no pasa** |
+| **Construir imagen Docker** | Que el `Dockerfile` construya, para que un PR no pueda romper el despliegue |
+
+- SonarCloud (plan gratuito) analiza **los PR y `main`**. En un push a `develop` se omite con un aviso, porque el PR ya lo analizó.
+- El *ruleset* todavía no marca estos checks como obligatorios: **no fusione un PR con el CI en rojo.** Se recomienda agregarlos como *required status checks* en *Settings → Rules → Rulesets*.
+- Si un job falla con **HTTP 429** de Maven Central, es un límite externo (ya tiene reintentos): vuelva a ejecutarlo.
+
+### Gate 3: Revisión por pares
+
+Al menos **una aprobación** de otra persona del equipo, que revisa el código, la evidencia y que el PR cumpla la Definición de Hecho.
+
+### Gate 4: Despliegue continuo (CD)
+
+Cuando el CI pasa en un push a `main`, `cd.yml` publica la imagen en GHCR y la despliega en el EC2 por AWS Systems Manager, con health check y prueba de humo. **No hay acceso SSH** al servidor: el acceso manual es por Session Manager ([cómo entrar](docs/despliegue/EC2.md#12-entrar-al-servidor-consola)). Detalles, rollback y solución de problemas en [docs/despliegue/EC2.md](docs/despliegue/EC2.md).
 
 ---
 
 ## Convención de commits
 
-Usa un formato estructurado para los mensajes de tus commits:
+Formato [Conventional Commits](https://www.conventionalcommits.org/es/v1.0.0/), en español:
 
 ```text
-<tipo>(<alcance opcional>): <descripción corta>
+<tipo>(<alcance opcional>): <descripción corta en imperativo>
 
-[cuerpo opcional con detalle técnico]
+[cuerpo opcional: qué cambia y por qué]
 
-[footer opcional con referencias]
+[footer opcional con referencias, por ejemplo: Refs: HU-02]
 ```
 
 ### Tipos permitidos
 
 | Tipo | Uso principal |
 |---|---|
-| `feat` | Nueva funcionalidad (corresponde a una Historia de Usuario) |
-| `fix` | Corrección de un error o bug |
-| `docs` | Cambios exclusivos en documentación (`README`, `DAS`, etc.) |
-| `refactor` | Refactorización de código sin alterar la funcionalidad externa |
-| `test` | Adición, ajuste o corrección de pruebas unitarias/integración |
-| `chore` | Tareas de mantenimiento, configuración de dependencias o plugins |
-| `style` | Cambios de formato, espacios o saltos de línea (sin afectar lógica) |
-| `ci` | Modificaciones en los workflows de GitHub Actions |
+| `feat` | Nueva funcionalidad (corresponde a una historia de usuario) |
+| `fix` | Corrección de un error |
+| `docs` | Cambios exclusivos en documentación (`README`, ADR, guías) |
+| `refactor` | Refactorización sin alterar la funcionalidad externa |
+| `test` | Adición o ajuste de pruebas |
+| `chore` | Mantenimiento: dependencias, configuración, plugins |
+| `style` | Formato, espacios o saltos de línea (sin afectar la lógica) |
+| `ci` | Workflows de GitHub Actions |
+
+---
+
+## Dependencias
+
+Las dependencias (Maven, imágenes de Docker y GitHub Actions) **se actualizan a mano**, en un PR propio:
+
+- Las GitHub Actions están fijadas por **SHA** (con la versión en un comentario). Para actualizar una, se reemplaza el SHA por el del nuevo release.
+- Un salto de versión mayor (por ejemplo, Spring Boot 4 o un Java distinto de 21) es una **migración**: se planifica como tarea del sprint y, si cambia una decisión del DAS, lleva su ADR.
 
 ---
 
 ## Definición de Hecho (DoD)
 
-Una Historia de Usuario se considera completamente **Done** cuando cumple con lo siguiente:
-- [ ] Código implementado bajo la arquitectura multicapa establecida (Controller, Service, Integration, Repository).
-- [ ] Pruebas unitarias e de integración añadidas y pasando exitosamente.
-- [ ] Cobertura de JaCoCo validada localmente y en el pipeline.
-- [ ] Cero violaciones reportadas por Checkstyle.
-- [ ] Pull Request abierto, revisado, aprobado por pares y fusionado en `develop`.
-- [ ] Documentación de contratos o endpoints (Swagger/OpenAPI) actualizada correctamente.
+Una historia de usuario está **Done** cuando:
+- [ ] El código sigue la arquitectura multicapa (Controller, Service, Integration, Repository).
+- [ ] Tiene pruebas unitarias y de integración que pasan.
+- [ ] La cobertura de JaCoCo cumple el umbral, en local y en el pipeline.
+- [ ] Checkstyle no reporta violaciones y el **quality gate de SonarCloud** pasa.
+- [ ] El PR fue revisado, aprobado por pares y fusionado en `develop`.
+- [ ] La documentación de contratos y endpoints (Swagger/OpenAPI) está actualizada, y el `CHANGELOG.md` registra el cambio.
+- [ ] Si introduce una decisión de arquitectura, tiene su ADR en `docs/adrs/`.

@@ -66,7 +66,7 @@ mvn clean verify
 
 | Job | Qué hace |
 |---|---|
-| **Pruebas, cobertura, estilo y Sonar** | `mvn clean verify`, sube el JAR como artefacto y ejecuta `mvn sonar:sonar`, que **espera el quality gate** y falla si no pasa |
+| **Pruebas, cobertura, estilo y Sonar** | Descarga las dependencias (con reintentos ante el HTTP 429 de Maven Central), ejecuta `mvn clean verify`, sube el JAR como artefacto y corre `mvn sonar:sonar`, que **espera el quality gate** y falla si no pasa |
 | **Construir imagen Docker** | Construye la imagen sin publicarla, para que un PR no pueda romper el despliegue |
 
 SonarCloud:
@@ -75,13 +75,19 @@ SonarCloud:
 - La cobertura llega desde el XML de JaCoCo. `config`, `model` y `dto` se excluyen **solo de la cobertura**; su código sí se analiza.
 - Requisitos: el secreto `SONAR_TOKEN` en el repositorio y el **análisis automático desactivado** en SonarCloud
   (*Administration → Analysis Method*). Si está activo, el análisis desde el CI falla.
-- Los PR de forks no reciben el token: en ellos Sonar se omite con un aviso.
+- El plan gratuito analiza **solo los PR y `main`**: en un push a `develop` Sonar se omite con un aviso, porque el PR ya lo analizó.
+- Los PR de forks no reciben el token: en ellos Sonar también se omite con un aviso.
+- **Primer análisis de una rama:** el quality gate *Sonar way* evalúa el código nuevo respecto del análisis anterior. En el primer
+  análisis no hay con qué comparar, el estado queda `NONE` y el CI lo marca como fallido. Se resuelve volviendo a ejecutar el job.
+  Ya pasó con `main` y no vuelve a ocurrir.
 - Para ejecutarlo en local: `mvn verify sonar:sonar -Dsonar.token=<SU_TOKEN>` desde `backend/`.
 
 ### Protección de ramas
 
-`main` y `develop` deben exigir un PR y que pasen los checks **Pruebas, cobertura, estilo y Sonar** y **Construir
-imagen Docker** (*Settings → Rules → Rulesets*). Los checks aparecen en la lista después de su primera ejecución.
+`main` y `develop` tienen un *ruleset*: PR obligatorio con **una aprobación**, sin borrar la rama ni hacer *force-push*.
+Los checks del CI **todavía no son obligatorios** en la regla. Se recomienda agregar **Pruebas, cobertura, estilo y Sonar**
+y **Construir imagen Docker** como *required status checks* (*Settings → Rules → Rulesets*). Mientras tanto, no se fusiona
+un PR con el CI en rojo. El flujo completo está en [CONTRIBUTING.md](../CONTRIBUTING.md).
 
 ## 6. Despliegue continuo en AWS (EC2)
 
@@ -144,7 +150,9 @@ precalculado, JWT + RBAC) vuelven con las HU que las necesitan. Su última imple
 ## 9. Limitaciones conocidas
 
 - **Sin autenticación** en el Sprint 0: en el EC2 cualquiera puede registrar patentes. No cargue datos reales hasta que vuelva DA-11 (ADR-006).
-- `/actuator/prometheus` es público, igual que la API.
-- Solo HU de arquetipo: HU-01 a HU-12 empiezan en el Sprint 1.
+- `/actuator/prometheus` y Swagger UI también son públicos en `prod`. Cuando vuelva la seguridad, hay que decidir si se
+  restringen o se apagan (`springdoc.swagger-ui.enabled=false` en `application-prod.yml`).
+- El Sprint 0 no implementa historias del backlog: HU-01 a HU-12 empiezan en el Sprint 1.
 - `restart: unless-stopped` reinicia el contenedor si el proceso termina, pero no si queda `unhealthy`.
-- Spring Boot 3.5.x puede quedar fuera del soporte de código abierto; migrar a 4.x requiere revisar springdoc.
+- Spring Boot 3.5.x puede quedar fuera del soporte de código abierto. Migrar a 4.x es una tarea planificada: exige
+  springdoc 3.x y revisar la configuración de pruebas (`@WebMvcTest`).
