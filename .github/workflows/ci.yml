@@ -3,7 +3,7 @@ name: CI Backend Patent Sweep
 # Integración continua: corre en cada PR y en cada push a main/develop.
 # - backend: pruebas, cobertura mínima (JaCoCo), estilo (Checkstyle) y análisis de SonarCloud.
 # - docker: construye la imagen (sin publicarla) para que un PR no pueda romper el despliegue.
-# Las actions se fijan por SHA (el comentario indica la versión); Dependabot las mantiene al día.
+# Las actions se fijan por SHA (el comentario indica la versión); se actualizan a mano.
 
 on:
   push:
@@ -35,7 +35,7 @@ jobs:
         working-directory: patent-sweep/backend
 
     env:
-      # Los secretos no llegan a los PR de forks ni a los de Dependabot: en ese caso Sonar se omite.
+      # Los secretos no llegan a los PR de forks: en ese caso Sonar se omite.
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
       # El plan gratuito de SonarCloud analiza solo la rama principal (main) y los PR:
       # en un push a develop el análisis se omite (el PR que llevó el cambio ya lo analizó).
@@ -99,7 +99,7 @@ jobs:
           if [ "$SONAR_APLICA" != "true" ]; then
             echo "::notice title=SonarCloud omitido::El plan gratuito solo analiza main y los PR; ${GITHUB_REF_NAME} se analizó en su PR."
           else
-            echo "::notice title=SonarCloud omitido::Esta ejecución no tiene acceso a SONAR_TOKEN (PR de un fork o de Dependabot)."
+            echo "::notice title=SonarCloud omitido::Esta ejecución no tiene acceso a SONAR_TOKEN (PR de un fork)."
           fi
 
   docker:
