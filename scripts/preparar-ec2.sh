@@ -5,7 +5,9 @@
 #
 # - Instala Docker Engine y el plugin de Docker Compose desde el repositorio oficial de Docker.
 # - Crea 2 GB de swap en /swapfile (útil en instancias de 1–2 GB de RAM).
-# - Desactiva el acceso SSH con contraseña y de root, e instala fail2ban.
+# - Verifica el agente de AWS Systems Manager (por ahí llegan los despliegues, ver ADR-007).
+# - Desactiva el acceso SSH con contraseña y de root, e instala fail2ban (defensa adicional
+#   mientras el puerto 22 siga abierto; con SSM se cierra en el Security Group).
 # - Crea /opt/patent-sweep, cuyo dueño es el usuario del despliegue, y lo agrega al grupo docker.
 #
 # Es idempotente: se puede ejecutar varias veces; cada paso revisa si ya está hecho.
@@ -100,8 +102,8 @@ else
 fi
 
 # --- 3. SSH solo con llave y fail2ban ----------------------------------------------------
-# El puerto 22 queda abierto a internet para que GitHub Actions pueda desplegar (ver ADR-005),
-# así que se desactivan las contraseñas y el acceso de root, y fail2ban bloquea los ataques de fuerza bruta.
+# Los despliegues ya no usan SSH (ADR-007) y el puerto 22 se cierra en el Security Group. Si alguien
+# lo reabre, el servidor sigue sin aceptar contraseñas ni root, y fail2ban bloquea la fuerza bruta.
 info "SSH solo con llave y fail2ban"
 CONF_SSH="/etc/ssh/sshd_config.d/10-patent-sweep.conf"
 if [ -d /etc/ssh/sshd_config.d ] && command -v sshd > /dev/null 2>&1; then
@@ -159,7 +161,28 @@ else
   aviso "sin systemd: no se inició fail2ban."
 fi
 
-# --- 4. Carpeta de la aplicación y permisos --------------------------------------------
+# --- 4. Agente de AWS Systems Manager ---------------------------------------------------
+# Viene preinstalado (snap) en las AMI oficiales de Ubuntu. Sin él, GitHub Actions no puede desplegar.
+info "Agente de AWS Systems Manager"
+if snap list amazon-ssm-agent > /dev/null 2>&1; then
+  echo "Instalado: $(snap list amazon-ssm-agent | awk 'NR==2 {print $1, $2}')"
+elif command -v snap > /dev/null 2>&1; then
+  snap install amazon-ssm-agent --classic
+  echo "amazon-ssm-agent instalado."
+else
+  aviso "no hay snap: instale amazon-ssm-agent a mano (ver docs/despliegue/EC2.md)."
+fi
+if hay_systemd && snap list amazon-ssm-agent > /dev/null 2>&1; then
+  snap start --enable amazon-ssm-agent > /dev/null
+  if snap services amazon-ssm-agent | grep -q ' active'; then
+    echo "Agente en ejecución. Si la instancia aún no aparece en Systems Manager > Fleet Manager,"
+    echo "revise que tenga asociado el perfil de instancia (docs/despliegue/EC2.md, sección 5)."
+  else
+    aviso "el agente de SSM no quedó en ejecución: revise 'snap logs amazon-ssm-agent'."
+  fi
+fi
+
+# --- 5. Carpeta de la aplicación y permisos --------------------------------------------
 info "Carpeta $DIRECTORIO_APP y usuario '$USUARIO'"
 install -d -m 0750 -o "$USUARIO" -g "$USUARIO" "$DIRECTORIO_APP"
 echo "Carpeta lista (dueño: $USUARIO)."

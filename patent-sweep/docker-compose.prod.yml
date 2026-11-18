@@ -1,6 +1,6 @@
 # Override de producción (EC2). Se usa junto con docker-compose.yml:
 #   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --no-build
-# La imagen de la API se construye en GitHub Actions y se descarga de GHCR: el servidor no compila.
+# La imagen de la API se construye en GitHub Actions y se descarga de GHCR por digest: el servidor no compila.
 # Los límites de memoria están pensados para una instancia de 1–2 GB de RAM con 2 GB de swap
 # (ver docs/despliegue/EC2.md). Requiere Docker Compose v2.24 o superior (por "!reset").
 services:
@@ -16,7 +16,8 @@ services:
   api-patent-sweep:
     # En producción no se construye la imagen: se elimina "build" del archivo base y se usa la de GHCR.
     build: !reset null
-    image: ${IMAGE_NAME:-ghcr.io/inmemorialake/cutit-saws-patent-sweep}:${IMAGE_TAG:-latest}
+    # IMAGE_REF lo escribe scripts/desplegar-ec2.sh en imagen.env con el digest exacto (nombre@sha256:...).
+    image: ${IMAGE_REF:-ghcr.io/inmemorialake/cutit-saws-patent-sweep:latest}
     pull_policy: missing
     mem_limit: 768m
     environment:
