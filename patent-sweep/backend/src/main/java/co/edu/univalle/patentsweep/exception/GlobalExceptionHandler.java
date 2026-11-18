@@ -13,6 +13,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+/** Convierte cada excepción en un ProblemDetail (RFC 9457) con traceId. */
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {

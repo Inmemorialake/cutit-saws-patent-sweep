@@ -4,6 +4,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
+/** Cuerpo del POST: se valida con Bean Validation antes de llegar al service. */
 public record PatenteRequestDTO(
         @NotBlank(message = "El código de la patente es obligatorio")
         @Pattern(regexp = "^PAT-\\d{6}$", message = "El código debe tener el formato PAT-NNNNNN")

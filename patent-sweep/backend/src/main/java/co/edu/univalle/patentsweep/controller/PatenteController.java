@@ -29,6 +29,7 @@ public class PatenteController {
         this.patenteService = patenteService;
     }
 
+    /** POST /api/v1/patentes/busqueda: registra una patente (201, 400 o 409). */
     @PostMapping("/busqueda")
     @Operation(summary = "Registrar una patente",
             description = "Valida los datos, verifica que el código no exista y guarda la patente en estado EN_TRAMITE.")
@@ -36,6 +37,7 @@ public class PatenteController {
     @ApiResponse(responseCode = "400", description = "Datos inválidos")
     @ApiResponse(responseCode = "409", description = "Ya existe una patente con ese código")
     public ResponseEntity<PatenteResponseDTO> registrarPatente(@Valid @RequestBody PatenteRequestDTO request) {
+        // @Valid ya validó el DTO. Se pasa a entidad; el estado EN_TRAMITE lo asigna la entidad al guardar.
         Patente patente = Patente.builder()
                 .codigoPatente(request.codigoPatente())
                 .titulo(request.titulo())
@@ -47,6 +49,7 @@ public class PatenteController {
         return ResponseEntity.status(HttpStatus.CREATED).body(aRespuesta(guardada));
     }
 
+    /** GET /api/v1/patentes/estado/{id}: consulta una patente por su ID (200 o 404). */
     @GetMapping("/estado/{id}")
     @Operation(summary = "Consultar una patente por su ID",
             description = "Devuelve los datos de la patente y su estado de vigencia.")
@@ -56,6 +59,7 @@ public class PatenteController {
         return ResponseEntity.ok(aRespuesta(patenteService.obtenerPorId(id)));
     }
 
+    /** Entidad a DTO: al cliente no se le expone la entidad. */
     private static PatenteResponseDTO aRespuesta(Patente patente) {
         return new PatenteResponseDTO(
                 patente.getPatenteId(),
