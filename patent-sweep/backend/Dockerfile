@@ -5,6 +5,14 @@
 FROM maven:3.9.16-eclipse-temurin-21 AS construccion
 WORKDIR /app
 COPY pom.xml .
+# Capa de dependencias: solo se vuelve a descargar cuando cambia pom.xml (la caché de capas la conserva
+# entre builds, también en GitHub Actions). Maven Central limita las descargas (HTTP 429) desde IP
+# compartidas como las de los runners, así que se reintenta con espera creciente.
+RUN for espera in 0 30 90; do \
+      sleep "$espera"; \
+      mvn -B -q -Dmaven.test.skip=true dependency:go-offline && exit 0; \
+      echo "Descarga de dependencias fallida; se reintenta..."; \
+    done; exit 1
 COPY src ./src
 # Se omite la compilación y ejecución de las pruebas: corren en el pipeline y en local (mvn verify).
 RUN mvn -B -q -Dmaven.test.skip=true package

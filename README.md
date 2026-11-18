@@ -78,7 +78,7 @@ Los errores se devuelven en formato **ProblemDetail** con `traceId`.
 | Documentación API | SpringDoc OpenAPI (Swagger UI) |
 | Observabilidad | Spring Boot Actuator · Micrometer (Prometheus, `traceId` en logs) |
 | Contenedores | Docker multi-etapa (usuario sin privilegios) · Docker Compose · WireMock |
-| CI/CD | GitHub Actions · GHCR · AWS EC2 con OIDC + SSM Run Command (sin SSH) |
+| CI/CD | GitHub Actions · GHCR · AWS EC2 con SSM Run Command (sin SSH, documento de despliegue propio) |
 
 ---
 
@@ -127,7 +127,7 @@ rama personal ─PR─► develop ─PR─► main ─► CD ─► EC2 (AWS)
 1. Trabaje en su rama personal (`primerainicialnombre` + `primerapellido`, por ejemplo `agonzalez`).
 2. Valide en local con `mvn clean verify`.
 3. Abra un PR hacia `develop` con la [plantilla](.github/pull_request_template.md). El **CI** ([`ci.yml`](.github/workflows/ci.yml)) debe pasar: pruebas, cobertura, estilo, el quality gate de SonarCloud y el build de la imagen Docker.
-4. `develop` se integra en `main` por PR. Con el CI en verde en `main`, el **CD** ([`cd.yml`](.github/workflows/cd.yml)) publica la imagen en GHCR y la despliega en el EC2 **sin SSH**: credenciales temporales por OIDC y comando por AWS Systems Manager, con health check y prueba de humo. El rollback se hace con el mismo workflow. Ver [ADR-007](docs/adrs/ADR-007-cd-con-oidc-y-ssm.md).
+4. `develop` se integra en `main` por PR. Con el CI en verde en `main`, el **CD** ([`cd.yml`](.github/workflows/cd.yml)) publica la imagen en GHCR y la despliega en el EC2 **sin SSH** con AWS Systems Manager: GitHub solo puede lanzar un documento de despliegue fijo, con el SHA de `main` y el digest de la imagen como únicos parámetros. Incluye health check y prueba de humo, y el rollback se hace con el mismo workflow. Ver [ADR-007](docs/adrs/ADR-007-cd-con-ssm-sin-ssh.md).
 5. Dependabot propone actualizaciones semanales de actions, Maven y Docker hacia `develop`.
 
 Convenciones de commits y ramas: [`CONTRIBUTING.md`](CONTRIBUTING.md) · Historial de cambios: [`CHANGELOG.md`](CHANGELOG.md).
@@ -146,9 +146,9 @@ Convenciones de commits y ramas: [`CONTRIBUTING.md`](CONTRIBUTING.md) · Histori
 │   ├── despliegue/   guía de EC2
 │   ├── ia/           prompts y salidas usados con asistentes de IA
 │   └── referencias/  material de apoyo (análisis de HU de Materiales)
-├── infra/aws/        plantilla CloudFormation: OIDC, rol de despliegue y perfil de instancia
+├── infra/aws/        plantilla CloudFormation: documento SSM de despliegue, usuario de CD y perfil de instancia
 ├── patent-sweep/     backend/ (Spring Boot), mocks/ (WireMock), docker-compose*.yml, .env.example
-└── scripts/          preparar-ec2.sh y desplegar-ec2.sh
+└── scripts/          preparar-ec2.sh (prepara el servidor)
 ```
 
 Detalle técnico del backend: [`patent-sweep/README.md`](patent-sweep/README.md).

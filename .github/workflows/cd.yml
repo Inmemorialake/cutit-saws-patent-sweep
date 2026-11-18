@@ -6,9 +6,10 @@ name: CD Despliegue en EC2
 #   de main (si su CI pasó); con "image_tag" (SHA completo de un commit de main) hace rollback.
 #
 # Seguridad (ADR-007):
-# - Sin llaves ni contraseñas guardadas: el job "desplegar" pide un token OIDC a GitHub y AWS lo
-#   cambia por credenciales temporales de un rol que solo puede enviar un comando SSM a ese EC2.
-# - El servidor no expone el puerto 22: el comando llega por AWS Systems Manager.
+# - El servidor no expone el puerto 22: el despliegue llega por AWS Systems Manager (Run Command).
+# - GitHub no puede ejecutar comandos libres: su usuario IAM solo puede lanzar el documento SSM
+#   "PatentSweep-Desplegar" (procedimiento fijo, infra/aws/cd-ssm.yml) en esa instancia, con dos
+#   parámetros validados: el SHA (debe pertenecer a main) y el digest de la imagen de GHCR.
 # - La imagen se despliega por digest (inmutable), no por tag.
 # - Las actions se fijan por SHA; Dependabot las mantiene al día.
 # Mientras falte la configuración de AWS en el environment "production", la imagen se publica
@@ -156,14 +157,14 @@ jobs:
       && (needs.imagen.result == 'success' || needs.imagen.result == 'skipped')
     runs-on: ubuntu-24.04
     timeout-minutes: 25
-    # El environment solo acepta la rama main y guarda AWS_ROLE_ARN, AWS_REGION y EC2_INSTANCE_ID.
+    # El environment solo acepta la rama main y guarda las credenciales del usuario de despliegue.
     environment: production
     permissions:
       contents: read
       packages: read
-      id-token: write # token OIDC para asumir el rol de AWS
     env:
-      AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       AWS_REGION: ${{ vars.AWS_REGION }}
       EC2_INSTANCE_ID: ${{ vars.EC2_INSTANCE_ID }}
       IMAGEN: ${{ needs.preparar.outputs.imagen }}
@@ -173,8 +174,8 @@ jobs:
       - name: Verificar la configuración de AWS
         id: config
         run: |
-          if [ -z "$AWS_ROLE_ARN" ] || [ -z "$AWS_REGION" ] || [ -z "$EC2_INSTANCE_ID" ]; then
-            echo "::notice title=Despliegue omitido::Faltan el secreto AWS_ROLE_ARN o las variables AWS_REGION / EC2_INSTANCE_ID en el environment 'production'. La imagen $IMAGEN:$SHA quedó publicada, pero no se desplegó. Ver docs/despliegue/EC2.md."
+          if [ -z "$AWS_ACCESS_KEY_ID" ] || [ -z "$AWS_SECRET_ACCESS_KEY" ] || [ -z "$AWS_REGION" ] || [ -z "$EC2_INSTANCE_ID" ]; then
+            echo "::notice title=Despliegue omitido::Faltan los secretos AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY o las variables AWS_REGION / EC2_INSTANCE_ID en el environment 'production'. La imagen $IMAGEN:$SHA quedó publicada, pero no se desplegó. Ver docs/despliegue/EC2.md."
             echo "listos=false" >> "$GITHUB_OUTPUT"
           else
             echo "listos=true" >> "$GITHUB_OUTPUT"
@@ -201,51 +202,28 @@ jobs:
             echo "::error::No se encontró el digest de $IMAGEN:$SHA (¿existe esa imagen en GHCR?)."
             exit 1
           fi
-          echo "ref=$IMAGEN@$digest" >> "$GITHUB_OUTPUT"
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
           echo "Imagen a desplegar: $IMAGEN@$digest"
 
-      # El script de despliegue sale del commit del workflow (main), no del commit a desplegar,
-      # para que un rollback a un commit viejo use el procedimiento vigente.
-      - name: Descargar el script de despliegue
-        if: steps.config.outputs.listos == 'true'
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-          sparse-checkout: scripts/desplegar-ec2.sh
-          sparse-checkout-cone-mode: false
-
-      - name: Obtener credenciales temporales de AWS (OIDC)
-        if: steps.config.outputs.listos == 'true'
-        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
-        with:
-          role-to-assume: ${{ env.AWS_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
-          role-session-name: patent-sweep-cd-${{ github.run_id }}
-          role-duration-seconds: 1800
-          mask-aws-account-id: true
-
+      # Las credenciales llegan por las variables AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY del job.
       - name: Desplegar con SSM Run Command y verificar salud
         if: steps.config.outputs.listos == 'true'
         env:
-          IMAGEN_REF: ${{ steps.imagen.outputs.ref }}
+          DIGEST: ${{ steps.imagen.outputs.digest }}
         run: |
           set -euo pipefail
-          # Los valores se validan antes de armar el comando que se ejecutará en el servidor.
-          [[ "$GITHUB_REPOSITORY" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]]
           [[ "$SHA" =~ ^[0-9a-f]{40}$ ]]
-          [[ "$IMAGEN_REF" =~ ^[a-z0-9._/-]+@sha256:[0-9a-f]{64}$ ]]
+          [[ "$DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]
           [[ "$EC2_INSTANCE_ID" =~ ^i-[0-9a-f]{8,17}$ ]]
 
-          script="$(base64 -w0 scripts/desplegar-ec2.sh)"
-          comando="echo '${script}' | base64 -d > /tmp/desplegar-patent-sweep.sh && bash /tmp/desplegar-patent-sweep.sh '${GITHUB_REPOSITORY}' '${SHA}' '${IMAGEN_REF}'"
-          jq -n --arg c "$comando" '{commands: [$c], executionTimeout: ["900"]}' > parametros.json
-
+          # El documento tiene el procedimiento fijo; aquí solo viajan el commit y el digest.
+          # El repositorio, la imagen y el directorio están fijados en el documento (infra/aws/cd-ssm.yml).
           id="$(aws ssm send-command \
             --instance-ids "$EC2_INSTANCE_ID" \
-            --document-name AWS-RunShellScript \
+            --document-name PatentSweep-Desplegar \
             --comment "Patent Sweep ${SHA:0:12} (run ${GITHUB_RUN_ID})" \
             --timeout-seconds 300 \
-            --parameters file://parametros.json \
+            --parameters "Sha=${SHA},Digest=${DIGEST}" \
             --query Command.CommandId --output text)"
           echo "Comando SSM: $id"
 
@@ -280,5 +258,5 @@ jobs:
             echo "### Despliegue completado"
             echo ""
             echo "- Commit: \`$SHA\`"
-            echo "- Imagen: \`$IMAGEN_REF\`"
+            echo "- Imagen: \`$IMAGEN@$DIGEST\`"
           } >> "$GITHUB_STEP_SUMMARY"

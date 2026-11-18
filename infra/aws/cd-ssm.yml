@@ -1,0 +1,215 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  Patent Sweep - Despliegue continuo por SSM sin puerto 22 (ADR-007). Documento SSM con el
+  procedimiento de despliegue fijo, usuario IAM que solo puede ejecutar ese documento en una
+  instancia, y perfil de instancia para el agente de SSM. Compatible con la experiencia de
+  Proyectos de AWS (sin proveedores OIDC).
+
+# Despliegue (en la región del proyecto):
+#   aws cloudformation deploy --stack-name patent-sweep-cd \
+#     --template-file infra/aws/cd-ssm.yml --capabilities CAPABILITY_NAMED_IAM \
+#     --parameter-overrides IdInstancia=i-0123456789abcdef0
+# La llave de acceso del usuario NO se crea aquí (quedaría visible en las salidas del stack):
+# se crea con el CLI y va directo a GitHub (ver docs/despliegue/EC2.md, sección 5).
+
+Parameters:
+  RepositorioGitHub:
+    Type: String
+    Default: Inmemorialake/cutit-saws-patent-sweep
+    AllowedPattern: "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"
+    Description: dueño/repositorio de donde salen los compose. Queda fijo en el documento.
+  ImagenGhcr:
+    Type: String
+    Default: ghcr.io/inmemorialake/cutit-saws-patent-sweep
+    AllowedPattern: "^ghcr\\.io/[a-z0-9._/-]+$"
+    Description: Imagen (sin tag) que se puede desplegar. Queda fija en el documento.
+  IdInstancia:
+    Type: AWS::EC2::Instance::Id
+    Description: EC2 donde corre Patent Sweep. El usuario solo puede ejecutar el documento en esta instancia.
+  DirectorioApp:
+    Type: String
+    Default: /opt/patent-sweep
+    AllowedPattern: "^/[A-Za-z0-9_./-]+$"
+
+Resources:
+  # Procedimiento de despliegue. Es lo ÚNICO que GitHub Actions puede ejecutar en el servidor:
+  # no hay comandos libres, y los parámetros se validan con allowedPattern antes de ejecutarse.
+  DocumentoDespliegue:
+    Type: AWS::SSM::Document
+    Properties:
+      Name: PatentSweep-Desplegar
+      DocumentType: Command
+      DocumentFormat: YAML
+      UpdateMethod: NewVersion
+      Content:
+        schemaVersion: "2.2"
+        description: Despliega Patent Sweep (commit de main + imagen de GHCR por digest) y verifica su salud.
+        parameters:
+          Sha:
+            type: String
+            description: SHA completo de un commit que pertenezca a la rama main.
+            allowedPattern: "^[0-9a-f]{40}$"
+          Digest:
+            type: String
+            description: Digest de la imagen en GHCR (sha256:...).
+            allowedPattern: "^sha256:[0-9a-f]{64}$"
+          Repositorio:
+            type: String
+            default: !Ref RepositorioGitHub
+            allowedValues:
+              - !Ref RepositorioGitHub
+          Imagen:
+            type: String
+            default: !Ref ImagenGhcr
+            allowedValues:
+              - !Ref ImagenGhcr
+          Directorio:
+            type: String
+            default: !Ref DirectorioApp
+            allowedValues:
+              - !Ref DirectorioApp
+        mainSteps:
+          - action: aws:runShellScript
+            name: desplegar
+            inputs:
+              timeoutSeconds: "900"
+              runCommand:
+                - |
+                  bash -s <<'FIN_DESPLIEGUE_PATENT_SWEEP'
+                  set -euo pipefail
+                  REPOSITORIO='{{ Repositorio }}'
+                  SHA='{{ Sha }}'
+                  IMAGEN='{{ Imagen }}@{{ Digest }}'
+                  DIRECTORIO_APP='{{ Directorio }}'
+
+                  fallar_simple() { echo "ERROR: $*" >&2; exit 1; }
+                  [ -d "$DIRECTORIO_APP" ] || fallar_simple "No existe $DIRECTORIO_APP: ejecute scripts/preparar-ec2.sh"
+                  cd "$DIRECTORIO_APP"
+                  [ -f .env ] || fallar_simple "No existe $DIRECTORIO_APP/.env (ver docs/despliegue/EC2.md, sección 4)."
+
+                  temporal="$(mktemp -d)"
+                  trap 'rm -rf "$temporal"' EXIT
+
+                  echo "==> Verificando que $SHA pertenezca a main"
+                  # GitHub sirve por la URL del repositorio también commits de forks: solo se aceptan
+                  # commits que sean ancestros de main (o la punta de main).
+                  curl -fsS --retry 3 --max-time 30 -H 'Accept: application/vnd.github+json' \
+                    "https://api.github.com/repos/${REPOSITORIO}/compare/${SHA}...main" -o "$temporal/compare.json" \
+                    || fallar_simple "No se pudo consultar GitHub para validar el commit."
+                  estado="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("status",""))' "$temporal/compare.json" || true)"
+                  case "$estado" in
+                    ahead|identical) echo "Commit válido (main está $estado respecto de él)." ;;
+                    *) fallar_simple "El commit $SHA no pertenece a main (estado: '${estado:-desconocido}')." ;;
+                  esac
+
+                  echo "==> Archivos de despliegue del commit $SHA"
+                  curl -fsSL --retry 3 --max-time 60 \
+                    "https://codeload.github.com/${REPOSITORIO}/tar.gz/${SHA}" -o "$temporal/codigo.tar.gz"
+                  mkdir "$temporal/codigo"
+                  tar -xzf "$temporal/codigo.tar.gz" -C "$temporal/codigo" --strip-components=2 --wildcards \
+                    '*/patent-sweep/docker-compose.yml' '*/patent-sweep/docker-compose.prod.yml' '*/patent-sweep/mocks'
+                  install -m 644 "$temporal/codigo/docker-compose.yml" "$temporal/codigo/docker-compose.prod.yml" .
+                  rm -rf mocks
+                  mv "$temporal/codigo/mocks" mocks
+                  printf 'IMAGE_REF=%s\n' "$IMAGEN" > imagen.env
+
+                  compose() {
+                    docker compose --env-file .env --env-file imagen.env \
+                      -f docker-compose.yml -f docker-compose.prod.yml "$@"
+                  }
+                  fallar() {
+                    echo "ERROR: $*" >&2
+                    compose ps >&2 || true
+                    compose logs --tail=150 api-patent-sweep >&2 || true
+                    exit 1
+                  }
+
+                  echo "==> Descargando imágenes y levantando servicios ($IMAGEN)"
+                  compose pull || fallar "No se pudo descargar la imagen. ¿El paquete de GHCR es público? (EC2.md, sección 5)"
+                  compose up -d --no-build --remove-orphans
+
+                  puerto="$(grep -E '^API_PUERTO=' .env | tail -n 1 | cut -d= -f2- | tr -d "\"' \r")"
+                  puerto="${puerto:-8085}"
+                  echo "==> Verificando salud de la API en el puerto $puerto"
+                  sano=false
+                  for intento in $(seq 1 30); do
+                    if curl -fsS "http://localhost:${puerto}/actuator/health" 2>/dev/null | grep -q '"UP"'; then
+                      sano=true; echo "Salud UP (intento $intento)"; break
+                    fi
+                    echo "Esperando a la API (intento $intento/30)..."
+                    sleep 6
+                  done
+                  [ "$sano" = true ] || fallar "La API no respondió UP en /actuator/health."
+
+                  # Prueba de humo: una patente inexistente debe dar 404 en ProblemDetail (controlador + base de datos).
+                  codigo="$(curl -s -o "$temporal/humo.json" -w '%{http_code}' "http://localhost:${puerto}/api/v1/patentes/estado/0")"
+                  if [ "$codigo" != "404" ] || ! grep -q '"status":404' "$temporal/humo.json"; then
+                    fallar "La prueba de humo esperaba 404 en /api/v1/patentes/estado/0 y obtuvo $codigo."
+                  fi
+                  echo "Prueba de humo OK (404 esperado)"
+
+                  docker image prune -f > /dev/null
+                  echo "Despliegue completado: $IMAGEN (commit $SHA)"
+                  FIN_DESPLIEGUE_PATENT_SWEEP
+
+  # Identidad de GitHub Actions. Su único permiso es ejecutar el documento de arriba en esa instancia
+  # y leer el resultado. Sin acceso a la consola, sin otros documentos (ni AWS-RunShellScript), sin otros servicios.
+  UsuarioDespliegueGitHub:
+    Type: AWS::IAM::User
+    Properties:
+      UserName: patent-sweep-github-cd
+      Policies:
+        - PolicyName: ejecutar-solo-el-despliegue
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: EjecutarSoloElDocumentoDeDespliegueEnEstaInstancia
+                Effect: Allow
+                Action: ssm:SendCommand
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/${IdInstancia}"
+                  - !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:document/${DocumentoDespliegue}"
+              # Estas acciones de lectura no admiten restricción por recurso.
+              - Sid: LeerResultadoDelComando
+                Effect: Allow
+                Action:
+                  - ssm:GetCommandInvocation
+                  - ssm:ListCommandInvocations
+                Resource: "*"
+
+  # Rol de la instancia: solo lo necesario para que el agente de SSM se registre y reciba comandos.
+  RolInstancia:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: patent-sweep-ec2-ssm
+      Description: EC2 de Patent Sweep, administrado por AWS Systems Manager.
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - !Sub "arn:${AWS::Partition}:iam::aws:policy/AmazonSSMManagedInstanceCore"
+
+  PerfilInstancia:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      InstanceProfileName: patent-sweep-ec2-ssm
+      Roles:
+        - !Ref RolInstancia
+
+Outputs:
+  NombreDocumento:
+    Description: Documento SSM que ejecuta el CD (también se puede lanzar a mano desde Run Command).
+    Value: !Ref DocumentoDespliegue
+  NombreUsuario:
+    Description: Usuario IAM de GitHub Actions. Su llave se crea con el CLI (EC2.md, sección 5).
+    Value: !Ref UsuarioDespliegueGitHub
+  NombrePerfilInstancia:
+    Description: Perfil que se asocia al EC2.
+    Value: !Ref PerfilInstancia
+  ComandoAsociarPerfil:
+    Description: Comando para asociar el perfil a la instancia.
+    Value: !Sub "aws ec2 associate-iam-instance-profile --instance-id ${IdInstancia} --iam-instance-profile Name=${PerfilInstancia}"
