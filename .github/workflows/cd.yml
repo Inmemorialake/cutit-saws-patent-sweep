@@ -11,7 +11,7 @@ name: CD Despliegue en EC2
 #   "PatentSweep-Desplegar" (procedimiento fijo, infra/aws/cd-ssm.yml) en esa instancia, con dos
 #   parámetros validados: el SHA (debe pertenecer a main) y el digest de la imagen de GHCR.
 # - La imagen se despliega por digest (inmutable), no por tag.
-# - Las actions se fijan por SHA; Dependabot las mantiene al día.
+# - Las actions se fijan por SHA (el comentario indica la versión); se actualizan a mano.
 # Mientras falte la configuración de AWS en el environment "production", la imagen se publica
 # pero el despliegue se omite con un aviso, sin marcar el workflow como fallido.
 

@@ -75,7 +75,7 @@ SonarCloud:
 - La cobertura llega desde el XML de JaCoCo. `config`, `model` y `dto` se excluyen **solo de la cobertura**; su código sí se analiza.
 - Requisitos: el secreto `SONAR_TOKEN` en el repositorio y el **análisis automático desactivado** en SonarCloud
   (*Administration → Analysis Method*). Si está activo, el análisis desde el CI falla.
-- Los PR de forks y de Dependabot no reciben el token: en ellos Sonar se omite con un aviso.
+- Los PR de forks no reciben el token: en ellos Sonar se omite con un aviso.
 - Para ejecutarlo en local: `mvn verify sonar:sonar -Dsonar.token=<SU_TOKEN>` desde `backend/`.
 
 ### Protección de ramas
