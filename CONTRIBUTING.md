@@ -80,7 +80,7 @@ Al menos **una aprobación** de otra persona del equipo, que revisa el código, 
 
 ### Gate 4: Despliegue continuo (CD)
 
-Cuando el CI pasa en un push a `main`, `cd.yml` publica la imagen en GHCR y la despliega en el EC2 por AWS Systems Manager, con health check y prueba de humo. **No hay acceso SSH** al servidor: el acceso manual es por Session Manager. Detalles, rollback y solución de problemas en [docs/despliegue/EC2.md](docs/despliegue/EC2.md).
+Cuando el CI pasa en un push a `main`, `cd.yml` publica la imagen en GHCR y la despliega en el EC2 por AWS Systems Manager, con health check y prueba de humo. **No hay acceso SSH** al servidor: el acceso manual es por Session Manager ([cómo entrar](docs/despliegue/EC2.md#12-entrar-al-servidor-consola)). Detalles, rollback y solución de problemas en [docs/despliegue/EC2.md](docs/despliegue/EC2.md).
 
 ---
 

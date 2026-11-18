@@ -130,7 +130,7 @@ rama personal ─PR─► develop ─PR─► main ─► CD ─► EC2 (AWS)
 3. Abra un PR hacia `develop` con la [plantilla](.github/pull_request_template.md). El **CI** ([`ci.yml`](.github/workflows/ci.yml)) debe pasar: pruebas, cobertura, estilo, el quality gate de SonarCloud y el build de la imagen Docker. Se necesita **una aprobación** de otra persona del equipo.
 4. Al cerrar el sprint, `develop` se integra en `main` por PR (con *Create a merge commit*) y se etiqueta la versión (`v1.0.0-beta.N`). Con el CI en verde en `main`, el **CD** ([`cd.yml`](.github/workflows/cd.yml)) publica la imagen en GHCR y la despliega en el EC2 **sin SSH** con AWS Systems Manager: GitHub solo puede lanzar un documento de despliegue fijo, con el SHA de `main` y el digest de la imagen como únicos parámetros. Incluye health check y prueba de humo, y el rollback se hace con el mismo workflow. Ver [ADR-007](docs/adrs/ADR-007-cd-con-ssm-sin-ssh.md).
 
-Flujo completo, convenciones de commits y Definición de Hecho: [`CONTRIBUTING.md`](CONTRIBUTING.md) · Historial de cambios: [`CHANGELOG.md`](CHANGELOG.md) · Operación del servidor (rotación de llaves, costos, problemas comunes): [`docs/despliegue/EC2.md`](docs/despliegue/EC2.md).
+Flujo completo, convenciones de commits y Definición de Hecho: [`CONTRIBUTING.md`](CONTRIBUTING.md) · Historial de cambios: [`CHANGELOG.md`](CHANGELOG.md) · Operación del servidor (cómo entrar a la consola, rotación de llaves, costos, problemas comunes): [`docs/despliegue/EC2.md`](docs/despliegue/EC2.md).
 
 ---
 
