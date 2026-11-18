@@ -86,5 +86,8 @@ public class Patente {
     @PrePersist
     void alCrear() {
         createdAt = LocalDateTime.now();
+        if (estadoVigencia == null) {
+            estadoVigencia = EstadoVigenciaPatente.EN_TRAMITE;
+        }
     }
 }
