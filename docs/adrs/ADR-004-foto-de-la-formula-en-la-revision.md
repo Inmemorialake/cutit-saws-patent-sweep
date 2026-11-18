@@ -1,6 +1,7 @@
 # ADR-004: Foto de la fórmula en cada revisión
 
 - **Estado:** Aceptada
+  > **Implementación retirada temporalmente** por el arquetipo Sprint 0 ([ADR-006](ADR-006-arquetipo-sprint-0-una-transaccion.md)): la decisión sigue vigente y aplica cuando se reimplemente HU-02. El código que la implementaba está en el commit `5d13af5`; la migración V5 sigue aplicada.
 - **Relacionado con:** DA-10, HU-02
 
 ## Contexto

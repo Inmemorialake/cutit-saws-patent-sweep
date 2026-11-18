@@ -8,6 +8,7 @@ API REST del módulo de **Patent Sweep (Equipo 1)** para la plataforma modular d
 [![Coverage](https://sonarcloud.io/api/project_badges/measure?project=Inmemorialake_cutit-saws-patent-sweep&metric=coverage)](https://sonarcloud.io/summary/new_code?id=Inmemorialake_cutit-saws-patent-sweep)
 [![Bugs](https://sonarcloud.io/api/project_badges/measure?project=Inmemorialake_cutit-saws-patent-sweep&metric=bugs)](https://sonarcloud.io/summary/new_code?id=Inmemorialake_cutit-saws-patent-sweep)
 [![Code Smells](https://sonarcloud.io/api/project_badges/measure?project=Inmemorialake_cutit-saws-patent-sweep&metric=code_smells)](https://sonarcloud.io/summary/new_code?id=Inmemorialake_cutit-saws-patent-sweep)
+[![Versión](https://img.shields.io/github/v/tag/Inmemorialake/cutit-saws-patent-sweep?include_prereleases&label=versi%C3%B3n)](CHANGELOG.md)
 [![Status](https://img.shields.io/badge/status-Sprint%200%20%E2%80%94%20arquetipo-blue.svg)](docs/adrs/ADR-006-arquetipo-sprint-0-una-transaccion.md)
 
 ---
@@ -23,7 +24,7 @@ Esta API (**Patent Sweep**) es responsable de la **vigilancia y validación cruz
 | **Es consumida por** | Materiales / Fórmulas — validación de componentes contra patentes |
 | **Es consumida por** | Fabricación — validación de lotes de producción |
 
-### Estado actual: Sprint 0 (arquetipo)
+### Estado actual: Sprint 0 (arquetipo) · `v1.0.0-beta.1`
 
 El backend implementa **una sola transacción completa**, registrar y consultar una patente, que recorre todas las capas, con pruebas, CI, análisis de calidad y despliegue continuo. Las historias del backlog (HU-01 a HU-12) se implementan desde el Sprint 1. Ver [ADR-006](docs/adrs/ADR-006-arquetipo-sprint-0-una-transaccion.md).
 
@@ -126,10 +127,10 @@ rama personal ─PR─► develop ─PR─► main ─► CD ─► EC2 (AWS)
 
 1. Trabaje en su rama personal (`primerainicialnombre` + `primerapellido`, por ejemplo `agonzalez`).
 2. Valide en local con `mvn clean verify`.
-3. Abra un PR hacia `develop` con la [plantilla](.github/pull_request_template.md). El **CI** ([`ci.yml`](.github/workflows/ci.yml)) debe pasar: pruebas, cobertura, estilo, el quality gate de SonarCloud y el build de la imagen Docker.
-4. `develop` se integra en `main` por PR. Con el CI en verde en `main`, el **CD** ([`cd.yml`](.github/workflows/cd.yml)) publica la imagen en GHCR y la despliega en el EC2 **sin SSH** con AWS Systems Manager: GitHub solo puede lanzar un documento de despliegue fijo, con el SHA de `main` y el digest de la imagen como únicos parámetros. Incluye health check y prueba de humo, y el rollback se hace con el mismo workflow. Ver [ADR-007](docs/adrs/ADR-007-cd-con-ssm-sin-ssh.md).
+3. Abra un PR hacia `develop` con la [plantilla](.github/pull_request_template.md). El **CI** ([`ci.yml`](.github/workflows/ci.yml)) debe pasar: pruebas, cobertura, estilo, el quality gate de SonarCloud y el build de la imagen Docker. Se necesita **una aprobación** de otra persona del equipo.
+4. Al cerrar el sprint, `develop` se integra en `main` por PR (con *Create a merge commit*) y se etiqueta la versión (`v1.0.0-beta.N`). Con el CI en verde en `main`, el **CD** ([`cd.yml`](.github/workflows/cd.yml)) publica la imagen en GHCR y la despliega en el EC2 **sin SSH** con AWS Systems Manager: GitHub solo puede lanzar un documento de despliegue fijo, con el SHA de `main` y el digest de la imagen como únicos parámetros. Incluye health check y prueba de humo, y el rollback se hace con el mismo workflow. Ver [ADR-007](docs/adrs/ADR-007-cd-con-ssm-sin-ssh.md).
 
-Convenciones de commits y ramas: [`CONTRIBUTING.md`](CONTRIBUTING.md) · Historial de cambios: [`CHANGELOG.md`](CHANGELOG.md).
+Flujo completo, convenciones de commits y Definición de Hecho: [`CONTRIBUTING.md`](CONTRIBUTING.md) · Historial de cambios: [`CHANGELOG.md`](CHANGELOG.md) · Operación del servidor (rotación de llaves, costos, problemas comunes): [`docs/despliegue/EC2.md`](docs/despliegue/EC2.md).
 
 ---
 

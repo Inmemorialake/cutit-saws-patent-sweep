@@ -1,6 +1,6 @@
 # Cómo ejecutar y probar la API Patent Sweep
 
-Arquetipo Sprint 0 (versión 1.0.0), rama `main`. Curso 750021C Desarrollo de Software II, Universidad del Valle, 2026-2.
+Arquetipo Sprint 0, versión `v1.0.0-beta.1` (rama `main`). Curso 750021C Desarrollo de Software II, Universidad del Valle, 2026-2.
 
 ---
 

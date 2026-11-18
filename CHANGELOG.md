@@ -33,7 +33,8 @@ Primera versión desplegada en producción (AWS EC2) por el CD.
 - El CI ejecuta un solo `mvn verify` (pruebas, JaCoCo, Checkstyle y JAR), con las actions fijadas por SHA, concurrencia por PR y timeouts.
 - SonarCloud configurado en `pom.xml` (organización, clave, URL y `sonar.qualitygate.wait`). Solo `config`, `model` y `dto` se excluyen de la cobertura, no del análisis.
 - Limpieza del repositorio: los prompts pasan a `docs/ia/` y el análisis de HU de Materiales a `docs/referencias/`. `.idea/`, `.vscode/` y los volcados `hs_err_pid*.log` dejan de versionarse.
-- README, `patent-sweep/README.md` y `GUIA_EJECUCION.md` reescritos para el alcance real del Sprint 0.
+- README, `patent-sweep/README.md`, `GUIA_EJECUCION.md`, `CONTRIBUTING.md` y la plantilla de PR actualizados al alcance y al flujo reales del Sprint 0.
+- Las actualizaciones de dependencias se hacen a mano: se probó Dependabot y se retiró, porque proponía saltos de versión mayor (Spring Boot 4, Java 24/26) como si fueran actualizaciones.
 
 ### Eliminado
 
@@ -48,6 +49,8 @@ Primera versión desplegada en producción (AWS EC2) por el CD.
 - SonarCloud fallaba en silencio (`continue-on-error` sin organización ni clave) y nunca había analizado el proyecto. Ahora el CI falla si el quality gate no pasa.
 - El procesador de anotaciones usaba Lombok 1.18.34 fijo, que no compila con JDK 25. Ahora toma la versión de Spring Boot.
 - Los badges de cobertura (98 %) y quality gate del README eran fijos. Ahora se leen de SonarCloud.
+- El CI fallaba en los push a `develop`: el plan gratuito de SonarCloud solo analiza `main` y los PR. Ahora Sonar corre en esos dos casos y en `develop` se omite con aviso.
+- Maven Central respondía HTTP 429 a los runners de GitHub: las dependencias se descargan en un paso previo con reintentos, y en el `Dockerfile` van en una capa propia que solo se rehace cuando cambia `pom.xml`.
 
 ### Histórico: funcionalidad de `develop` retirada por el arquetipo
 
