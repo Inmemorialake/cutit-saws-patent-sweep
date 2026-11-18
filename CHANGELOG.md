@@ -9,6 +9,14 @@ El versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 ## [Unreleased]
 
+_Sin cambios todavía._
+
+---
+
+## [1.0.0-beta.1] — 2026-11-18 · Cierre del Sprint 0
+
+Primera versión desplegada en producción (AWS EC2) por el CD.
+
 ### Añadido
 
 - Despliegue continuo en AWS (`.github/workflows/cd.yml`): imagen en GHCR (SHA y `latest`) desplegada **por digest** en un EC2 con Docker Compose, con health check, prueba de humo y rollback por SHA (ADR-005).
@@ -25,7 +33,8 @@ El versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 - El CI ejecuta un solo `mvn verify` (pruebas, JaCoCo, Checkstyle y JAR), con las actions fijadas por SHA, concurrencia por PR y timeouts.
 - SonarCloud configurado en `pom.xml` (organización, clave, URL y `sonar.qualitygate.wait`). Solo `config`, `model` y `dto` se excluyen de la cobertura, no del análisis.
 - Limpieza del repositorio: los prompts pasan a `docs/ia/` y el análisis de HU de Materiales a `docs/referencias/`. `.idea/`, `.vscode/` y los volcados `hs_err_pid*.log` dejan de versionarse.
-- README, `patent-sweep/README.md` y `GUIA_EJECUCION.md` reescritos para el alcance real del Sprint 0.
+- README, `patent-sweep/README.md`, `GUIA_EJECUCION.md`, `CONTRIBUTING.md` y la plantilla de PR actualizados al alcance y al flujo reales del Sprint 0.
+- Las actualizaciones de dependencias se hacen a mano: se probó Dependabot y se retiró, porque proponía saltos de versión mayor (Spring Boot 4, Java 24/26) como si fueran actualizaciones.
 
 ### Eliminado
 
@@ -40,6 +49,8 @@ El versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 - SonarCloud fallaba en silencio (`continue-on-error` sin organización ni clave) y nunca había analizado el proyecto. Ahora el CI falla si el quality gate no pasa.
 - El procesador de anotaciones usaba Lombok 1.18.34 fijo, que no compila con JDK 25. Ahora toma la versión de Spring Boot.
 - Los badges de cobertura (98 %) y quality gate del README eran fijos. Ahora se leen de SonarCloud.
+- El CI fallaba en los push a `develop`: el plan gratuito de SonarCloud solo analiza `main` y los PR. Ahora Sonar corre en esos dos casos y en `develop` se omite con aviso.
+- Maven Central respondía HTTP 429 a los runners de GitHub: las dependencias se descargan en un paso previo con reintentos, y en el `Dockerfile` van en una capa propia que solo se rehace cuando cambia `pom.xml`.
 
 ### Histórico: funcionalidad de `develop` retirada por el arquetipo
 
@@ -106,4 +117,7 @@ conservan; el código Java se recupera desde `5d13af5`.
 
 ---
 
-<!-- Aún no hay etiquetas de versión en el repositorio: al crear la primera (por ejemplo v1.0.0 al cerrar el Sprint 0), agregue aquí los enlaces de comparación. -->
+[Unreleased]: https://github.com/Inmemorialake/cutit-saws-patent-sweep/compare/v1.0.0-beta.1...HEAD
+[1.0.0-beta.1]: https://github.com/Inmemorialake/cutit-saws-patent-sweep/tree/v1.0.0-beta.1
+
+<!-- Las entradas 0.2.0-beta.1 y 0.1.0-beta.2 son anteriores a la primera etiqueta y no tienen enlace. -->

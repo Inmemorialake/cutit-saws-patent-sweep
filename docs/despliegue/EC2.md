@@ -26,7 +26,7 @@ EC2 (Ubuntu 24.04) ─ docker compose ─┬─ api-patent-sweep  (puerto 8085, 
                                      └─ apis-simuladas    (WireMock, solo red interna)
 ```
 
-- **Sin puerto 22.** El agente SSM del EC2 sale hacia AWS y nadie entra. El acceso manual es por **Session Manager**.
+- **Sin puerto 22.** El agente SSM del EC2 sale hacia AWS y nadie entra. El acceso manual es por **Session Manager** (sección 12).
 - **Sin comandos libres.** GitHub solo puede lanzar el documento `PatentSweep-Desplegar`, cuyo procedimiento es fijo
   (`infra/aws/cd-ssm.yml`). El repositorio y la imagen están fijados en el documento y los parámetros se validan con regex.
 - **Solo commits de `main`.** Así, un commit de un fork no puede traer un `docker-compose.yml` malicioso.
@@ -102,7 +102,7 @@ aws ssm describe-instance-information --query 'InstanceInformationList[].{id:Ins
 
 ## 4. Preparar el servidor y crear el `.env`
 
-Entre por **Session Manager**: en la consola, *EC2 → la instancia → Connect → Session Manager → Connect*, o
+Entre por **Session Manager** (detalles en la sección 12): en la consola, *EC2 → la instancia → Connect → Session Manager → Connect*, o
 `aws ssm start-session --target <ID_INSTANCIA>` con el
 [plugin de Session Manager](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html).
 
@@ -167,9 +167,14 @@ gh variable set EC2_INSTANCE_ID --env production --body '<ID_INSTANCIA>'
 
 Mientras falten, el workflow publica la imagen y **omite** el despliegue con un aviso, sin fallar.
 
-**Paquete público en GHCR.** El servidor descarga la imagen **sin credenciales**. Después del primer push, vaya a
-*github.com/Inmemorialake → Packages → cutit-saws-patent-sweep → Package settings → Change visibility → Public*.
-Si queda privado, el despliegue falla en el `pull` con un mensaje que lo indica.
+**Paquete de GHCR (una sola vez).** En *github.com/Inmemorialake → Packages → cutit-saws-patent-sweep → Package settings*:
+
+1. **Change visibility → Public.** El servidor descarga la imagen **sin credenciales**, y un paquete nuevo nace
+   privado aunque el repositorio sea público (hereda los permisos, no la visibilidad). Si queda privado, el despliegue
+   falla en el `pull` con un mensaje que lo indica.
+2. **Manage Actions access:** el repositorio `cutit-saws-patent-sweep` debe aparecer con rol **Write**. Si el paquete
+   lo creó el propio workflow, ya está. Si se creó de otra forma (por ejemplo, con un `docker push` manual), hay que
+   agregarlo, o el CD falla al publicar con `denied: permission_denied: write_package`.
 
 ## 6. Desplegar
 
@@ -222,6 +227,9 @@ Si sospecha que la llave se filtró, **bórrela de inmediato** con `delete-acces
 
 ## 8. Migrar desde el despliegue por SSH (una sola vez)
 
+> **Hecho el 2026-11-18** en el EC2 del proyecto: puerto 22 cerrado, secretos `EC2_*` borrados, llave SSH retirada
+> del servidor y par de llaves eliminado. Esta sección queda para un servidor nuevo creado con el esquema anterior.
+
 Si el servidor ya existía con el esquema anterior (ADR-005):
 
 1. Secciones 3 a 5: crear el stack, asociar el perfil, encender la instancia, verificar que aparezca *Online* y cargar
@@ -233,7 +241,16 @@ Si el servidor ya existía con el esquema anterior (ADR-005):
 5. En el servidor (Session Manager), quitar la llave pública de despliegue de `~ubuntu/.ssh/authorized_keys`, y en
    *EC2 → Key pairs*, borrar el par de llaves si ya no se usa.
 
-## 9. Límite de gasto del proyecto
+## 9. Calendario de operación
+
+| Cuándo | Qué | Dónde |
+|---|---|---|
+| Cada 90 días (próxima: **2027-02-16**) | Rotar la llave del usuario `patent-sweep-github-cd` | Sección 7 |
+| Cada semana | Revisar el consumo del proyecto frente al límite de gasto | *AWS Settings → Projects* |
+| Al cambiar el procedimiento de despliegue | Actualizar el stack `patent-sweep-cd` (`aws cloudformation deploy`) | Sección 3 |
+| Al terminar el semestre | Terminar la instancia, liberar la Elastic IP y borrar el stack | Sección 10 |
+
+## 10. Límite de gasto del proyecto
 
 El proyecto tiene un **límite de gasto mensual**. Si se alcanza, **el proyecto se pausa el resto del mes** y la API
 deja de responder. Para evitarlo:
@@ -243,7 +260,7 @@ deja de responder. Para evitarlo:
 - Revise el consumo del proyecto con regularidad.
 - Al final del semestre: termine la instancia, libere la Elastic IP y borre el stack `patent-sweep-cd`.
 
-## 10. Problemas comunes
+## 11. Problemas comunes
 
 | Síntoma | Causa probable |
 |---|---|
@@ -255,3 +272,82 @@ deja de responder. Para evitarlo:
 | Estado `TimedOut` o `Failed` | Lea el grupo *Salida del servidor* del job. Las causas típicas son la falta de `.env` o de `/opt/patent-sweep`, o un paquete de GHCR privado |
 | Health no llega a UP | En Session Manager: `cd /opt/patent-sweep && docker compose --env-file .env --env-file imagen.env -f docker-compose.yml -f docker-compose.prod.yml logs api-patent-sweep` |
 | Contenedor reiniciándose (OOM) | Revise `docker stats`. Suba la instancia o baje `-Xmx` en `docker-compose.prod.yml` |
+| `denied: permission_denied: write_package` al publicar | El repositorio no tiene rol **Write** sobre el paquete de GHCR (sección 5, paso 2) |
+| `set: Illegal option -o pipefail` en un comando manual de Run Command | `AWS-RunShellScript` ejecuta con `sh` (dash), no con bash. Envuelva el script en `bash -s <<'FIN' … FIN`, como hace `PatentSweep-Desplegar` |
+| El simulador de políticas de IAM niega todo, incluso al administrador | La SCP de regiones de la experiencia de Proyectos: pase `--context-entries ContextKeyName=aws:RequestedRegion,ContextKeyValues=<REGION>,ContextKeyType=string` |
+
+## 12. Entrar al servidor (consola)
+
+No hay SSH: se entra con **Session Manager**, que abre una terminal en el EC2 a través del agente de SSM (sin puerto
+22 ni llaves). Necesita una sesión de AWS con permisos de administrador del proyecto (`aws login`). El usuario de CD
+de GitHub **no** puede abrir sesiones.
+
+### Opción A: desde el navegador (sin instalar nada)
+
+1. Inicie sesión en la consola de AWS, en el proyecto y la región del EC2.
+2. *EC2 → Instances →* `patent-sweep` *→ Connect →* pestaña **Session Manager** *→ Connect*.
+3. Se abre una terminal en el navegador.
+
+### Opción B: desde su terminal
+
+Requiere el AWS CLI con sesión (`aws login`) y el **plugin de Session Manager**
+([instalación](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html);
+en Arch Linux está en el AUR como `aws-session-manager-plugin`). Para comprobar que quedó instalado:
+`session-manager-plugin --version`.
+
+```bash
+aws ssm start-session --target <ID_INSTANCIA>
+```
+
+Para salir: `exit` (dos veces si entró como root). La sesión se cierra sola tras unos 20 minutos sin actividad.
+
+### Primeros comandos
+
+La sesión entra como **`ssm-user`**, en `sh`. Ese usuario tiene `sudo`, pero no pertenece al grupo `docker`, así
+que lo primero es pasar a root con bash:
+
+```bash
+sudo -i                      # root con bash (sin contraseña)
+cd /opt/patent-sweep
+ls -la                       # .env, imagen.env, docker-compose*.yml, mocks/
+
+# Atajo para no repetir los archivos de compose en cada comando (dura lo que dure la sesión)
+alias dc='docker compose --env-file .env --env-file imagen.env -f docker-compose.yml -f docker-compose.prod.yml'
+
+docker ps                                  # contenedores en ejecución
+dc ps                                      # estado y salud de los tres servicios
+dc logs -f --tail=100 api-patent-sweep     # logs de la API (Ctrl+C para salir)
+dc logs --tail=50 postgres                 # logs de la base de datos
+docker stats --no-stream                   # memoria y CPU de cada contenedor
+curl -s localhost:8085/actuator/health     # salud de la API desde el servidor
+cat imagen.env                             # imagen (digest) desplegada
+dc restart api-patent-sweep                # reiniciar solo la API
+df -h /; free -m                           # disco y memoria del servidor
+```
+
+Para entrar a la base de datos (los valores se leen del `.env` sin mostrarlos):
+
+```bash
+set -a; . ./.env; set +a
+dc exec postgres psql -U "$DB_USER" -d "$DB_NAME"    # \dt para listar tablas, \q para salir
+```
+
+> **Cuidado:** la sesión es como root en producción. Para cambiar la versión desplegada use el CD (sección 6), no
+> `docker compose up` a mano con otra imagen; si edita el `.env`, reinicie con `dc up -d` y verifique el health.
+
+### Un comando suelto, sin abrir sesión
+
+Para consultas rápidas desde su equipo (por ejemplo, un `docker ps`) se puede usar Run Command. Tenga en cuenta que
+`AWS-RunShellScript` ejecuta con `sh` y como root:
+
+```bash
+id=$(aws ssm send-command --instance-ids <ID_INSTANCIA> --document-name AWS-RunShellScript \
+  --parameters 'commands=["docker ps --format \"{{.Names}}  {{.Status}}\""]' \
+  --query Command.CommandId --output text)
+sleep 3
+aws ssm get-command-invocation --command-id "$id" --instance-id <ID_INSTANCIA> \
+  --query StandardOutputContent --output text
+```
+
+Cada sesión y cada comando quedan registrados en *Systems Manager → Session Manager → Session history* y
+*Run Command → Command history*.

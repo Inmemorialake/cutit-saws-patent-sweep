@@ -1,6 +1,7 @@
 # ADR-001: API simulada de patentes con WireMock, consumida por HTTP
 
 - **Estado:** Aceptada
+  > **Implementación retirada temporalmente** por el arquetipo Sprint 0 ([ADR-006](ADR-006-arquetipo-sprint-0-una-transaccion.md)): la decisión sigue vigente y aplica cuando se reimplemente HU-02. El código que la implementaba está en el commit `5d13af5`; los mapeos de WireMock siguen en `patent-sweep/mocks/`.
 - **Relacionado con:** DA-05, HU-02
 
 ## Contexto

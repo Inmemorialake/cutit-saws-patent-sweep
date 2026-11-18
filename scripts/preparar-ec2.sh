@@ -176,7 +176,7 @@ if hay_systemd && snap list amazon-ssm-agent > /dev/null 2>&1; then
   snap start --enable amazon-ssm-agent > /dev/null
   if snap services amazon-ssm-agent | grep -q ' active'; then
     echo "Agente en ejecución. Si la instancia aún no aparece en Systems Manager > Fleet Manager,"
-    echo "revise que tenga asociado el perfil de instancia (docs/despliegue/EC2.md, sección 5)."
+    echo "revise que tenga asociado el perfil de instancia (docs/despliegue/EC2.md, sección 3)."
   else
     aviso "el agente de SSM no quedó en ejecución: revise 'snap logs amazon-ssm-agent'."
   fi

@@ -30,15 +30,25 @@
 ## Calidad y Pruebas
 
 - [ ] Pruebas unitarias e integración ejecutadas localmente con éxito (`mvn clean verify`)
-- [ ] Cobertura de JaCoCo verificada (cumpliendo el umbral exigido, actual ~98% instrucciones)
+- [ ] Cobertura de JaCoCo verificada (umbral: 80 % de líneas y ramas en `service` y `exception`)
 - [ ] `mvn checkstyle:check` pasa sin errores (`0 violations`)
+- [ ] Quality gate de SonarCloud en verde (check *SonarCloud Code Analysis* del PR)
 - [ ] Configuración e imágenes Docker probadas correctamente (`docker compose up`)
+- [ ] Sin secretos ni datos de infraestructura en el código ni en esta descripción (IP, ID de cuenta o de instancia, llaves)
 
 ## Documentación
 
 - [ ] Swagger / OpenAPI actualizado (si afecta endpoints REST)
 - [ ] README.md o CHANGELOG.md actualizados (si aplica)
 - [ ] DAS V3.0 / ADR actualizado (si introduce decisiones de arquitectura)
+
+## Solo para PR de `develop` a `main` (cierre de sprint)
+
+<!-- Borre esta sección si el PR va a develop. Ver CONTRIBUTING.md, "Promoción de develop a main". -->
+
+- [ ] Se fusiona con *Create a merge commit* (no squash ni rebase)
+- [ ] Después del merge: el CD terminó en verde y `/actuator/health` responde `UP`
+- [ ] Etiqueta `v1.0.0-beta.N` creada sobre el merge commit y `CHANGELOG.md` actualizado
 
 ## Evidencia
 
