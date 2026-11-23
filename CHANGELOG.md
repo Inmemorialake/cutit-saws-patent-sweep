@@ -9,7 +9,15 @@ El versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 ## [Unreleased]
 
-_Sin cambios todavía._
+### Añadido
+
+- ADR-008: restauración del alcance Sprint 1 desde el commit `238806c` y fin del arquetipo de una sola transacción.
+- ADR-009: conflicto único por fórmula y patente, sin importar la versión; matiza ADR-002.
+- `docs/discrepancias.md` con las decisiones D-1 a D-12 y `docs/progress.md` como estado de avance del Sprint 1.
+
+### Cambiado
+
+- `AGENTS.md` ya no describe HU-00/HU-02 como documentos vacíos y apunta a `docs/progress.md`.
 
 ---
 
