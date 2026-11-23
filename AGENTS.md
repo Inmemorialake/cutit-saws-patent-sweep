@@ -1,0 +1,71 @@
+# AGENTS.md — Patent Sweep API
+
+## Identidad y prioridad
+
+Módulo **Patent Sweep** de la plataforma Cutit Saws (curso 750021C, Universidad del Valle). Backend Java 21 + Spring Boot 3.5.16 en `patent-sweep/backend`, paquete raíz `co.edu.univalle.patentsweep`. Versión vigente: `v1.0.0-beta.1` (Sprint 0, arquetipo de una sola transacción).
+
+**Regla de oro: el estado real del proyecto manda.** Ante discrepancias, este es el orden de precedencia:
+
+1. Código actual, `README.md`, `CHANGELOG.md` y ADR-006 (alcance real del Sprint 0).
+2. `CONTRIBUTING.md`, `.github/workflows/` y `pom.xml` (reglas de trabajo y calidad).
+3. `docs/arquitectura/DAS_Patent_Sweep_V3.0.pdf`, backlog V3.0 y ADR-001…007 (diseño y backlog, aún no implementado).
+
+No implementes funcionalidad «porque está en el DAS»: el DAS y el backlog describen el destino, no el estado actual.
+
+## Estado actual (Sprint 0)
+
+Sí existe:
+
+- `POST /api/v1/patentes/busqueda`: registra una patente (`codigoPatente` con formato `PAT-NNNNNN`, `titulo`, opcionalmente `tipoProducto` y `resumen`) en estado `EN_TRAMITE` → 201/400/409.
+- `GET /api/v1/patentes/estado/{id}` → 200/404.
+- Errores `ProblemDetail` (RFC 9457) con `traceId`; Swagger/OpenAPI y Actuator/Prometheus.
+- PostgreSQL 16 con Flyway V1–V6; una sola entidad JPA mapeada (`Patente`).
+- Docker multi-etapa, Compose, CI y CD a EC2 por SSM (sin SSH, imagen fijada por digest de GHCR).
+
+No existe todavía:
+
+- HU-01…HU-12: barridos periódicos, conflictos, evaluación de fórmulas, auditoría, notificaciones ni configuración. Empiezan en Sprint 1.
+- Autenticación, JWT ni RBAC (retirados en el arquetipo; DA-11 queda pendiente).
+- Clientes HTTP de integración: `integration/` solo contiene `LEEME.txt`; los mocks WireMock no se consumen.
+- Entidades ni repositorios para las otras nueve tablas del esquema. El código anterior se recupera desde el commit `5d13af5` solo cuando una HU lo pida.
+
+## Cómo trabajar en el código
+
+- Arquitectura multicapa `Controller → Service → Repository`. DTOs `record` en `controller.dto`, entidades con Lombok, excepciones y `@RestControllerAdvice` en `exception`.
+- Inyección por constructor (`private final`), sin `@Autowired`. Identificadores, mensajes y `@DisplayName` en español; anotaciones Spring en inglés.
+- Reglas de negocio y `@Transactional` en `PatenteService`; el controlador solo valida y mapea a DTO, nunca expone la entidad.
+- Errores nuevos: excepción propia + handler en `GlobalExceptionHandler` con `traceId`. No filtrar mensajes internos en respuestas 500.
+- Cada HU nueva lleva pruebas unitarias/de integración, contrato Swagger actualizado y entrada en `CHANGELOG.md`; si cambia una decisión de arquitectura, crear un ADR en `docs/adrs/`.
+
+## Comandos y gates
+
+```bash
+cd patent-sweep/backend
+mvn clean verify
+```
+
+Verifica compilación, pruebas, JaCoCo (≥ 80 % de líneas y ramas en `service` y `exception`), Checkstyle (0 violaciones, también en tests) y el JAR. Reporte de cobertura: `patent-sweep/backend/target/site/jacoco/index.html`.
+
+```bash
+cd patent-sweep
+cp .env.example .env
+docker compose up -d --build --wait
+```
+
+API en `localhost:8085`; `GUIA_EJECUCION.md` tiene más casos de prueba. El análisis de SonarCloud corre en PR y en `main` (plan gratuito): `mvn verify sonar:sonar -Dsonar.token=< token >` desde `patent-sweep/backend`. Una imagen Docker que no compile rompe el CD: construirla también antes de enviar el PR.
+
+## Flujo Git
+
+- Rama personal `inicialapellido` (p. ej. `agonzalez`) → PR a `develop` con una aprobación → PR de `develop` a `main` con **Create a merge commit** (nunca squash ni rebase) → etiqueta `v1.0.0-beta.N` → actualizar `CHANGELOG.md`.
+- No fusionar con el CI en rojo. `main` y `develop` están protegidas: sin force-push ni borrado.
+- Conventional Commits en español: `feat|fix|docs|refactor|test|chore|style|ci`, con `Refs: HU-NN` cuando aplique.
+- No publicar secretos, IPs, IDs de instancia ni llaves en PRs (repositorio público). `.env` de producción solo en el servidor.
+- Dependencias y GitHub Actions se actualizan a mano en PR propio; los Actions van fijados por SHA y un salto de versión mayor es una migración con ADR.
+
+## Trampas del repositorio
+
+- El directorio y el remoto se llaman `cutit-saws-materiales-api`, pero el contenido, el CI y el despliegue son **Patent Sweep** (`cutit-saws-patent-sweep` en README, ADRs e infra). No reescribas el proyecto por el nombre de la carpeta.
+- `docs/ia/` y `docs/referencias/` describen **Materiales/Fórmulas**: son referencia de integración, no código de este módulo.
+- `docs/HU/HU-00.md` y `docs/HU/HU-02.md` están vacíos y sin versionar: no los uses como fuente de requisitos.
+- ADR-001…004 están a la espera de sus HU; ADR-005 y ADR-007 se leen juntos (SSH quedó sustituido por SSM).
+- No cargar datos reales de patentes en producción; Prometheus y Swagger son públicos hasta que vuelva la seguridad.
