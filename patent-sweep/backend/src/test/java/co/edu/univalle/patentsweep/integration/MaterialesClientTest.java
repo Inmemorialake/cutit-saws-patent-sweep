@@ -13,10 +13,16 @@ import co.edu.univalle.patentsweep.exception.FormulaNoEncontradaException;
 import co.edu.univalle.patentsweep.exception.IntegracionExternaException;
 import co.edu.univalle.patentsweep.exception.ServicioNoDisponibleException;
 import co.edu.univalle.patentsweep.integration.dto.FormulaExternaDTO;
+import co.edu.univalle.patentsweep.integration.dto.FormulaResumenDTO;
 import java.io.IOException;
+import java.util.List;
+import java.util.stream.IntStream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.boot.env.YamlPropertySourceLoader;
+import org.springframework.core.env.PropertySource;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
@@ -136,5 +142,67 @@ class MaterialesClientTest {
 
         // Act / Assert
         assertThatThrownBy(() -> cliente.obtenerFormula("form-001")).isInstanceOf(IntegracionExternaException.class);
+    }
+
+    @Test
+    @DisplayName("Acumula páginas de 10 hasta recibir la lista vacía")
+    void deberiaListarFormulasAprobadasHastaLaPaginaVacia() {
+        int[] cantidades = {10, 10, 3, 0};
+        for (int pagina = 1; pagina <= cantidades.length; pagina++) {
+            servidor.expect(requestTo("http://materiales.test/formulas?estado=APROBADA&pagina=" + pagina))
+                    .andExpect(method(HttpMethod.GET))
+                    .andRespond(withSuccess(paginaJson(cantidades[pagina - 1], pagina), MediaType.APPLICATION_JSON));
+        }
+
+        List<FormulaResumenDTO> formulas = cliente.listarAprobadas();
+
+        assertThat(formulas).hasSize(23);
+        assertThat(formulas.get(0).codigo()).isEqualTo("form-001");
+        assertThat(formulas.get(22).codigo()).isEqualTo("form-023");
+        servidor.verify();
+    }
+
+    @Test
+    @DisplayName("Un 400 al listar se traduce a error de integración")
+    void deberiaTraducirElErrorDeListado4xx() {
+        servidor.expect(requestTo("http://materiales.test/formulas?estado=APROBADA&pagina=1"))
+                .andRespond(withBadRequest());
+
+        assertThatThrownBy(() -> cliente.listarAprobadas()).isInstanceOf(IntegracionExternaException.class);
+    }
+
+    @Test
+    @DisplayName("Un 500 al listar se traduce a servicio no disponible")
+    void deberiaTraducirElErrorDeListado5xx() {
+        servidor.expect(requestTo("http://materiales.test/formulas?estado=APROBADA&pagina=1"))
+                .andRespond(withServerError());
+
+        assertThatThrownBy(() -> cliente.listarAprobadas())
+                .isInstanceOf(ServicioNoDisponibleException.class)
+                .hasMessage("No se pudo comunicar con el servicio de Materiales/Fórmulas");
+    }
+
+    @Test
+    @DisplayName("La configuración define 3 intentos, 5 s de espera y 20 s de límite")
+    void deberiaLeerLaConfiguracionDeResiliencia() throws IOException {
+        PropertySource<?> configuracion = new YamlPropertySourceLoader()
+                .load("application", new ClassPathResource("application.yml")).get(0);
+
+        assertThat(configuracion.getProperty("resilience4j.retry.instances.materiales.max-attempts"))
+                .isEqualTo(3);
+        assertThat(configuracion.getProperty("resilience4j.retry.instances.materiales.wait-duration"))
+                .isEqualTo("5s");
+        assertThat(configuracion.getProperty("resilience4j.timelimiter.instances.materiales.timeout-duration"))
+                .isEqualTo("20s");
+    }
+
+    private static String paginaJson(int cantidad, int pagina) {
+        int base = (pagina - 1) * 10;
+        String filas = IntStream.rangeClosed(1, cantidad)
+                .mapToObj(i -> "{\"codigo\":\"form-" + String.format("%03d", base + i)
+                        + "\",\"nombre\":\"Fórmula " + i + "\",\"estado\":\"APROBADA\"}")
+                .reduce((a, b) -> a + "," + b)
+                .orElse("");
+        return "[" + filas + "]";
     }
 }

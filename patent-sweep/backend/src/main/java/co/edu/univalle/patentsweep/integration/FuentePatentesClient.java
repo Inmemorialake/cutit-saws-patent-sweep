@@ -6,6 +6,7 @@ import co.edu.univalle.patentsweep.integration.dto.PatenteExternaDTO;
 import co.edu.univalle.patentsweep.integration.port.FuentePatentesPort;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.github.resilience4j.retry.annotation.Retry;
+import io.github.resilience4j.timelimiter.annotation.TimeLimiter;
 import java.time.LocalDate;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -35,6 +36,7 @@ public class FuentePatentesClient implements FuentePatentesPort {
     @Override
     @Retry(name = "fuentePatentes")
     @CircuitBreaker(name = "fuentePatentes")
+    @TimeLimiter(name = "fuentePatentes")
     public List<PatenteExternaDTO> buscarPatentes(List<String> terminos, List<String> clasificaciones,
                                                   LocalDate fechaSolicitudDesde) {
         try {

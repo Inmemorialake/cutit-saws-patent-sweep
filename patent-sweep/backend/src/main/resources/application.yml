@@ -89,6 +89,13 @@ resilience4j:
         wait-duration: 5s
         retry-exceptions:
           - co.edu.univalle.patentsweep.exception.ServicioNoDisponibleException
+  timelimiter:
+    instances:
+      materiales:
+        # D-5: límite global de 20 s por llamada lógica; cancela la espera de reintentos restantes.
+        timeout-duration: 20s
+      fuentePatentes:
+        timeout-duration: 20s
   circuitbreaker:
     instances:
       materiales:
