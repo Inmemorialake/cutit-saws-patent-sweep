@@ -18,4 +18,6 @@ public interface ConflictoRepository extends JpaRepository<Conflicto, Long> {
 
     long countByFormulaIdAndVersionFormulaAndEstado(String formulaId, String versionFormula,
                                                     EstadoConflicto estado);
+
+    long countByFormulaIdAndEstado(String formulaId, EstadoConflicto estado);
 }

@@ -11,9 +11,10 @@ Fuente de verdad para saber qué está implementado. Antes de continuar, leer `A
   - [x] 1/3 dependencias, configuración, seguridad JWT, clientes base y variables de entorno.
   - [x] 2/3 modelo JPA, repositorios, enums y excepciones desde `238806c`.
   - [x] 3/3 pruebas base, `mvn clean verify` (33 pruebas, cobertura y Checkstyle en verde) y `AGENTS.md` actualizado.
-- [ ] **Fase 2 — HU-02: búsqueda manual** (`feat(HU-02)`): `MotorCoincidencias`, `FuentePatentesPort`,
-      `MaterialesClient.obtenerFormula`, `ConfiguracionService.criteriosVigentes`, `ConflictoService`,
-      `HistorialService`, evento y endpoint `/buscar-conflictos`.
+- [x] **Fase 2 — HU-02: búsqueda manual** (`feat(HU-02)`): `MotorCoincidencias`, `FuentePatentesPort`,
+      `MaterialesClient.obtenerFormula`, `FuentePatentesClient`, `ConfiguracionService.criteriosVigentes`,
+      `ConflictoService` (dedupe ADR-009 y evento), `HistorialService`, controlador y DTOs de
+      `POST /buscar-conflictos`. `mvn clean verify` pasa con 94 pruebas, cobertura y Checkstyle en verde.
 - [ ] **Fase 3 — HU-04: estado calculado** (`feat(HU-04)`): `EstadoFormulaService.recalcular`, endpoint
       `/estado?formulaId=...`, conservando `/estado/{id}`.
 - [ ] **Fase 4 — HU-01: barrido** (4 commits `HU-01-1A` … `HU-01-1D`): planificador dinámico con

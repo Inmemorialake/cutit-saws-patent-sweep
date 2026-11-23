@@ -21,10 +21,20 @@ El versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
   `configuracion`, `evaluacion_formula`, `notificacion` y `usuario`, con sus enums de estado (P04, P17, P18).
 - Excepciones de integración y reglas de negocio, con handlers `ProblemDetail` 404/409/401/403/503 (P07, P19).
 - Pruebas base de `JwtProvider`, filtro de seguridad, usuarios semilla y handlers `ProblemDetail` (HU-00).
+- `POST /api/v1/patentes/buscar-conflictos`: búsqueda manual restringida a `ADMINISTRADOR`, con filtros por
+  clasificación/antigüedad, cálculo del porcentaje de coincidencia, persistencia de conflictos e historial,
+  publicación de `ConflictoDetectadoEvent` y respuestas 200/400/401/403/404/409/503 (HU-02, D-7, ADR-009).
+- Clientes funcionales `MaterialesClient` y `FuentePatentesClient` con reintentos/circuit breaker, motor
+  `MotorCoincidencias`, `ConfiguracionService`, `ConflictoService` y `HistorialService` (HU-02).
+- Pruebas de HU-02: motor, clientes con WireMock, controlador, servicios, dedupe por pareja y seguridad
+  401/403; `mvn clean verify` pasa con 94 pruebas, JaCoCo y Checkstyle en verde.
 
 ### Cambiado
 
-- `AGENTS.md` describe el estado real tras HU-00: seguridad y modelo JPA restaurados, HU-01/02/04 aún pendientes y Prometheus restringido (ADR-008).
+- `AGENTS.md` describe el estado real tras HU-00 y HU-02: seguridad, modelo JPA y búsqueda manual restaurados;
+  HU-01/04 siguen pendientes y Prometheus continúa restringido (ADR-008).
+- La búsqueda manual usa `POST /buscar-conflictos` con el usuario del JWT; `POST /busqueda` sigue siendo solo de registro (D-7).
+- Un conflicto se identifica por fórmula y patente, sin duplicarse aunque cambie la versión o el estado (ADR-009).
 
 ### Corregido
 
