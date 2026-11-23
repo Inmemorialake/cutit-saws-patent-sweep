@@ -15,8 +15,9 @@ Fuente de verdad para saber qué está implementado. Antes de continuar, leer `A
       `MaterialesClient.obtenerFormula`, `FuentePatentesClient`, `ConfiguracionService.criteriosVigentes`,
       `ConflictoService` (dedupe ADR-009 y evento), `HistorialService`, controlador y DTOs de
       `POST /buscar-conflictos`. `mvn clean verify` pasa con 94 pruebas, cobertura y Checkstyle en verde.
-- [ ] **Fase 3 — HU-04: estado calculado** (`feat(HU-04)`): `EstadoFormulaService.recalcular`, endpoint
-      `/estado?formulaId=...`, conservando `/estado/{id}`.
+- [x] **Fase 3 — HU-04: estado calculado** (`feat(HU-04)`): `EstadoFormulaService.consultarEstado`/`recalcular`,
+      endpoint `GET /estado?formulaId=...` junto a `/estado/{id}` (D-8), reglas de ADR-003/004 y llamada desde
+      `BusquedaService`. `mvn clean verify` pasa con 110 pruebas, cobertura y Checkstyle en verde.
 - [ ] **Fase 4 — HU-01: barrido** (4 commits `HU-01-1A` … `HU-01-1D`): planificador dinámico con
       ShedLock, cliente paginado, núcleo por fórmula, cierre/auditoría/métricas.
 

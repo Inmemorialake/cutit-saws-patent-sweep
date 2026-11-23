@@ -2,7 +2,7 @@
 
 ## Identidad y prioridad
 
-Módulo **Patent Sweep** de la plataforma Cutit Saws (curso 750021C, Universidad del Valle). Backend Java 21 + Spring Boot 3.5.16 en `patent-sweep/backend`, paquete raíz `co.edu.univalle.patentsweep`. Versión vigente: `v1.0.0-beta.1`; Sprint 0 cerrado y Sprint 1 en curso (HU-00 y HU-02 completadas).
+Módulo **Patent Sweep** de la plataforma Cutit Saws (curso 750021C, Universidad del Valle). Backend Java 21 + Spring Boot 3.5.16 en `patent-sweep/backend`, paquete raíz `co.edu.univalle.patentsweep`. Versión vigente: `v1.0.0-beta.1`; Sprint 0 cerrado y Sprint 1 en curso (HU-00, HU-02 y HU-04 completadas).
 
 **Regla de oro: el estado real del proyecto manda.** Ante discrepancias, este es el orden de precedencia:
 
@@ -19,15 +19,16 @@ Sí existe:
 - `POST /api/v1/patentes/busqueda`: registra una patente (`codigoPatente` con formato `PAT-NNNNNN`, `titulo`, opcionalmente `tipoProducto` y `resumen`) en estado `EN_TRAMITE` → 201/400/409.
 - `GET /api/v1/patentes/estado/{id}` → 200/404; ambas rutas exigen JWT desde HU-00.
 - `POST /api/v1/patentes/buscar-conflictos`: búsqueda manual (HU-02) restringida a `ADMINISTRADOR`; consulta Materiales/Fórmulas y la fuente de patentes, filtra con el motor de coincidencias, persiste conflictos/historial y devuelve 200/400/401/403/404/409/503 (D-7, ADR-009).
+- `GET /api/v1/patentes/estado?formulaId=form-NNN` (HU-04) → 200/400/401/404/500; convive con `GET /estado/{id}` (D-8). El estado se calcula en cada consulta y no se persiste: conflicto vigente, evaluación abierta, versión no revisada/fallida o `LIBRE` (ADR-003/004).
 - Errores `ProblemDetail` (RFC 9457) con `traceId`; Swagger/OpenAPI y Actuator/Prometheus. El health check y Swagger son públicos; Prometheus quedó restringido (ADR-008).
 - PostgreSQL 16 con Flyway V1–V6; entidades y repositorios mapeados para todas las tablas del esquema, con enums y excepciones propias.
 - Spring Security con JWT y roles `ADMINISTRADOR`/`SERVICIO`, Resilience4j, caché Caffeine, AOP, reloj inyectable, `RestClient` y clientes funcionales para Materiales y la fuente de patentes (HU-00/HU-02, ADR-008).
-- Pruebas de JWT, usuarios, filtro, handlers, motores, clientes WireMock, controladores y servicios; `mvn clean verify` pasa con 94 pruebas, JaCoCo y Checkstyle en verde.
+- Pruebas de JWT, usuarios, filtro, handlers, motores, clientes WireMock, controladores y servicios; `mvn clean verify` pasa con 110 pruebas, JaCoCo y Checkstyle en verde.
 - Docker multi-etapa, Compose, CI y CD a EC2 por SSM (sin SSH, imagen fijada por digest de GHCR).
 
 No existe todavía:
 
-- HU-01, HU-04…HU-12: barridos periódicos, estado calculado de fórmulas, evaluación, auditoría, notificaciones ni configuración operativa. Siguen con HU-04 y HU-01 en ese orden.
+- HU-01, HU-05…HU-12: barridos periódicos, evaluación, auditoría, notificaciones ni configuración operativa. Falta HU-01.
 - Endpoint de login ni emisión de token al cliente: el JWT se valida en el filtro y los usuarios iniciales se siembran desde variables de entorno (DA-11 restaurado parcialmente, ADR-008).
 - Planificador, ShedLock, lógica de barrido ni métricas de negocio. `ConflictoDetectadoEvent` ya se publica en HU-02, pero todavía no hay listeners; el resto del código anterior se recupera desde `238806c` solo cuando una HU lo pida.
 

@@ -59,13 +59,15 @@ class BusquedaServiceTest {
     private ConflictoService conflictoService;
     @Mock
     private HistorialService historialService;
+    @Mock
+    private EstadoFormulaService estadoFormulaService;
 
     private BusquedaService servicio;
 
     @BeforeEach
     void preparar() {
         servicio = new BusquedaService(materialesClient, fuentePatentes, motorCoincidencias,
-                configuracionService, conflictoService, historialService, RELOJ);
+                configuracionService, conflictoService, historialService, estadoFormulaService, RELOJ);
     }
 
     @Test
@@ -86,6 +88,7 @@ class BusquedaServiceTest {
         List<Conflicto> resultado = servicio.buscar("form-001", "ingeniera");
 
         assertThat(resultado).containsExactly(conflicto);
+        verify(estadoFormulaService).recalcular("form-001");
         ArgumentCaptor<Map<String, Object>> parametros = ArgumentCaptor.captor();
         verify(conflictoService).registrarNuevos(eq(formula), eq("ingeniera"), anyList(), parametros.capture());
         assertThat(parametros.getValue())

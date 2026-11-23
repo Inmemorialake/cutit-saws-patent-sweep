@@ -28,12 +28,20 @@ El versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
   `MotorCoincidencias`, `ConfiguracionService`, `ConflictoService` y `HistorialService` (HU-02).
 - Pruebas de HU-02: motor, clientes con WireMock, controlador, servicios, dedupe por pareja y seguridad
   401/403; `mvn clean verify` pasa con 94 pruebas, JaCoCo y Checkstyle en verde.
+- `GET /api/v1/patentes/estado?formulaId=form-NNN` (HU-04): estado calculado en cada consulta, sin tabla
+  ni columna de estado persistida, con respuestas 200/400/401/404/500 (ADR-003, D-3 y D-8).
+- `EstadoFormulaService.consultarEstado`/`recalcular`: conflicto `DETECTADO` de la versión vigente,
+  evaluación abierta, revisión ausente/fallida/de otra versión y `LIBRE`, en ese orden (ADR-004).
+- `BusquedaService` invoca `EstadoFormulaService.recalcular(formulaId)` al terminar la búsqueda manual (HU-02).
+- Pruebas de HU-04: servicio (11 casos), controlador y integración del flujo; `mvn clean verify` pasa con
+  110 pruebas, JaCoCo y Checkstyle en verde.
 
 ### Cambiado
 
-- `AGENTS.md` describe el estado real tras HU-00 y HU-02: seguridad, modelo JPA y búsqueda manual restaurados;
-  HU-01/04 siguen pendientes y Prometheus continúa restringido (ADR-008).
+- `AGENTS.md` describe el estado real tras HU-00, HU-02 y HU-04: seguridad, modelo JPA, búsqueda manual y
+  estado calculado restaurados; falta HU-01 y Prometheus continúa restringido (ADR-008).
 - La búsqueda manual usa `POST /buscar-conflictos` con el usuario del JWT; `POST /busqueda` sigue siendo solo de registro (D-7).
+- Conviven `GET /estado/{id}` y `GET /estado?formulaId=...`; la primera no se rompe (D-8).
 - Un conflicto se identifica por fórmula y patente, sin duplicarse aunque cambie la versión o el estado (ADR-009).
 
 ### Corregido
