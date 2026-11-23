@@ -7,6 +7,7 @@ import static org.mockito.Mockito.when;
 import co.edu.univalle.patentsweep.exception.ConfiguracionNoEncontradaException;
 import co.edu.univalle.patentsweep.model.Configuracion;
 import co.edu.univalle.patentsweep.repository.ConfiguracionRepository;
+import java.time.Duration;
 import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -40,5 +41,38 @@ class ConfiguracionServiceTest {
 
         assertThatThrownBy(() -> servicio.criteriosVigentes())
                 .isInstanceOf(ConfiguracionNoEncontradaException.class);
+    }
+
+    @Test
+    @DisplayName("usa un día cuando no hay frecuencia configurada")
+    void deberiaUsarUnDiaPorDefecto() {
+        when(configuracionRepository.findByActivaTrue()).thenReturn(Optional.empty());
+
+        assertThat(servicio.frecuenciaVigente()).isEqualTo(Duration.ofDays(1));
+    }
+
+    @Test
+    @DisplayName("interpreta la frecuencia vigente en horas, días y semanas")
+    void deberiaLeerLaFrecuenciaVigente() {
+        when(configuracionRepository.findByActivaTrue()).thenReturn(Optional.of(
+                Configuracion.builder().frecuenciaValor(6).frecuenciaUnidad("HORAS").build()));
+        assertThat(servicio.frecuenciaVigente()).isEqualTo(Duration.ofHours(6));
+
+        when(configuracionRepository.findByActivaTrue()).thenReturn(Optional.of(
+                Configuracion.builder().frecuenciaValor(2).frecuenciaUnidad("DIAS").build()));
+        assertThat(servicio.frecuenciaVigente()).isEqualTo(Duration.ofDays(2));
+
+        when(configuracionRepository.findByActivaTrue()).thenReturn(Optional.of(
+                Configuracion.builder().frecuenciaValor(3).frecuenciaUnidad("SEMANAS").build()));
+        assertThat(servicio.frecuenciaVigente()).isEqualTo(Duration.ofDays(21));
+    }
+
+    @Test
+    @DisplayName("una frecuencia inválida cae a un día")
+    void deberiaUsarUnDiaAnteUnaUnidadDesconocida() {
+        when(configuracionRepository.findByActivaTrue()).thenReturn(Optional.of(
+                Configuracion.builder().frecuenciaValor(0).frecuenciaUnidad("OTRA").build()));
+
+        assertThat(servicio.frecuenciaVigente()).isEqualTo(Duration.ofDays(1));
     }
 }

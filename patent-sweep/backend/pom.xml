@@ -25,6 +25,7 @@
         <jjwt.version>0.13.0</jjwt.version>
         <wiremock.version>3.13.2</wiremock.version>
         <archunit.version>1.4.1</archunit.version>
+        <shedlock.version>6.9.0</shedlock.version>
         <jacoco.version>0.8.16</jacoco.version>
         <sonar.version>5.0.0.4389</sonar.version>
         <!-- SonarCloud: organización y clave del proyecto (cámbielas aquí si SonarCloud asigna otras). -->
@@ -119,6 +120,17 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-aop</artifactId>
+        </dependency>
+        <!-- P22/ShedLock: una sola ejecución del barrido aunque haya varias réplicas (HU-01-1A). -->
+        <dependency>
+            <groupId>net.javacrumbs.shedlock</groupId>
+            <artifactId>shedlock-spring</artifactId>
+            <version>${shedlock.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>net.javacrumbs.shedlock</groupId>
+            <artifactId>shedlock-provider-jdbc-template</artifactId>
+            <version>${shedlock.version}</version>
         </dependency>
         <dependency>
             <groupId>io.github.resilience4j</groupId>
