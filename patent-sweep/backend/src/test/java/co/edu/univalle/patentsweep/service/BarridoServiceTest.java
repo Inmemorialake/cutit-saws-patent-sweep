@@ -91,7 +91,7 @@ class BarridoServiceTest {
 
         assertThat(barrido.getEstado()).isEqualTo(EstadoBarrido.COMPLETADO);
         assertThat(barrido.getFechaInicio()).isEqualTo(FIN);
-        assertThat(barrido.getMensaje()).isEqualTo("No hay fórmulas registradas en estado APROBADA para evaluar");
+        assertThat(barrido.getMensaje()).isEqualTo("Barrido completado exitosamente");
         verify(materialesClient, never()).obtenerFormula(anyString());
         verifyNoInteractions(configuracionService, fuentePatentes, conflictoService, historialService,
                 estadoFormulaService);

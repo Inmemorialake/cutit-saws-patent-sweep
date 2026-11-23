@@ -48,6 +48,7 @@ public class BarridoService {
     private static final DateTimeFormatter FORMATO_FECHA = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
     private static final String USUARIO_SISTEMA = "SISTEMA";
     private static final String SIN_VERSION = "SIN_VERSION";
+    private static final String MENSAJE_COMPLETADO = "Barrido completado exitosamente";
     private static final String MENSAJE_SIN_FORMULAS =
             "No hay fórmulas registradas en estado APROBADA para evaluar";
     private static final String MENSAJE_MATERIALES = "No se pudo comunicar con el servicio de Materiales/Fórmulas";
@@ -126,7 +127,7 @@ public class BarridoService {
         barrido.setTotalFormulas(formulas.size());
         if (formulas.isEmpty()) {
             LOG.info(MENSAJE_SIN_FORMULAS);
-            return finalizar(barrido, 0, 0, 0, 0, 0, MENSAJE_SIN_FORMULAS);
+            return finalizar(barrido, 0, 0, 0, 0, 0, MENSAJE_COMPLETADO);
         }
 
         Configuracion configuracion;
@@ -201,10 +202,10 @@ public class BarridoService {
             }
         }
 
-        String mensaje = "Barrido completado exitosamente";
         LOG.info("Barrido finalizado: {} procesadas, {} no procesadas",
                 procesadas, noProcesadas);
-        return finalizar(barrido, formulas.size(), procesadas, conConflicto, sinConflicto, noProcesadas, mensaje);
+        return finalizar(barrido, formulas.size(), procesadas, conConflicto, sinConflicto,
+                noProcesadas, MENSAJE_COMPLETADO);
     }
 
     private Configuracion criteriosIniciales() {
