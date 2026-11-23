@@ -58,6 +58,11 @@ public class SecurityConfig {
     }
 
     @Bean
+    public JwtAuthFilter filtroJwt(JwtProvider jwtProvider) {
+        return new JwtAuthFilter(jwtProvider);
+    }
+
+    @Bean
     public PasswordEncoder codificadorDeClaves() {
         return new BCryptPasswordEncoder();
     }

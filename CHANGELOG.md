@@ -20,10 +20,15 @@ El versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 - Entidades y repositorios JPA para las tablas del esquema V1–V6: `conflicto`, `revision_formula`,
   `configuracion`, `evaluacion_formula`, `notificacion` y `usuario`, con sus enums de estado (P04, P17, P18).
 - Excepciones de integración y reglas de negocio, con handlers `ProblemDetail` 404/409/401/403/503 (P07, P19).
+- Pruebas base de `JwtProvider`, filtro de seguridad, usuarios semilla y handlers `ProblemDetail` (HU-00).
 
 ### Cambiado
 
-- `AGENTS.md` ya no describe HU-00/HU-02 como documentos vacíos y apunta a `docs/progress.md`.
+- `AGENTS.md` describe el estado real tras HU-00: seguridad y modelo JPA restaurados, HU-01/02/04 aún pendientes y Prometheus restringido (ADR-008).
+
+### Corregido
+
+- `JwtAuthFilter` se registra como bean en `SecurityConfig` para no romper los slices `@WebMvcTest`.
 
 ---
 

@@ -2,7 +2,7 @@
 
 ## Identidad y prioridad
 
-Módulo **Patent Sweep** de la plataforma Cutit Saws (curso 750021C, Universidad del Valle). Backend Java 21 + Spring Boot 3.5.16 en `patent-sweep/backend`, paquete raíz `co.edu.univalle.patentsweep`. Versión vigente: `v1.0.0-beta.1` (Sprint 0, arquetipo de una sola transacción).
+Módulo **Patent Sweep** de la plataforma Cutit Saws (curso 750021C, Universidad del Valle). Backend Java 21 + Spring Boot 3.5.16 en `patent-sweep/backend`, paquete raíz `co.edu.univalle.patentsweep`. Versión vigente: `v1.0.0-beta.1`; Sprint 0 cerrado y Sprint 1 en curso (HU-00 completada).
 
 **Regla de oro: el estado real del proyecto manda.** Ante discrepancias, este es el orden de precedencia:
 
@@ -12,22 +12,24 @@ Módulo **Patent Sweep** de la plataforma Cutit Saws (curso 750021C, Universidad
 
 No implementes funcionalidad «porque está en el DAS»: el DAS y el backlog describen el destino, no el estado actual. Para el avance del Sprint 1, la fuente de verdad es `docs/progress.md` junto con ADR-008 y ADR-009.
 
-## Estado actual (Sprint 0)
+## Estado actual (Sprint 1)
 
 Sí existe:
 
 - `POST /api/v1/patentes/busqueda`: registra una patente (`codigoPatente` con formato `PAT-NNNNNN`, `titulo`, opcionalmente `tipoProducto` y `resumen`) en estado `EN_TRAMITE` → 201/400/409.
-- `GET /api/v1/patentes/estado/{id}` → 200/404.
-- Errores `ProblemDetail` (RFC 9457) con `traceId`; Swagger/OpenAPI y Actuator/Prometheus.
-- PostgreSQL 16 con Flyway V1–V6; una sola entidad JPA mapeada (`Patente`).
+- `GET /api/v1/patentes/estado/{id}` → 200/404; ambas rutas exigen JWT desde HU-00.
+- Errores `ProblemDetail` (RFC 9457) con `traceId`; Swagger/OpenAPI y Actuator/Prometheus. El health check y Swagger son públicos; Prometheus quedó restringido (ADR-008).
+- PostgreSQL 16 con Flyway V1–V6; entidades y repositorios mapeados para todas las tablas del esquema, con enums y excepciones propias.
+- Spring Security con JWT y roles `ADMINISTRADOR`/`SERVICIO`, Resilience4j, caché Caffeine, AOP, reloj inyectable y `RestClient` base (HU-00, ADR-008).
+- Pruebas base de JWT, usuarios, filtro de seguridad y handlers; `mvn clean verify` pasa con 33 pruebas, JaCoCo y Checkstyle en verde.
 - Docker multi-etapa, Compose, CI y CD a EC2 por SSM (sin SSH, imagen fijada por digest de GHCR).
 
 No existe todavía:
 
-- HU-01…HU-12: barridos periódicos, conflictos, evaluación de fórmulas, auditoría, notificaciones ni configuración. Empiezan en Sprint 1.
-- Autenticación, JWT ni RBAC (retirados en el arquetipo; DA-11 queda pendiente).
-- Clientes HTTP de integración: `integration/` solo contiene `LEEME.txt`; los mocks WireMock no se consumen.
-- Entidades ni repositorios para las otras nueve tablas del esquema. El código anterior se recupera desde el commit `5d13af5` solo cuando una HU lo pida.
+- HU-01…HU-12: barridos periódicos, conflictos, evaluación de fórmulas, auditoría, notificaciones ni configuración operativa. Empiezan con HU-02, HU-04 y HU-01 en ese orden.
+- Endpoint de login ni emisión de token al cliente: el JWT se valida en el filtro y los usuarios iniciales se siembran desde variables de entorno (DA-11 restaurado parcialmente, ADR-008).
+- Clientes HTTP funcionales: `integration/` sigue con solo `LEEME.txt`; los mocks WireMock no se consumen, aunque ya existen los `RestClient` base y las dependencias de prueba.
+- Planificador, ShedLock, lógica de barrido, eventos ni métricas de negocio. El código anterior se recupera desde el commit `238806c` solo cuando una HU lo pida.
 
 ## Cómo trabajar en el código
 
@@ -69,4 +71,4 @@ API en `localhost:8085`; `GUIA_EJECUCION.md` tiene más casos de prueba. El aná
 - `docs/HU/HU-00.md` y `docs/HU/HU-02.md` están versionados y con contenido; `HU-01.MD` usa extensión `.MD`. Consulta `docs/progress.md` antes de asumir qué HU está implementada.
 - ADR-001…004 están a la espera de sus HU; ADR-005 y ADR-007 se leen juntos (SSH quedó sustituido por SSM).
 - ADR-008 y ADR-009 dejan sin efecto parcial el arquetipo de ADR-006 y la unicidad por versión de ADR-002; el estado real se registra en `docs/progress.md`.
-- No cargar datos reales de patentes en producción; Prometheus y Swagger son públicos hasta que vuelva la seguridad.
+- No cargar datos reales de patentes en producción; con HU-00 vuelve la seguridad: health y Swagger siguen públicos, Prometheus está restringido (ADR-008).

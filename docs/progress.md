@@ -7,10 +7,10 @@ Fuente de verdad para saber qué está implementado. Antes de continuar, leer `A
 
 - [x] **Fase 0 — Gobernanza**: ADR-008 (restauración Sprint 1), ADR-009 (dedupe por pareja),
       `docs/discrepancias.md`, este archivo y entrada en `CHANGELOG.md`.
-- [ ] **Fase 1 — HU-00: cimientos** (commit `chore(HU-00)` dividido en 3 entregas para sesiones cortas)
+- [x] **Fase 1 — HU-00: cimientos** (commits `edc4a36`, `3a9fc6d` y el cierre de esta fase)
   - [x] 1/3 dependencias, configuración, seguridad JWT, clientes base y variables de entorno.
   - [x] 2/3 modelo JPA, repositorios, enums y excepciones desde `238806c`.
-  - [ ] 3/3 pruebas base, `mvn clean verify` y actualización de `AGENTS.md`.
+  - [x] 3/3 pruebas base, `mvn clean verify` (33 pruebas, cobertura y Checkstyle en verde) y `AGENTS.md` actualizado.
 - [ ] **Fase 2 — HU-02: búsqueda manual** (`feat(HU-02)`): `MotorCoincidencias`, `FuentePatentesPort`,
       `MaterialesClient.obtenerFormula`, `ConfiguracionService.criteriosVigentes`, `ConflictoService`,
       `HistorialService`, evento y endpoint `/buscar-conflictos`.
