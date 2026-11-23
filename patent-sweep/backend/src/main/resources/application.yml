@@ -48,3 +48,75 @@ management:
 logging:
   pattern:
     level: "%5p [${spring.application.name:},%X{traceId:-}]"
+
+# Parámetros propios de Patent Sweep.
+patentsweep:
+  seguridad:
+    jwt-secreto: ${JWT_SECRET}
+    jwt-expiracion-minutos: ${JWT_EXPIRACION_MINUTOS:60}
+    admin-usuario: ${ADMIN_USUARIO:}
+    admin-clave: ${ADMIN_CLAVE:}
+    servicio-usuario: ${SERVICIO_USUARIO:}
+    servicio-clave: ${SERVICIO_CLAVE:}
+  materiales:
+    url-base: ${MATERIALES_URL}
+  notificaciones:
+    url-base: ${NOTIFICACIONES_URL}
+  http:
+    # Tiempo máximo de espera por intento (PB HU-01/02/03/12: 20 s).
+    timeout-conexion-segundos: 5
+    timeout-lectura-segundos: 20
+  coincidencia:
+    # Regla del PB (HU-01, criterio 6): al menos el 50 % de los materiales y como mínimo 2.
+    porcentaje-minimo: 50
+    minimo-materiales: 2
+  fuente-patentes:
+    url-base: ${FUENTE_PATENTES_URL}
+  async:
+    nucleo: 2
+    maximo: 4
+    cola: 100
+
+# Resilience4j (P10, P25): 3 intentos con 5 s de espera (PB) y Circuit Breaker.
+# El límite de 20 s por intento se aplica como timeout de lectura del cliente HTTP.
+resilience4j:
+  retry:
+    instances:
+      materiales:
+        max-attempts: 3
+        wait-duration: 5s
+        retry-exceptions:
+          - co.edu.univalle.patentsweep.exception.ServicioNoDisponibleException
+      notificaciones:
+        max-attempts: 3
+        wait-duration: 5s
+        retry-exceptions:
+          - co.edu.univalle.patentsweep.exception.ServicioNoDisponibleException
+      fuentePatentes:
+        max-attempts: 3
+        wait-duration: 5s
+        retry-exceptions:
+          - co.edu.univalle.patentsweep.exception.ServicioNoDisponibleException
+  circuitbreaker:
+    instances:
+      materiales:
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+        record-exceptions:
+          - co.edu.univalle.patentsweep.exception.ServicioNoDisponibleException
+      notificaciones:
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+        record-exceptions:
+          - co.edu.univalle.patentsweep.exception.ServicioNoDisponibleException
+      fuentePatentes:
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+        record-exceptions:
+          - co.edu.univalle.patentsweep.exception.ServicioNoDisponibleException
