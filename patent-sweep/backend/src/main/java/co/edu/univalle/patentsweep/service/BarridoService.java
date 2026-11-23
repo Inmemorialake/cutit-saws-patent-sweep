@@ -16,6 +16,9 @@ import co.edu.univalle.patentsweep.model.enums.EstadoBarrido;
 import co.edu.univalle.patentsweep.model.enums.OrigenRevision;
 import co.edu.univalle.patentsweep.model.enums.ResultadoRevision;
 import co.edu.univalle.patentsweep.repository.BarridoRepository;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -59,13 +62,14 @@ public class BarridoService {
     private final ConflictoService conflictoService;
     private final HistorialService historialService;
     private final EstadoFormulaService estadoFormulaService;
+    private final MeterRegistry meterRegistry;
     private final Clock reloj;
 
     public BarridoService(BarridoRepository barridoRepository, MaterialesClient materialesClient,
                           FuentePatentesPort fuentePatentes, MotorCoincidencias motorCoincidencias,
                           ConfiguracionService configuracionService, ConflictoService conflictoService,
                           HistorialService historialService, EstadoFormulaService estadoFormulaService,
-                          Clock reloj) {
+                          MeterRegistry meterRegistry, Clock reloj) {
         this.barridoRepository = barridoRepository;
         this.materialesClient = materialesClient;
         this.fuentePatentes = fuentePatentes;
@@ -74,6 +78,7 @@ public class BarridoService {
         this.conflictoService = conflictoService;
         this.historialService = historialService;
         this.estadoFormulaService = estadoFormulaService;
+        this.meterRegistry = meterRegistry;
         this.reloj = reloj;
     }
 
@@ -87,19 +92,26 @@ public class BarridoService {
 
         MDC.put("traceId", UUID.randomUUID().toString());
         Instant inicio = Instant.now(reloj);
+        Barrido barrido = barridoRepository.save(Barrido.builder()
+                .estado(EstadoBarrido.EN_CURSO)
+                .fechaInicio(LocalDateTime.now(reloj))
+                .build());
+        LOG.info("Iniciando barrido automático {}", FORMATO_FECHA.format(barrido.getFechaInicio()));
         try {
-            Barrido barrido = barridoRepository.save(Barrido.builder()
-                    .estado(EstadoBarrido.EN_CURSO)
-                    .fechaInicio(LocalDateTime.now(reloj))
-                    .build());
-            LOG.info("Iniciando barrido automático {}", FORMATO_FECHA.format(barrido.getFechaInicio()));
-            return ejecutarBarrido(barrido, inicio);
+            Barrido resultado = ejecutarBarrido(barrido);
+            registrarDuracion(inicio);
+            return resultado;
+        } catch (RuntimeException excepcion) {
+            LOG.error("Fallo general del barrido: {}", excepcion.getMessage());
+            Barrido fallido = fallar(barrido, "Fallo general del barrido: " + excepcion.getMessage());
+            registrarDuracion(inicio);
+            return fallido;
         } finally {
             MDC.remove("traceId");
         }
     }
 
-    private Barrido ejecutarBarrido(Barrido barrido, Instant inicio) {
+    private Barrido ejecutarBarrido(Barrido barrido) {
         List<FormulaResumenDTO> formulas;
         try {
             formulas = materialesClient.listarAprobadas();
@@ -177,8 +189,10 @@ public class BarridoService {
             procesadas++;
             if (conflictos.isEmpty()) {
                 sinConflicto++;
+                registrarMetrica("sin_conflicto");
             } else {
                 conConflicto++;
+                registrarMetrica("con_conflicto");
             }
             try {
                 estadoFormulaService.recalcular(formulaId);
@@ -187,8 +201,9 @@ public class BarridoService {
             }
         }
 
-        String mensaje = "Barrido completado: " + procesadas + " procesadas, " + noProcesadas + " no procesadas";
-        LOG.info("Barrido finalizado en {} ms", Duration.between(inicio, Instant.now(reloj)).toMillis());
+        String mensaje = "Barrido completado exitosamente";
+        LOG.info("Barrido finalizado: {} procesadas, {} no procesadas",
+                procesadas, noProcesadas);
         return finalizar(barrido, formulas.size(), procesadas, conConflicto, sinConflicto, noProcesadas, mensaje);
     }
 
@@ -231,6 +246,7 @@ public class BarridoService {
     }
 
     private void registrarFallo(String formulaId, String version, Map<String, Object> parametros, String mensaje) {
+        registrarMetrica("no_procesado");
         try {
             historialService.registrar(formulaId, version, USUARIO_SISTEMA, OrigenRevision.BARRIDO_AUTOMATICO,
                     ResultadoRevision.FALLO_TECNICO, parametros, mensaje, LocalDateTime.now(reloj));
@@ -243,6 +259,21 @@ public class BarridoService {
             LOG.debug("No se pudo recalcular el estado de {} tras el fallo: {}",
                     formulaId, excepcion.getMessage());
         }
+    }
+
+    private void registrarMetrica(String resultado) {
+        Counter.builder("patentsweep.barrido.formulas")
+                .description("Fórmulas evaluadas por el barrido automático, por resultado")
+                .tag("resultado", resultado)
+                .register(meterRegistry)
+                .increment();
+    }
+
+    private void registrarDuracion(Instant inicio) {
+        Timer.builder("patentsweep.barrido.duracion")
+                .description("Duración del barrido automático de fórmulas aprobadas")
+                .register(meterRegistry)
+                .record(Duration.between(inicio, Instant.now(reloj)));
     }
 
     private Barrido finalizar(Barrido barrido, int totalFormulas, int procesadas, int conConflicto,

@@ -35,11 +35,18 @@ El versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 - `BusquedaService` invoca `EstadoFormulaService.recalcular(formulaId)` al terminar la búsqueda manual (HU-02).
 - Pruebas de HU-04: servicio (11 casos), controlador y integración del flujo; `mvn clean verify` pasa con
   110 pruebas, JaCoCo y Checkstyle en verde.
+- Barrido automático (HU-01): planificador `Trigger` con ShedLock y recuperación de barridos huérfanos
+  (`V7__shedlock.sql`), cliente de Materiales paginado en 10, orquestación por fórmula con origen
+  `BARRIDO_AUTOMATICO`, reintento/timeout de 20 s y cierre con conteos y `Barrido completado exitosamente`.
+- Métricas Micrometer del barrido: `patentsweep.barrido.duracion` y
+  `patentsweep.barrido.formulas{resultado="con_conflicto|sin_conflicto|no_procesado"}` (D-2, D-5, D-10).
+- Pruebas de HU-01: planificador, recuperación, paginación, orquestación, cierre y métricas;
+  `mvn clean verify` pasa con 134 pruebas, JaCoCo y Checkstyle en verde.
 
 ### Cambiado
 
-- `AGENTS.md` describe el estado real tras HU-00, HU-02 y HU-04: seguridad, modelo JPA, búsqueda manual y
-  estado calculado restaurados; falta HU-01 y Prometheus continúa restringido (ADR-008).
+- `AGENTS.md` describe el estado real tras HU-00, HU-01, HU-02 y HU-04: seguridad, modelo JPA, búsqueda
+  manual, estado calculado y barrido automático restaurados; Prometheus continúa restringido (ADR-008).
 - La búsqueda manual usa `POST /buscar-conflictos` con el usuario del JWT; `POST /busqueda` sigue siendo solo de registro (D-7).
 - Conviven `GET /estado/{id}` y `GET /estado?formulaId=...`; la primera no se rompe (D-8).
 - Un conflicto se identifica por fórmula y patente, sin duplicarse aunque cambie la versión o el estado (ADR-009).

@@ -30,6 +30,7 @@ import co.edu.univalle.patentsweep.model.enums.EstadoVigenciaPatente;
 import co.edu.univalle.patentsweep.model.enums.OrigenRevision;
 import co.edu.univalle.patentsweep.model.enums.ResultadoRevision;
 import co.edu.univalle.patentsweep.repository.BarridoRepository;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
@@ -50,6 +51,8 @@ class BarridoServiceTest {
 
     private static final Clock RELOJ = Clock.fixed(Instant.parse("2026-11-23T10:15:30Z"), ZoneOffset.UTC);
     private static final LocalDateTime FIN = LocalDateTime.of(2026, 11, 23, 10, 15, 30);
+
+    private final SimpleMeterRegistry metricas = new SimpleMeterRegistry();
 
     @Mock
     private BarridoRepository barridoRepository;
@@ -132,8 +135,15 @@ class BarridoServiceTest {
         assertThat(barrido.getTotalConConflicto()).isEqualTo(1);
         assertThat(barrido.getTotalSinConflicto()).isEqualTo(1);
         assertThat(barrido.getNoProcesadas()).isEqualTo(2);
-        assertThat(barrido.getMensaje()).contains("2 procesadas, 2 no procesadas");
+        assertThat(barrido.getMensaje()).isEqualTo("Barrido completado exitosamente");
         assertThat(barrido.getFechaFin()).isEqualTo(FIN);
+        assertThat(metricas.get("patentsweep.barrido.formulas").tag("resultado", "con_conflicto")
+                .counter().count()).isEqualTo(1.0);
+        assertThat(metricas.get("patentsweep.barrido.formulas").tag("resultado", "sin_conflicto")
+                .counter().count()).isEqualTo(1.0);
+        assertThat(metricas.get("patentsweep.barrido.formulas").tag("resultado", "no_procesado")
+                .counter().count()).isEqualTo(2.0);
+        assertThat(metricas.find("patentsweep.barrido.duracion").timer()).isNotNull();
         verify(conflictoService, times(2)).registrarNuevos(any(), eq("SISTEMA"),
                 eq(OrigenRevision.BARRIDO_AUTOMATICO), anyList(), anyMap());
         verify(historialService, times(2)).registrar(anyString(), anyString(), eq("SISTEMA"),
@@ -172,6 +182,21 @@ class BarridoServiceTest {
         assertThat(barrido.getFechaFin()).isEqualTo(FIN);
         verifyNoInteractions(configuracionService, fuentePatentes, conflictoService, historialService,
                 estadoFormulaService);
+    }
+
+    @Test
+    @DisplayName("marca el barrido como fallido ante una excepción general")
+    void deberiaFallarAnteExcepcionGeneral() {
+        permitirGuardado();
+        when(materialesClient.listarAprobadas()).thenReturn(List.of(resumen("form-001")));
+        when(configuracionService.criteriosVigentes()).thenThrow(new IllegalStateException("BD caída"));
+
+        Barrido barrido = servicio().ejecutar();
+
+        assertThat(barrido.getEstado()).isEqualTo(EstadoBarrido.FALLIDO);
+        assertThat(barrido.getMensaje()).isEqualTo("Fallo general del barrido: BD caída");
+        assertThat(barrido.getFechaFin()).isEqualTo(FIN);
+        verifyNoInteractions(fuentePatentes, conflictoService, historialService, estadoFormulaService);
     }
 
     @Test
@@ -254,7 +279,7 @@ class BarridoServiceTest {
 
     private BarridoService servicio() {
         return new BarridoService(barridoRepository, materialesClient, fuentePatentes, motorCoincidencias,
-                configuracionService, conflictoService, historialService, estadoFormulaService, RELOJ);
+                configuracionService, conflictoService, historialService, estadoFormulaService, metricas, RELOJ);
     }
 
     private void permitirGuardado() {
