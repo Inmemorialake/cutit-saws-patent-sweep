@@ -130,6 +130,22 @@ class ConflictoServiceTest {
     }
 
     @Test
+    @DisplayName("registra el origen BARRIDO_AUTOMATICO cuando lo indica el barrido")
+    void deberiaRegistrarOrigenBarrido() {
+        when(conflictoRepository.countByFormulaIdAndEstado("form-001", EstadoConflicto.DETECTADO)).thenReturn(0L);
+        when(historialService.registrar(eq("form-001"), eq("2"), eq("SISTEMA"),
+                eq(OrigenRevision.BARRIDO_AUTOMATICO), eq(ResultadoRevision.SIN_CONFLICTO),
+                anyMap(), isNull(), any())).thenReturn(revision());
+
+        assertThat(servicio.registrarNuevos(formula("2"), "SISTEMA",
+                OrigenRevision.BARRIDO_AUTOMATICO, List.of(), Map.of())).isEmpty();
+
+        verify(historialService).registrar(eq("form-001"), eq("2"), eq("SISTEMA"),
+                eq(OrigenRevision.BARRIDO_AUTOMATICO), eq(ResultadoRevision.SIN_CONFLICTO),
+                anyMap(), isNull(), any());
+    }
+
+    @Test
     @DisplayName("la patente externa se persiste con todos sus datos")
     void deberiaConvertirLaPatenteExterna() {
         PatenteExternaDTO externa = new PatenteExternaDTO("PAT-998822", "Aleación", "Cadena",

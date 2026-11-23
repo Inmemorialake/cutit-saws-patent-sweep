@@ -44,8 +44,15 @@ public class ConflictoService {
 
     @Transactional
     public List<Conflicto> registrarNuevos(FormulaExternaDTO formulaExterna, String username,
-                                           List<PatenteExternaDTO> coincidencias,
-                                           Map<String, Object> parametros) {
+                                            List<PatenteExternaDTO> coincidencias,
+                                            Map<String, Object> parametros) {
+        return registrarNuevos(formulaExterna, username, OrigenRevision.BUSQUEDA_MANUAL, coincidencias, parametros);
+    }
+
+    @Transactional
+    public List<Conflicto> registrarNuevos(FormulaExternaDTO formulaExterna, String username,
+                                            OrigenRevision origen, List<PatenteExternaDTO> coincidencias,
+                                            Map<String, Object> parametros) {
         String formulaId = formulaExterna.codigo();
         String version = formulaExterna.versionRegistrada();
         LocalDateTime ahora = LocalDateTime.now(reloj);
@@ -65,7 +72,7 @@ public class ConflictoService {
         ResultadoRevision resultado = hayConflictos || hayVigentes
                 ? ResultadoRevision.CON_CONFLICTO : ResultadoRevision.SIN_CONFLICTO;
         RevisionFormula revision = historialService.registrar(formulaId, version, username,
-                OrigenRevision.BUSQUEDA_MANUAL, resultado, parametros, null, ahora);
+                origen, resultado, parametros, null, ahora);
 
         List<Conflicto> conflictos = new ArrayList<>();
         for (int i = 0; i < patentes.size(); i++) {
