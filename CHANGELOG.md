@@ -17,6 +17,9 @@ El versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 - Seguridad JWT con roles `ADMINISTRADOR`/`SERVICIO`, configuración de Resilience4j, caché Caffeine,
   reloj inyectable y clientes `RestClient` base para Materiales y la fuente de patentes (HU-00, ADR-008).
 - Variables de entorno para JWT y las URL de integraciones en `.env.example` y Docker Compose.
+- Entidades y repositorios JPA para las tablas del esquema V1–V6: `conflicto`, `revision_formula`,
+  `configuracion`, `evaluacion_formula`, `notificacion` y `usuario`, con sus enums de estado (P04, P17, P18).
+- Excepciones de integración y reglas de negocio, con handlers `ProblemDetail` 404/409/401/403/503 (P07, P19).
 
 ### Cambiado
 
