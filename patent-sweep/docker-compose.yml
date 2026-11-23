@@ -18,9 +18,8 @@ services:
       - patent-sweep-red
     restart: unless-stopped
 
-  # [Archetype Convention Addition] Simula las APIs de Materiales/Fórmulas, Notificaciones y la fuente
-  # de patentes (ADR-001). El arquetipo Sprint 0 aún no las consume: quedan listas para las HU de
-  # integración (HU-02, HU-03, HU-12). Ver mocks/mappings.
+  # Simula las APIs de Materiales/Fórmulas, Notificaciones y la fuente de patentes (ADR-001).
+  # Las HU de integración (HU-01, HU-02, HU-03, HU-12) consumen estos mocks. Ver mocks/mappings.
   apis-simuladas:
     image: wiremock/wiremock:3.13.2
     volumes:
@@ -41,6 +40,14 @@ services:
       DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
       DB_POOL_MAX: ${DB_POOL_MAX}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRACION_MINUTOS: ${JWT_EXPIRACION_MINUTOS}
+      ADMIN_USUARIO: ${ADMIN_USUARIO}
+      ADMIN_CLAVE: ${ADMIN_CLAVE}
+      SERVICIO_USUARIO: ${SERVICIO_USUARIO}
+      SERVICIO_CLAVE: ${SERVICIO_CLAVE}
+      MATERIALES_URL: ${MATERIALES_URL}
+      FUENTE_PATENTES_URL: ${FUENTE_PATENTES_URL}
     ports:
       - "${API_PUERTO}:${API_PUERTO}"
     depends_on:
