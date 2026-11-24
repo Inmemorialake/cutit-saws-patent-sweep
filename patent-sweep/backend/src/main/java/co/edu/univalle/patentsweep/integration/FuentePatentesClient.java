@@ -4,9 +4,6 @@ import co.edu.univalle.patentsweep.exception.IntegracionExternaException;
 import co.edu.univalle.patentsweep.exception.ServicioNoDisponibleException;
 import co.edu.univalle.patentsweep.integration.dto.PatenteExternaDTO;
 import co.edu.univalle.patentsweep.integration.port.FuentePatentesPort;
-import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
-import io.github.resilience4j.retry.annotation.Retry;
-import io.github.resilience4j.timelimiter.annotation.TimeLimiter;
 import java.time.LocalDate;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -27,18 +24,24 @@ import org.springframework.web.client.RestClientException;
 public class FuentePatentesClient implements FuentePatentesPort {
 
     private final RestClient restClient;
+    private final ResilientExternalCallExecutor llamadas;
 
-    public FuentePatentesClient(@Qualifier("fuentePatentesRestClient") RestClient restClient) {
+    public FuentePatentesClient(@Qualifier("fuentePatentesRestClient") RestClient restClient,
+                                ResilientExternalCallExecutor llamadas) {
         this.restClient = restClient;
+        this.llamadas = llamadas;
     }
 
     /** GET /patentes/buscar?terminos=a,b&clasificaciones=x,y&fechaSolicitudDesde=aaaa-mm-dd. */
     @Override
-    @Retry(name = "fuentePatentes")
-    @CircuitBreaker(name = "fuentePatentes")
-    @TimeLimiter(name = "fuentePatentes")
     public List<PatenteExternaDTO> buscarPatentes(List<String> terminos, List<String> clasificaciones,
                                                   LocalDate fechaSolicitudDesde) {
+        return llamadas.ejecutarFuentePatentes(
+                () -> buscarPatentesRemoto(terminos, clasificaciones, fechaSolicitudDesde));
+    }
+
+    private List<PatenteExternaDTO> buscarPatentesRemoto(List<String> terminos, List<String> clasificaciones,
+                                                         LocalDate fechaSolicitudDesde) {
         try {
             List<PatenteExternaDTO> patentes = restClient.get()
                     .uri(uri -> {

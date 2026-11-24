@@ -8,8 +8,8 @@ import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
 
 /**
- * Un RestClient por API externa. El tiempo de lectura (20 s por intento, según el PB) hace de
- * TimeLimiter: si la API no responde, el intento falla y Resilience4j lo reintenta.
+ * Un RestClient por API externa. Los timeouts HTTP limitan cada intento; Resilience4j aplica
+ * aparte el timeout global de la llamada lógica, incluidos sus reintentos.
  */
 @Configuration
 public class RestClientConfig {

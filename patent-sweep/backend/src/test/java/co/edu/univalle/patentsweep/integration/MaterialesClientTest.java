@@ -16,10 +16,12 @@ import co.edu.univalle.patentsweep.integration.dto.FormulaExternaDTO;
 import co.edu.univalle.patentsweep.integration.dto.FormulaResumenDTO;
 import java.io.IOException;
 import java.util.List;
+import java.util.function.Supplier;
 import java.util.stream.IntStream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.springframework.boot.env.YamlPropertySourceLoader;
 import org.springframework.core.env.PropertySource;
 import org.springframework.core.io.ClassPathResource;
@@ -34,12 +36,16 @@ class MaterialesClientTest {
 
     private MockRestServiceServer servidor;
     private MaterialesClient cliente;
+    private ResilientExternalCallExecutor llamadas;
 
     @BeforeEach
     void preparar() {
         RestClient.Builder constructor = RestClient.builder().baseUrl("http://materiales.test");
         servidor = MockRestServiceServer.bindTo(constructor).build();
-        cliente = new MaterialesClient(constructor.build());
+        llamadas = Mockito.mock(ResilientExternalCallExecutor.class);
+        Mockito.doAnswer(invocacion -> ((Supplier<?>) invocacion.getArgument(0)).get())
+                .when(llamadas).ejecutarMateriales(Mockito.any());
+        cliente = new MaterialesClient(constructor.build(), llamadas);
     }
 
     @Test
@@ -194,6 +200,8 @@ class MaterialesClientTest {
                 .isEqualTo("5s");
         assertThat(configuracion.getProperty("resilience4j.timelimiter.instances.materiales.timeout-duration"))
                 .isEqualTo("20s");
+        assertThat(configuracion.getProperty("resilience4j.timelimiter.instances.materiales.cancel-running-future"))
+                .isEqualTo(true);
     }
 
     private static String paginaJson(int cantidad, int pagina) {
