@@ -154,12 +154,13 @@ Resources:
                   done
                   [ "$sano" = true ] || fallar "La API no respondió UP en /actuator/health."
 
-                  # Prueba de humo: una patente inexistente debe dar 404 en ProblemDetail (controlador + base de datos).
+                  # Prueba de humo: sin JWT, un endpoint protegido debe dar 401 en ProblemDetail (cadena de seguridad
+                  # y manejo de errores en pie, ADR-008). La base de datos ya la cubre /actuator/health.
                   codigo="$(curl -s -o "$temporal/humo.json" -w '%{http_code}' "http://localhost:${puerto}/api/v1/patentes/estado/0")"
-                  if [ "$codigo" != "404" ] || ! grep -q '"status":404' "$temporal/humo.json"; then
-                    fallar "La prueba de humo esperaba 404 en /api/v1/patentes/estado/0 y obtuvo $codigo."
+                  if [ "$codigo" != "401" ] || ! grep -q '"status":401' "$temporal/humo.json"; then
+                    fallar "La prueba de humo esperaba 401 sin token en /api/v1/patentes/estado/0 y obtuvo $codigo."
                   fi
-                  echo "Prueba de humo OK (404 esperado)"
+                  echo "Prueba de humo OK (401 sin token)"
 
                   docker image prune -f > /dev/null
                   echo "Despliegue completado: $IMAGEN (commit $SHA)"
