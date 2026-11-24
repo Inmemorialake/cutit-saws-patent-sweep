@@ -86,6 +86,10 @@ Resources:
                   [ -d "$DIRECTORIO_APP" ] || fallar_simple "No existe $DIRECTORIO_APP: ejecute scripts/preparar-ec2.sh"
                   cd "$DIRECTORIO_APP"
                   [ -f .env ] || fallar_simple "No existe $DIRECTORIO_APP/.env (ver docs/despliegue/EC2.md, sección 4)."
+                  # Variables de HTTPS y monitoreo (ADR-010): sin ellas Caddy o Grafana no arrancan bien.
+                  for variable in API_DOMINIO GRAFANA_DOMINIO GRAFANA_ADMIN_USUARIO GRAFANA_ADMIN_CLAVE MANAGEMENT_PUERTO; do
+                    grep -Eq "^${variable}=.+" .env || fallar_simple "Falta ${variable} en $DIRECTORIO_APP/.env (ver docs/despliegue/EC2.md, sección 4)."
+                  done
 
                   temporal="$(mktemp -d)"
                   trap 'rm -rf "$temporal"' EXIT
@@ -107,10 +111,12 @@ Resources:
                     "https://codeload.github.com/${REPOSITORIO}/tar.gz/${SHA}" -o "$temporal/codigo.tar.gz"
                   mkdir "$temporal/codigo"
                   tar -xzf "$temporal/codigo.tar.gz" -C "$temporal/codigo" --strip-components=2 --wildcards \
-                    '*/patent-sweep/docker-compose.yml' '*/patent-sweep/docker-compose.prod.yml' '*/patent-sweep/mocks'
+                    '*/patent-sweep/docker-compose.yml' '*/patent-sweep/docker-compose.prod.yml' '*/patent-sweep/mocks' \
+                    '*/patent-sweep/monitoring'
                   install -m 644 "$temporal/codigo/docker-compose.yml" "$temporal/codigo/docker-compose.prod.yml" .
-                  rm -rf mocks
+                  rm -rf mocks monitoring
                   mv "$temporal/codigo/mocks" mocks
+                  mv "$temporal/codigo/monitoring" monitoring
                   printf 'IMAGE_REF=%s\n' "$IMAGEN" > imagen.env
 
                   compose() {
