@@ -1,4 +1,5 @@
-# Override de producción (EC2). Se usa junto con docker-compose.yml:
+# Override de producción (EC2). Desde Internet solo entran los puertos 80/443 de Caddy (HTTPS, ADR-010);
+# la API queda en 127.0.0.1 para el healthcheck del despliegue por SSM. Se usa junto con docker-compose.yml:
 #   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --no-build
 # La imagen de la API se construye en GitHub Actions y se descarga de GHCR por digest: el servidor no compila.
 # Los límites de memoria están pensados para una instancia de 1–2 GB de RAM con 2 GB de swap
@@ -20,6 +21,49 @@ services:
     image: ${IMAGE_REF:-ghcr.io/inmemorialake/cutit-saws-patent-sweep:latest}
     pull_policy: missing
     mem_limit: 768m
+    # Solo localhost: el tráfico público llega por Caddy con HTTPS.
+    ports: !override
+      - "127.0.0.1:${API_PUERTO}:${API_PUERTO}"
     environment:
       # Heap acotado para que heap + metaspace + hilos quepan en los 768 MB del contenedor.
       JAVA_TOOL_OPTIONS: "-Xmx448m -XX:MaxMetaspaceSize=160m -Xss512k -XX:+UseSerialGC -XX:+ExitOnOutOfMemoryError"
+
+  prometheus:
+    mem_limit: 384m
+
+  node-exporter:
+    mem_limit: 64m
+
+  grafana:
+    mem_limit: 256m
+    # En producción Grafana no publica puerto: se entra por Caddy.
+    ports: !reset []
+    environment:
+      GF_SERVER_ROOT_URL: https://${GRAFANA_DOMINIO}
+      GF_SECURITY_COOKIE_SECURE: "true"
+
+  caddy:
+    image: caddy:2.11.8-alpine
+    environment:
+      API_DOMINIO: ${API_DOMINIO}
+      GRAFANA_DOMINIO: ${GRAFANA_DOMINIO}
+      API_PUERTO: ${API_PUERTO}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./monitoring/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - datos-caddy:/data
+      - config-caddy:/config
+    depends_on:
+      - api-patent-sweep
+      - grafana
+    networks:
+      - patent-sweep-red
+    mem_limit: 64m
+    restart: unless-stopped
+
+volumes:
+  datos-caddy:
+  config-caddy:
