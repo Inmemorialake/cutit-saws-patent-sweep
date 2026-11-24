@@ -54,6 +54,8 @@ El versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 ### Corregido
 
 - `JwtAuthFilter` se registra como bean en `SecurityConfig` para no romper los slices `@WebMvcTest`.
+- CI y Dockerfile toleran el HTTP 429 de Maven Central: caché de Maven con `restore-keys`, espera creciente
+  hasta 300 s y reintentos internos de Wagon, sin intervención manual ni infraestructura adicional.
 
 ---
 
