@@ -14,3 +14,7 @@ imagen.env
 # Workspace local de Postman (colecciones, entornos y variables globales: pueden contener tokens)
 postman/
 .postman/
+
+# Entornos virtuales de Python (herramientas locales)
+venv/
+.venv/
