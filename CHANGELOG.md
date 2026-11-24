@@ -56,6 +56,10 @@ El versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 - En producción la API queda en `127.0.0.1:8085`; desde Internet se entra por `https://<API_DOMINIO>`. El Security
   Group abre 80/443 y cierra el 8085.
 - El documento SSM `PatentSweep-Desplegar` copia `monitoring/` y exige las variables nuevas del `.env`.
+- La prueba de humo del despliegue espera **401** sin token en `/api/v1/patentes/estado/0` (antes 404): con la seguridad
+  JWT de ADR-008 esa ruta ya no es pública y el CD habría marcado como fallido un despliegue sano.
+- node-exporter queda tras el profile `servidor` en local (en Docker Desktop sus montajes del host pueden fallar); en
+  producción siempre corre.
 
 - `AGENTS.md` describe el estado real tras HU-00, HU-01, HU-02 y HU-04: seguridad, modelo JPA, búsqueda
   manual, estado calculado y barrido automático restaurados; Prometheus continúa restringido (ADR-008).

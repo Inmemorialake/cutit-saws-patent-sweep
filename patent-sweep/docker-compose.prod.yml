@@ -32,6 +32,8 @@ services:
     mem_limit: 384m
 
   node-exporter:
+    # En el EC2 siempre corre (en local está tras el profile "servidor").
+    profiles: !reset []
     mem_limit: 64m
 
   grafana:

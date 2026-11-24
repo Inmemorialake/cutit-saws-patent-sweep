@@ -1,5 +1,6 @@
 # Despliegue local de Patent Sweep (P22). Todos los valores salen del archivo .env (ver .env.example).
-# Solo se publica el puerto de la API; la base de datos y las APIs simuladas quedan en la red interna.
+# Se publican la API y Grafana (este último solo en 127.0.0.1); la base de datos, las APIs simuladas y
+# Prometheus quedan en la red interna.
 services:
   postgres:
     image: postgres:16.15-alpine3.24
@@ -84,8 +85,11 @@ services:
     restart: unless-stopped
 
   # Métricas del servidor (CPU, RAM, disco, red). Lee /proc, /sys y la raíz del host en solo lectura.
+  # Solo tiene sentido en el EC2 (Linux): en Docker Desktop esos montajes pueden fallar. Se activa en
+  # docker-compose.prod.yml; en local, use `docker compose --profile servidor up -d` si está en Linux.
   node-exporter:
     image: prom/node-exporter:v1.12.1
+    profiles: [servidor]
     command:
       - --path.procfs=/host/proc
       - --path.sysfs=/host/sys

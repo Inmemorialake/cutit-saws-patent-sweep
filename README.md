@@ -72,7 +72,7 @@ Los errores se devuelven en formato **ProblemDetail** con `traceId`.
 
 - En producción la API y Grafana se publican **solo por HTTPS** a través de Caddy (certificados de Let's Encrypt) en dos subdominios; el EC2 solo abre 80/443. Detalles en [`docs/despliegue/EC2.md`](docs/despliegue/EC2.md).
 - **Prometheus** recolecta las métricas de la API (puerto interno 9091) y del servidor (node-exporter); **Grafana** trae provisionados los tableros *Patent Sweep · API* y *Patent Sweep · Servidor (EC2)*, con login obligatorio.
-- En local, con `docker compose up -d`, Grafana queda en **http://localhost:3000** (usuario y clave de `GRAFANA_ADMIN_*` en `.env`).
+- En local, con `docker compose up -d`, Grafana queda en **http://localhost:3000** (usuario y clave de `GRAFANA_ADMIN_*` en `.env`). node-exporter solo corre en el EC2; en Linux se puede activar con `docker compose --profile servidor up -d` para ver el tablero del servidor.
 
 ### Barrido automático (HU-01)
 
