@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Patent Sweep</title>
+    <link rel="stylesheet" href="estilos.css" />
+  </head>
+  <body>
+    <!-- LOGIN -->
+    <main id="vista-login" class="centrado" hidden>
+      <section class="tarjeta tarjeta-login">
+        <h1>Patent Sweep</h1>
+        <p class="sub">Inicie sesión para continuar</p>
+        <form id="form-login" novalidate>
+          <label for="login-usuario">Usuario</label>
+          <input
+            id="login-usuario"
+            name="username"
+            type="text"
+            autocomplete="username"
+            required
+          />
+          <label for="login-clave">Contraseña</label>
+          <input
+            id="login-clave"
+            name="password"
+            type="password"
+            autocomplete="current-password"
+            required
+          />
+          <button type="submit" id="login-boton">Ingresar</button>
+        </form>
+        <div id="login-aviso" class="aviso" role="alert" hidden></div>
+      </section>
+    </main>
+
+    <!-- APLICACIÓN -->
+    <div id="vista-app" hidden>
+      <header class="barra">
+        <strong class="marca">Patent Sweep</strong>
+        <nav>
+          <button
+            type="button"
+            class="nav-btn"
+            data-vista="busqueda"
+            data-roles="ADMINISTRADOR"
+          >
+            Búsqueda manual
+          </button>
+          <button type="button" class="nav-btn" data-vista="estado">
+            Estado de fórmula
+          </button>
+        </nav>
+        <div class="sesion">
+          <span id="sesion-info"></span>
+          <button type="button" id="btn-salir" class="secundario">Salir</button>
+        </div>
+      </header>
+
+      <main class="contenido">
+        <div id="aviso-global" class="aviso" role="alert" hidden></div>
+
+        <!-- HU-02 -->
+        <section id="pantalla-busqueda" hidden>
+          <h2>Búsqueda manual de conflictos</h2>
+          <form id="form-busqueda" class="fila-form" novalidate>
+            <div>
+              <label for="busqueda-formula">Código de fórmula</label>
+              <input
+                id="busqueda-formula"
+                type="text"
+                placeholder="form-001"
+                maxlength="8"
+                autocomplete="off"
+                required
+              />
+            </div>
+            <button type="submit" id="busqueda-boton">Buscar</button>
+          </form>
+          <p class="error-campo" id="busqueda-error-campo" hidden></p>
+          <div id="busqueda-estado" role="status" aria-live="polite"></div>
+          <div id="busqueda-resultado"></div>
+        </section>
+
+        <!-- HU-04 -->
+        <section id="pantalla-estado" hidden>
+          <h2>Estado de fórmula</h2>
+          <form id="form-estado" class="fila-form" novalidate>
+            <div>
+              <label for="estado-formula">Código de fórmula</label>
+              <input
+                id="estado-formula"
+                type="text"
+                placeholder="form-001"
+                maxlength="8"
+                autocomplete="off"
+                required
+              />
+            </div>
+            <button type="submit" id="estado-boton">Consultar</button>
+          </form>
+          <p class="error-campo" id="estado-error-campo" hidden></p>
+          <div id="estado-estado" role="status" aria-live="polite"></div>
+          <div id="estado-resultado"></div>
+        </section>
+      </main>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>

@@ -33,6 +33,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private static final String[] RUTAS_PUBLICAS = {
+        "/", "/index.html", "/estilos.css", "/app.js",
         "/api/v1/auth/login",
         "/actuator/health",
         "/swagger-ui.html",
