@@ -1,0 +1,12 @@
+# Tableros versionados en el repositorio (monitoring/grafana/dashboards). No se pueden editar desde la UI:
+# los cambios se hacen en el JSON y llegan con el despliegue.
+apiVersion: 1
+
+providers:
+  - name: patent-sweep
+    folder: Patent Sweep
+    type: file
+    disableDeletion: true
+    allowUiUpdates: false
+    options:
+      path: /etc/grafana/dashboards
