@@ -53,23 +53,38 @@ jobs:
         with:
           distribution: temurin
           java-version: "21"
-          cache: maven
-          cache-dependency-path: patent-sweep/backend/pom.xml
+
+      # setup-java solo restaura la caché cuando el hash del pom coincide exactamente. Sprint 1 cambia el pom,
+      # así que usamos restore-keys: se reutiliza la caché anterior y solo se descargan las dependencias nuevas.
+      - name: Restaurar caché de Maven
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('patent-sweep/backend/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
 
       # Maven Central limita las descargas (HTTP 429) desde las IP compartidas de los runners. Las dependencias
-      # (y los plugins, incluido el de Sonar) se bajan antes, con reintentos; después setup-java las deja en caché.
+      # (y los plugins, incluido el de Sonar) se bajan antes, con reintentos largos y reintentos internos de Maven.
       - name: Descargar dependencias (con reintentos)
         run: |
-          for espera in 0 30 90; do
+          for espera in 0 30 90 180 300; do
             sleep "$espera"
-            mvn --batch-mode --no-transfer-progress --quiet dependency:go-offline && exit 0
+            mvn --batch-mode --no-transfer-progress --quiet \
+              -Dmaven.wagon.http.retryHandler.count=10 \
+              -Dmaven.wagon.httpconnectionManager.ttlSeconds=60 \
+              dependency:go-offline && exit 0
             echo "::warning::Descarga de dependencias fallida (posible HTTP 429 de Maven Central); se reintenta."
           done
           exit 1
 
       # "verify" ejecuta las pruebas, el reporte y el umbral de JaCoCo, Checkstyle y el empaquetado (ver pom.xml).
       - name: Pruebas, cobertura, estilo y empaquetado
-        run: mvn --batch-mode --no-transfer-progress clean verify
+        run: |
+          mvn --batch-mode --no-transfer-progress \
+            -Dmaven.wagon.http.retryHandler.count=10 \
+            -Dmaven.wagon.httpconnectionManager.ttlSeconds=60 \
+            clean verify
 
       - name: Guardar el JAR generado
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -91,7 +106,11 @@ jobs:
       # Si el quality gate no pasa, este paso (y el CI) falla.
       - name: Análisis estático con SonarCloud
         if: env.SONAR_TOKEN != '' && env.SONAR_APLICA == 'true'
-        run: mvn --batch-mode --no-transfer-progress sonar:sonar
+        run: |
+          mvn --batch-mode --no-transfer-progress \
+            -Dmaven.wagon.http.retryHandler.count=10 \
+            -Dmaven.wagon.httpconnectionManager.ttlSeconds=60 \
+            sonar:sonar
 
       - name: Aviso si Sonar se omitió
         if: env.SONAR_TOKEN == '' || env.SONAR_APLICA != 'true'
