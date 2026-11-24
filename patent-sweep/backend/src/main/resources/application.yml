@@ -47,6 +47,11 @@ management:
   tracing:
     sampling:
       probability: 1.0
+  # Histograma de latencia HTTP para calcular percentiles (p95) en Grafana.
+  metrics:
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
 
 # traceId en cada línea de log (P19).
 logging:
