@@ -24,7 +24,8 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 /**
  * Seguridad (P26 y P27, DA-11): sesión sin estado con JWT y control de acceso por rol
  * mediante {@code @PreAuthorize}. El health check y la documentación son públicos; las métricas
- * quedan restringidas desde que vuelve la seguridad (ADR-008).
+ * quedan restringidas desde que vuelve la seguridad (ADR-008). CSRF se desactiva porque el API
+ * es sin estado y el JWT viaja en la cabecera, sin cookies de sesión.
  */
 @Configuration
 @EnableWebSecurity
@@ -40,6 +41,7 @@ public class SecurityConfig {
     };
 
     @Bean
+    @SuppressWarnings("java:S4502")
     public SecurityFilterChain cadenaDeFiltros(HttpSecurity http, JwtAuthFilter jwtAuthFilter,
                                                ObjectMapper objectMapper) throws Exception {
         http.csrf(AbstractHttpConfigurer::disable)
