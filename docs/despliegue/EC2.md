@@ -21,7 +21,7 @@ merge a main ─► CI ─► CD (.github/workflows/cd.yml)
       con solo dos parámetros: el SHA del commit y el digest de la imagen
    3. en el EC2 (agente SSM, como root), el documento:
       verifica que el SHA pertenezca a main · descarga compose, mocks y monitoring de ese commit ·
-      fija la imagen por digest · pull + up -d · health check · prueba de humo (401 sin token)
+      fija la imagen por digest · pull + up -d · health check · prueba de humo (ProblemDetail 401 o 404)
                        ▼
 EC2 (Ubuntu 24.04) ─ docker compose ─┬─ caddy             (80/443 públicos, HTTPS de Let's Encrypt)
                                      │     ├─ https://<API_DOMINIO>     ─► api-patent-sweep:8085
