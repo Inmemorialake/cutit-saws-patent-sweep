@@ -34,6 +34,8 @@ services:
     environment:
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE}
       API_PUERTO: ${API_PUERTO}
+      # Puerto interno de Actuator (métricas para Prometheus). No se publica: solo la red de Docker lo ve.
+      MANAGEMENT_PUERTO: ${MANAGEMENT_PUERTO}
       DB_HOST: ${DB_HOST}
       DB_PORT: ${DB_PORT}
       DB_NAME: ${DB_NAME}
