@@ -86,10 +86,6 @@ Resources:
                   [ -d "$DIRECTORIO_APP" ] || fallar_simple "No existe $DIRECTORIO_APP: ejecute scripts/preparar-ec2.sh"
                   cd "$DIRECTORIO_APP"
                   [ -f .env ] || fallar_simple "No existe $DIRECTORIO_APP/.env (ver docs/despliegue/EC2.md, sección 4)."
-                  # Variables de HTTPS y monitoreo (ADR-010): sin ellas Caddy o Grafana no arrancan bien.
-                  for variable in API_DOMINIO GRAFANA_DOMINIO GRAFANA_ADMIN_USUARIO GRAFANA_ADMIN_CLAVE MANAGEMENT_PUERTO; do
-                    grep -Eq "^${variable}=.+" .env || fallar_simple "Falta ${variable} en $DIRECTORIO_APP/.env (ver docs/despliegue/EC2.md, sección 4)."
-                  done
 
                   temporal="$(mktemp -d)"
                   trap 'rm -rf "$temporal"' EXIT
@@ -111,12 +107,23 @@ Resources:
                     "https://codeload.github.com/${REPOSITORIO}/tar.gz/${SHA}" -o "$temporal/codigo.tar.gz"
                   mkdir "$temporal/codigo"
                   tar -xzf "$temporal/codigo.tar.gz" -C "$temporal/codigo" --strip-components=2 --wildcards \
-                    '*/patent-sweep/docker-compose.yml' '*/patent-sweep/docker-compose.prod.yml' '*/patent-sweep/mocks' \
-                    '*/patent-sweep/monitoring'
+                    '*/patent-sweep/docker-compose.yml' '*/patent-sweep/docker-compose.prod.yml' '*/patent-sweep/mocks'
+                  # monitoring/ existe desde ADR-010. Se extrae solo si el commit la trae, para que un rollback a un
+                  # commit anterior siga funcionando (tar falla si se le pide un miembro que no existe).
+                  if tar -tzf "$temporal/codigo.tar.gz" --wildcards '*/patent-sweep/monitoring/*' > /dev/null 2>&1; then
+                    tar -xzf "$temporal/codigo.tar.gz" -C "$temporal/codigo" --strip-components=2 --wildcards \
+                      '*/patent-sweep/monitoring'
+                    # Variables de HTTPS y monitoreo: sin ellas Caddy o Grafana no arrancan bien.
+                    for variable in API_DOMINIO GRAFANA_DOMINIO GRAFANA_ADMIN_USUARIO GRAFANA_ADMIN_CLAVE MANAGEMENT_PUERTO; do
+                      grep -Eq "^${variable}=.+" .env || fallar_simple "Falta ${variable} en $DIRECTORIO_APP/.env (ver docs/despliegue/EC2.md, sección 4)."
+                    done
+                  fi
                   install -m 644 "$temporal/codigo/docker-compose.yml" "$temporal/codigo/docker-compose.prod.yml" .
                   rm -rf mocks monitoring
                   mv "$temporal/codigo/mocks" mocks
-                  mv "$temporal/codigo/monitoring" monitoring
+                  if [ -d "$temporal/codigo/monitoring" ]; then
+                    mv "$temporal/codigo/monitoring" monitoring
+                  fi
                   printf 'IMAGE_REF=%s\n' "$IMAGEN" > imagen.env
 
                   compose() {
