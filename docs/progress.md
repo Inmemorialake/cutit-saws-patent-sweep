@@ -21,6 +21,14 @@ Fuente de verdad para saber qué está implementado. Antes de continuar, leer `A
 - [x] **Fase 4 — HU-01: barrido** (4 commits `HU-01-1A` … `HU-01-1D`): planificador dinámico con
       ShedLock, cliente paginado, núcleo por fórmula, cierre/auditoría/métricas. `mvn clean verify`
       pasa con 134 pruebas, cobertura y Checkstyle en verde.
+- [x] **Complemento de HU-00 — Login JWT**: `POST /api/v1/auth/login` valida usuarios existentes y emite
+      token Bearer con vencimiento, username y rol; `401` genérico para credenciales inválidas y `400` para
+      campos vacíos. No incluye registro ni administración de cuentas. `mvn clean verify` pasa con 142
+      pruebas; Checkstyle, JaCoCo y la construcción Docker están en verde. Login y uso del token también se
+      comprobaron contra PostgreSQL efímero con Docker Compose.
+- [x] **Corrección de resiliencia HU-01/HU-02/HU-04**: las integraciones bloqueantes se ejecutan en un pool
+      acotado y el `TimeLimiter` de 20 s envuelve la llamada lógica completa, incluidos los reintentos; los
+      intentos que vencen el plazo no vuelven a consultar la API externa.
 
 ## Cómo reanudar en otra sesión
 

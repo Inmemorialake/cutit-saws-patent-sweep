@@ -22,15 +22,16 @@ Sí existe:
 - `GET /api/v1/patentes/estado?formulaId=form-NNN` (HU-04) → 200/400/401/404/500; convive con `GET /estado/{id}` (D-8). El estado se calcula en cada consulta y no se persiste: conflicto vigente, evaluación abierta, versión no revisada/fallida o `LIBRE` (ADR-003/004).
 - Barrido automático (HU-01): `BarridoScheduler` con `Trigger` dinámico y ShedLock, `MaterialesClient.listarAprobadas` por páginas de 10, orquestación por fórmula con origen `BARRIDO_AUTOMATICO`, recuperación de barridos huérfanos y métricas `patentsweep.barrido.duracion` / `patentsweep.barrido.formulas{resultado}` (D-2, D-5, D-10).
 - Errores `ProblemDetail` (RFC 9457) con `traceId`; Swagger/OpenAPI y Actuator/Prometheus. El health check y Swagger son públicos; Prometheus quedó restringido (ADR-008).
+- `POST /api/v1/auth/login` autentica usuarios existentes y devuelve un JWT Bearer con expiración, username y rol; no hay registro ni administración de usuarios.
 - PostgreSQL 16 con Flyway V1–V7; entidades y repositorios mapeados para todas las tablas del esquema, con enums y excepciones propias.
 - Spring Security con JWT y roles `ADMINISTRADOR`/`SERVICIO`, Resilience4j, caché Caffeine, AOP, reloj inyectable, `RestClient` y clientes funcionales para Materiales y la fuente de patentes (HU-00/HU-02, ADR-008).
-- Pruebas de JWT, usuarios, filtro, handlers, motores, clientes WireMock, controladores y servicios; `mvn clean verify` pasa con 134 pruebas, JaCoCo y Checkstyle en verde.
+- Pruebas de JWT, usuarios, filtro, handlers, motores, clientes WireMock, controladores y servicios; `mvn clean verify` pasa con 142 pruebas, JaCoCo y Checkstyle en verde.
 - Docker multi-etapa, Compose, CI y CD a EC2 por SSM (sin SSH, imagen fijada por digest de GHCR).
 
 No existe todavía:
 
 - HU-05…HU-12: evaluación, auditoría, notificaciones ni configuración operativa.
-- Endpoint de login ni emisión de token al cliente: el JWT se valida en el filtro y los usuarios iniciales se siembran desde variables de entorno (DA-11 restaurado parcialmente, ADR-008).
+- Registro y administración de usuarios: las cuentas iniciales se siembran desde variables de entorno y se guardan en PostgreSQL (DA-11 restaurado parcialmente, ADR-008).
 - `ConflictoDetectadoEvent` ya se publica en HU-02, pero todavía no hay listeners; el resto del código anterior se recupera desde `238806c` solo cuando una HU lo pida.
 
 ## Cómo trabajar en el código
