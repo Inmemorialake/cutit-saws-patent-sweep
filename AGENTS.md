@@ -21,11 +21,12 @@ Sí existe:
 - `POST /api/v1/patentes/buscar-conflictos`: búsqueda manual (HU-02) restringida a `ADMINISTRADOR`; consulta Materiales/Fórmulas y la fuente de patentes, filtra con el motor de coincidencias, persiste conflictos/historial y devuelve 200/400/401/403/404/409/503 (D-7, ADR-009).
 - `GET /api/v1/patentes/estado?formulaId=form-NNN` (HU-04) → 200/400/401/404/500; convive con `GET /estado/{id}` (D-8). El estado se calcula en cada consulta y no se persiste: conflicto vigente, evaluación abierta, versión no revisada/fallida o `LIBRE` (ADR-003/004).
 - Barrido automático (HU-01): `BarridoScheduler` con `Trigger` dinámico y ShedLock, `MaterialesClient.listarAprobadas` por páginas de 10, orquestación por fórmula con origen `BARRIDO_AUTOMATICO`, recuperación de barridos huérfanos y métricas `patentsweep.barrido.duracion` / `patentsweep.barrido.formulas{resultado}` (D-2, D-5, D-10).
-- Errores `ProblemDetail` (RFC 9457) con `traceId`; Swagger/OpenAPI y Actuator/Prometheus. El health check y Swagger son públicos; Prometheus quedó restringido (ADR-008).
+- Errores `ProblemDetail` (RFC 9457) con `traceId`; Swagger/OpenAPI y Actuator/Prometheus. El health check (`SaludController`, puerto de la API) y Swagger son públicos; Actuator corre en el puerto interno `MANAGEMENT_PUERTO` (9091) y `/actuator/prometheus` solo pasa sin JWT por ese puerto (ADR-010).
 - PostgreSQL 16 con Flyway V1–V7; entidades y repositorios mapeados para todas las tablas del esquema, con enums y excepciones propias.
 - Spring Security con JWT y roles `ADMINISTRADOR`/`SERVICIO`, Resilience4j, caché Caffeine, AOP, reloj inyectable, `RestClient` y clientes funcionales para Materiales y la fuente de patentes (HU-00/HU-02, ADR-008).
-- Pruebas de JWT, usuarios, filtro, handlers, motores, clientes WireMock, controladores y servicios; `mvn clean verify` pasa con 134 pruebas, JaCoCo y Checkstyle en verde.
+- Pruebas de JWT, usuarios, filtro, handlers, motores, clientes WireMock, controladores y servicios; `mvn clean verify` pasa con 138 pruebas, JaCoCo y Checkstyle en verde.
 - Docker multi-etapa, Compose, CI y CD a EC2 por SSM (sin SSH, imagen fijada por digest de GHCR).
+- Monitoreo (ADR-010): Prometheus, Grafana con tableros provisionados (`patent-sweep/monitoring/`) y node-exporter (profile `servidor` en local). En producción Caddy es la única entrada pública (HTTPS en 80/443) y la API escucha solo en `127.0.0.1:8085`.
 
 No existe todavía:
 
@@ -56,7 +57,7 @@ cp .env.example .env
 docker compose up -d --build --wait
 ```
 
-API en `localhost:8085`; `GUIA_EJECUCION.md` tiene más casos de prueba. El análisis de SonarCloud corre en PR y en `main` (plan gratuito): `mvn verify sonar:sonar -Dsonar.token=< token >` desde `patent-sweep/backend`. Una imagen Docker que no compile rompe el CD: construirla también antes de enviar el PR.
+API en `localhost:8085` y Grafana en `localhost:3000`; `GUIA_EJECUCION.md` tiene más casos de prueba. El análisis de SonarCloud corre en PR y en `main` (plan gratuito): `mvn verify sonar:sonar -Dsonar.token=< token >` desde `patent-sweep/backend`. Una imagen Docker que no compile rompe el CD: construirla también antes de enviar el PR.
 
 ## Flujo Git
 
@@ -73,4 +74,4 @@ API en `localhost:8085`; `GUIA_EJECUCION.md` tiene más casos de prueba. El aná
 - `docs/HU/HU-00.md` y `docs/HU/HU-02.md` están versionados y con contenido; `HU-01.MD` usa extensión `.MD`. Consulta `docs/progress.md` antes de asumir qué HU está implementada.
 - ADR-001…004 están a la espera de sus HU; ADR-005 y ADR-007 se leen juntos (SSH quedó sustituido por SSM).
 - ADR-008 y ADR-009 dejan sin efecto parcial el arquetipo de ADR-006 y la unicidad por versión de ADR-002; el estado real se registra en `docs/progress.md`.
-- No cargar datos reales de patentes en producción; con HU-00 vuelve la seguridad: health y Swagger siguen públicos, Prometheus está restringido (ADR-008).
+- No cargar datos reales de patentes en producción; con HU-00 vuelve la seguridad: health y Swagger siguen públicos, las métricas solo salen por el puerto interno de management (ADR-008, ADR-010).
