@@ -119,7 +119,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "100 * sum(rate(http_server_requests_seconds_count{job=\"patent-sweep-api\",status=~\"5..\"}[5m])) / clamp_min(sum(rate(http_server_requests_seconds_count{job=\"patent-sweep-api\"}[5m])), 1e-9)",
+          "expr": "100 * (sum(rate(http_server_requests_seconds_count{job=\"patent-sweep-api\",status=~\"5..\"}[5m])) or vector(0)) / clamp_min(sum(rate(http_server_requests_seconds_count{job=\"patent-sweep-api\"}[5m])), 1e-9)",
           "legendFormat": ""
         }
       ],
