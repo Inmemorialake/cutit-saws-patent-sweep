@@ -1,6 +1,7 @@
 # Cómo ejecutar y probar la API Patent Sweep
 
-Arquetipo Sprint 0, versión `v1.0.0-beta.1` (rama `main`). Curso 750021C Desarrollo de Software II, Universidad del Valle, 2026-2.
+Backend Patent Sweep, versión `v1.0.0-beta.1` (alcance actual: Sprint 1; ver [`docs/progress.md`](../docs/progress.md)).
+Curso 750021C Desarrollo de Software II, Universidad del Valle, 2026-2.
 
 ---
 
@@ -8,16 +9,19 @@ Arquetipo Sprint 0, versión `v1.0.0-beta.1` (rama `main`). Curso 750021C Desarr
 
 | Funcionalidad | Qué hace | Endpoint |
 |---|---|---|
+| Iniciar sesión | Valida un usuario existente y devuelve un JWT Bearer | `POST /api/v1/auth/login` |
 | Registrar patente | Valida los datos, verifica que el código no exista y guarda la patente en estado `EN_TRAMITE` | `POST /api/v1/patentes/busqueda` |
 | Consultar patente | Devuelve la patente y su estado de vigencia | `GET /api/v1/patentes/estado/{id}` |
+| Buscar conflictos (HU-02) | Ejecuta una búsqueda manual para una fórmula; requiere rol `ADMINISTRADOR` | `POST /api/v1/patentes/buscar-conflictos` |
+| Consultar estado (HU-04) | Calcula el estado actual de una fórmula | `GET /api/v1/patentes/estado?formulaId=form-NNN` |
 | Operación | Health check y métricas para Prometheus | `GET /actuator/health`, `GET /actuator/prometheus` |
 | Documentación | Swagger UI y contrato OpenAPI | `/swagger-ui.html`, `/v3/api-docs` |
 
 **Tecnología:** Java 21, Spring Boot 3.5, arquitectura multicapa, PostgreSQL 16 con Flyway, errores ProblemDetail
 (RFC 9457) con `traceId`, Docker multi-etapa y Docker Compose.
 
-**Qué no trae todavía:** las historias HU-01 a HU-12 (barrido, búsqueda de conflictos, estado de fórmulas, historial,
-configuración y notificaciones) ni la autenticación JWT. Empiezan en el Sprint 1 (ver ADR-006).
+**Qué no trae todavía:** registro o administración de usuarios ni las historias HU-05 a HU-12. El acceso a los
+endpoints protegidos requiere un JWT obtenido mediante el login.
 
 ---
 
@@ -64,14 +68,45 @@ Copie `.env.example` como `.env`. Los valores que trae funcionan tal cual para p
 | `API_PUERTO` | Puerto de la API (8085 por defecto; se evita el 8080, por recomendación de OWASP) |
 | `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` | Conexión a PostgreSQL (la base se crea con estos datos) |
 | `DB_POOL_MAX` | Máximo de conexiones del pool HikariCP |
+| `JWT_SECRET`, `JWT_EXPIRACION_MINUTOS` | Firma y duración del JWT (60 minutos por defecto) |
+| `ADMIN_USUARIO`, `ADMIN_CLAVE` | Usuario administrador inicial para el demo |
+| `SERVICIO_USUARIO`, `SERVICIO_CLAVE` | Cuenta opcional para integraciones; no se usa en la GUI |
 
 Si el puerto `8085` está ocupado, cambie `API_PUERTO` y use ese puerto en todas las URL de esta guía.
+Las cuentas se crean en PostgreSQL al iniciar la aplicación si no existen. En un `.env` de demo basta con la
+cuenta `ADMINISTRADOR`; para no crear la cuenta técnica, deje vacías ambas variables `SERVICIO_*`. Cambiar una
+contraseña en `.env` no actualiza la contraseña de un usuario ya creado en la base de datos.
 
 ---
 
 ## 5. Probar desde Swagger
 
 Abra **http://localhost:8085/swagger-ui.html**, despliegue el endpoint y pulse *Try it out*.
+Primero ejecute el login. Copie `accessToken` de la respuesta, pulse **Authorize** y pegue el token; Swagger
+agregará `Bearer` al usar endpoints protegidos.
+
+### `POST /api/v1/auth/login`
+
+```json
+{
+  "username": "admin",
+  "password": "<ADMIN_CLAVE configurada en .env>"
+}
+```
+
+Respuesta `200 OK`:
+
+```json
+{
+  "accessToken": "<JWT>",
+  "tokenType": "Bearer",
+  "expiresIn": 3600,
+  "username": "admin",
+  "role": "ADMINISTRADOR"
+}
+```
+
+Credenciales inválidas devuelven `401` con `ProblemDetail`; campos vacíos devuelven `400`.
 
 ### `POST /api/v1/patentes/busqueda`
 
@@ -98,9 +133,23 @@ Todos los errores vienen en formato ProblemDetail con un `traceId`, que también
 ```bash
 curl -s -X POST http://localhost:8085/api/v1/patentes/busqueda \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <JWT>" \
   -d '{"codigoPatente":"PAT-000123","titulo":"Cuchilla de diamante segmentada"}'
 
-curl -s http://localhost:8085/api/v1/patentes/estado/1
+curl -s -X POST http://localhost:8085/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"<ADMIN_CLAVE>"}'
+
+# Copie accessToken de la respuesta en la variable TOKEN.
+TOKEN="<JWT>"
+
+curl -s -X POST http://localhost:8085/api/v1/patentes/buscar-conflictos \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{"formulaId":"form-001"}'
+
+curl -s "http://localhost:8085/api/v1/patentes/estado?formulaId=form-001" \
+  -H "Authorization: Bearer $TOKEN"
 ```
 
 En PowerShell use `curl.exe` y escape las comillas del JSON, o use `Invoke-RestMethod`.
