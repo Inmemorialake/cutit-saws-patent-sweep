@@ -63,17 +63,23 @@ Transversal: GlobalExceptionHandler (ProblemDetail RFC 9457 + traceId) · OpenAP
 | `GET` | `/api/v1/patentes/estado/{id}` | 200 · 404 | Consulta una patente y su estado de vigencia |
 | `POST` | `/api/v1/patentes/buscar-conflictos` | 200 · 400 · 401 · 403 · 404 · 409 · 503 | Búsqueda manual de conflictos (solo `ADMINISTRADOR`) |
 | `GET` | `/api/v1/patentes/estado?formulaId=form-NNN` | 200 · 400 · 401 · 404 · 500 | Estado calculado de una fórmula |
-| `GET` | `/actuator/health` · `/actuator/prometheus` | 200 | Salud y métricas |
+| `GET` | `/actuator/health` | 200 · 503 | Salud de la API y de PostgreSQL (público) |
 | `GET` | `/swagger-ui.html` · `/v3/api-docs` | 200 | Documentación OpenAPI |
 
 Los errores se devuelven en formato **ProblemDetail** con `traceId`.
+
+### Monitoreo y acceso (ADR-010)
+
+- En producción la API y Grafana se publican **solo por HTTPS** a través de Caddy (certificados de Let's Encrypt) en dos subdominios; el EC2 solo abre 80/443. Detalles en [`docs/despliegue/EC2.md`](docs/despliegue/EC2.md).
+- **Prometheus** recolecta las métricas de la API (puerto interno 9091) y del servidor (node-exporter); **Grafana** trae provisionados los tableros *Patent Sweep · API* y *Patent Sweep · Servidor (EC2)*, con login obligatorio.
+- En local, con `docker compose up -d`, Grafana queda en **http://localhost:3000** (usuario y clave de `GRAFANA_ADMIN_*` en `.env`).
 
 ### Barrido automático (HU-01)
 
 - El planificador lee la frecuencia de la fila activa de `configuracion` (`frecuencia_valor`, `frecuencia_unidad` y `frecuencia_horas`) en cada ciclo. Para cambiarla, actualice esa fila (o inserte una nueva activa); el nuevo intervalo aplica en la siguiente ejecución sin reiniciar. HU-10 añadirá el endpoint de configuración.
 - El barrido consulta Materiales/Fórmulas en páginas de 10 fórmulas aprobadas, busca patentes candidatas, reutiliza el motor de coincidencias de HU-02 y registra cada resultado con origen `BARRIDO_AUTOMATICO` y usuario `SISTEMA`. Un fallo por fórmula la deja `NO_PROCESADO` y no detiene el barrido.
 - `@SchedulerLock` con ShedLock evita dos ejecuciones concurrentes aunque haya varias réplicas. Si el proceso se reinicia con un barrido `EN_CURSO`, el recuperador lo marca `FALLIDO` al arrancar.
-- Métricas expuestas en `/actuator/prometheus` (restringido según ADR-008): `patentsweep.barrido.duracion` (Timer) y `patentsweep.barrido.formulas{resultado="con_conflicto|sin_conflicto|no_procesado"}` (Counter). Los logs del barrido incluyen `traceId`.
+- Métricas en `/actuator/prometheus`, solo por el puerto interno de management (`MANAGEMENT_PUERTO`, ADR-010), que Prometheus recolecta y Grafana muestra en el tablero *Patent Sweep · API*: `patentsweep.barrido.duracion` (Timer) y `patentsweep.barrido.formulas{resultado="con_conflicto|sin_conflicto|no_procesado"}` (Counter). Los logs del barrido incluyen `traceId`.
 
 ---
 
@@ -149,7 +155,7 @@ Flujo completo, convenciones de commits y Definición de Hecho: [`CONTRIBUTING.m
 .
 ├── .github/          workflows (ci.yml, cd.yml) y plantilla de PR
 ├── docs/
-│   ├── adrs/         decisiones de arquitectura (ADR-001 a ADR-007)
+│   ├── adrs/         decisiones de arquitectura (ADR-001 a ADR-010)
 │   ├── arquitectura/ DAS V3.0
 │   ├── backlog/      Product Backlog V3.0
 │   ├── despliegue/   guía de EC2
