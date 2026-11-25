@@ -9,6 +9,8 @@ El versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 ## [Unreleased]
 
+## [1.0.0-beta.4] — 2026-11-25 · Barrido funcional en producción
+
 ### Corregido
 
 - APIs simuladas: faltaba el mock del listado `GET /formulas?estado=APROBADA&pagina={n}`; WireMock respondía 404 y
@@ -236,7 +238,8 @@ conservan; el código Java se recupera desde `5d13af5`.
 
 ---
 
-[Unreleased]: https://github.com/Inmemorialake/cutit-saws-patent-sweep/compare/v1.0.0-beta.3...HEAD
+[Unreleased]: https://github.com/Inmemorialake/cutit-saws-patent-sweep/compare/v1.0.0-beta.4...HEAD
+[1.0.0-beta.4]: https://github.com/Inmemorialake/cutit-saws-patent-sweep/compare/v1.0.0-beta.3...v1.0.0-beta.4
 [1.0.0-beta.3]: https://github.com/Inmemorialake/cutit-saws-patent-sweep/compare/v1.0.0-beta.2...v1.0.0-beta.3
 [1.0.0-beta.2]: https://github.com/Inmemorialake/cutit-saws-patent-sweep/compare/v1.0.0-beta.1...v1.0.0-beta.2
 [1.0.0-beta.1]: https://github.com/Inmemorialake/cutit-saws-patent-sweep/tree/v1.0.0-beta.1
