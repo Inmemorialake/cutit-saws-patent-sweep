@@ -32,7 +32,11 @@ springdoc:
     path: /swagger-ui.html
 
 # Actuator + Micrometer (P23, P28): health check y métricas para Prometheus.
+# Actuator va en un puerto de management interno que no se publica (ADR-010): Prometheus lo lee por la
+# red de Docker. El health público sigue en el puerto de la API (SaludController). Debe ser distinto de API_PUERTO.
 management:
+  server:
+    port: ${MANAGEMENT_PUERTO:9091}
   endpoints:
     web:
       exposure:
@@ -43,6 +47,11 @@ management:
   tracing:
     sampling:
       probability: 1.0
+  # Histograma de latencia HTTP para calcular percentiles (p95) en Grafana.
+  metrics:
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
 
 # traceId en cada línea de log (P19).
 logging:

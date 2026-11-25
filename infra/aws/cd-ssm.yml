@@ -108,9 +108,22 @@ Resources:
                   mkdir "$temporal/codigo"
                   tar -xzf "$temporal/codigo.tar.gz" -C "$temporal/codigo" --strip-components=2 --wildcards \
                     '*/patent-sweep/docker-compose.yml' '*/patent-sweep/docker-compose.prod.yml' '*/patent-sweep/mocks'
+                  # monitoring/ existe desde ADR-010. Se extrae solo si el commit la trae, para que un rollback a un
+                  # commit anterior siga funcionando (tar falla si se le pide un miembro que no existe).
+                  if tar -tzf "$temporal/codigo.tar.gz" --wildcards '*/patent-sweep/monitoring/*' > /dev/null 2>&1; then
+                    tar -xzf "$temporal/codigo.tar.gz" -C "$temporal/codigo" --strip-components=2 --wildcards \
+                      '*/patent-sweep/monitoring'
+                    # Variables de HTTPS y monitoreo: sin ellas Caddy o Grafana no arrancan bien.
+                    for variable in API_DOMINIO GRAFANA_DOMINIO GRAFANA_ADMIN_USUARIO GRAFANA_ADMIN_CLAVE MANAGEMENT_PUERTO; do
+                      grep -Eq "^${variable}=.+" .env || fallar_simple "Falta ${variable} en $DIRECTORIO_APP/.env (ver docs/despliegue/EC2.md, sección 4)."
+                    done
+                  fi
                   install -m 644 "$temporal/codigo/docker-compose.yml" "$temporal/codigo/docker-compose.prod.yml" .
-                  rm -rf mocks
+                  rm -rf mocks monitoring
                   mv "$temporal/codigo/mocks" mocks
+                  if [ -d "$temporal/codigo/monitoring" ]; then
+                    mv "$temporal/codigo/monitoring" monitoring
+                  fi
                   printf 'IMAGE_REF=%s\n' "$IMAGEN" > imagen.env
 
                   compose() {
@@ -141,12 +154,16 @@ Resources:
                   done
                   [ "$sano" = true ] || fallar "La API no respondió UP en /actuator/health."
 
-                  # Prueba de humo: una patente inexistente debe dar 404 en ProblemDetail (controlador + base de datos).
+                  # Prueba de humo: la API responde en ProblemDetail. Desde ADR-008 la ruta exige JWT (401 sin token);
+                  # en commits anteriores es pública (404 para una patente inexistente). Se aceptan ambos para que un
+                  # rollback siga funcionando. La base de datos ya la cubre /actuator/health.
                   codigo="$(curl -s -o "$temporal/humo.json" -w '%{http_code}' "http://localhost:${puerto}/api/v1/patentes/estado/0")"
-                  if [ "$codigo" != "404" ] || ! grep -q '"status":404' "$temporal/humo.json"; then
-                    fallar "La prueba de humo esperaba 404 en /api/v1/patentes/estado/0 y obtuvo $codigo."
-                  fi
-                  echo "Prueba de humo OK (404 esperado)"
+                  case "$codigo" in
+                    401|404) grep -q "\"status\":${codigo}" "$temporal/humo.json" \
+                               || fallar "La prueba de humo obtuvo $codigo pero no en formato ProblemDetail." ;;
+                    *) fallar "La prueba de humo esperaba 401 (sin token) o 404 en /api/v1/patentes/estado/0 y obtuvo $codigo." ;;
+                  esac
+                  echo "Prueba de humo OK ($codigo en ProblemDetail)"
 
                   docker image prune -f > /dev/null
                   echo "Despliegue completado: $IMAGEN (commit $SHA)"

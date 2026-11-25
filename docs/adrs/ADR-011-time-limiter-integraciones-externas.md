@@ -1,4 +1,4 @@
-# ADR-010: TimeLimiter global para integraciones externas bloqueantes
+# ADR-011: TimeLimiter global para integraciones externas bloqueantes
 
 - **Estado:** Aceptada
 - **Relacionado con:** ADR-008, D-5, HU-01, HU-02 y HU-04

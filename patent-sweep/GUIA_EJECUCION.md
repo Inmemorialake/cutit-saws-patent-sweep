@@ -14,7 +14,8 @@ Curso 750021C Desarrollo de Software II, Universidad del Valle, 2026-2.
 | Consultar patente | Devuelve la patente y su estado de vigencia | `GET /api/v1/patentes/estado/{id}` |
 | Buscar conflictos (HU-02) | Ejecuta una búsqueda manual para una fórmula; requiere rol `ADMINISTRADOR` | `POST /api/v1/patentes/buscar-conflictos` |
 | Consultar estado (HU-04) | Calcula el estado actual de una fórmula | `GET /api/v1/patentes/estado?formulaId=form-NNN` |
-| Operación | Health check y métricas para Prometheus | `GET /actuator/health`, `GET /actuator/prometheus` |
+| Operación | Health check público; Prometheus consulta métricas por el puerto interno de management | `GET /actuator/health`; `http://api-patent-sweep:9091/actuator/prometheus` (solo red Docker) |
+| Monitoreo | Tableros de la API y del servidor en Grafana | `http://localhost:3000` |
 | Documentación | Swagger UI y contrato OpenAPI | `/swagger-ui.html`, `/v3/api-docs` |
 
 **Tecnología:** Java 21, Spring Boot 3.5, arquitectura multicapa, PostgreSQL 16 con Flyway, errores ProblemDetail
@@ -45,13 +46,17 @@ docker compose up -d --build --wait
 
 En PowerShell, en lugar de `cp` use `Copy-Item .env.example .env`.
 
-La primera vez tarda unos minutos porque compila el proyecto. Cuando `--wait` termina, la API está lista. Se levantan tres servicios:
+La primera vez tarda unos minutos porque compila el proyecto. Cuando `--wait` termina, la API está lista. Se levantan cinco servicios:
 
 | Servicio | Para qué sirve |
 |---|---|
 | `postgres` | Base de datos PostgreSQL 16 (solo accesible dentro de la red de Docker) |
-| `apis-simuladas` | WireMock con las APIs simuladas de otros equipos (para las HU de integración; el arquetipo aún no las usa) |
+| `apis-simuladas` | WireMock con respuestas simuladas de Materiales/Fórmulas y de la fuente de patentes para HU-01/HU-02 |
 | `api-patent-sweep` | La API Patent Sweep, expuesta en el puerto `API_PUERTO` |
+| `prometheus` | Recolecta métricas de la API por la red interna de Docker; no publica puertos |
+| `grafana` | Muestra los tableros en `http://localhost:3000`; requiere las credenciales de Grafana del `.env` |
+
+`node-exporter` se inicia aparte con el perfil `servidor` y está pensado para Linux/EC2, no para Docker Desktop.
 
 Para detener: `docker compose down` (con `-v` también borra los datos de la base).
 
@@ -71,6 +76,9 @@ Copie `.env.example` como `.env`. Los valores que trae funcionan tal cual para p
 | `JWT_SECRET`, `JWT_EXPIRACION_MINUTOS` | Firma y duración del JWT (60 minutos por defecto) |
 | `ADMIN_USUARIO`, `ADMIN_CLAVE` | Usuario administrador inicial para el demo |
 | `SERVICIO_USUARIO`, `SERVICIO_CLAVE` | Cuenta opcional para integraciones; no se usa en la GUI |
+| `MANAGEMENT_PUERTO` | Puerto interno de Actuator para Prometheus (9091; no se publica y debe ser distinto de `API_PUERTO`) |
+| `GRAFANA_ADMIN_USUARIO`, `GRAFANA_ADMIN_CLAVE` | Usuario administrador de Grafana |
+| `API_DOMINIO`, `GRAFANA_DOMINIO` | Solo producción: subdominios que Caddy sirve por HTTPS |
 
 Si el puerto `8085` está ocupado, cambie `API_PUERTO` y use ese puerto en todas las URL de esta guía.
 Las cuentas se crean en PostgreSQL al iniciar la aplicación si no existen. En un `.env` de demo basta con la

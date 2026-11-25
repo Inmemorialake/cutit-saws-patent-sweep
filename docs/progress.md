@@ -6,7 +6,7 @@ Fuente de verdad para saber qué está implementado. Antes de continuar, leer `A
 ## Estado actual
 
 - [x] **Fase 0 — Gobernanza**: ADR-008 (restauración Sprint 1), ADR-009 (dedupe por pareja),
-      ADR-010 (TimeLimiter global para integraciones),
+      ADR-010 (monitoreo y HTTPS), ADR-011 (TimeLimiter global para integraciones),
       `docs/discrepancias.md`, este archivo y entrada en `CHANGELOG.md`.
 - [x] **Fase 1 — HU-00: cimientos** (commits `edc4a36`, `3a9fc6d` y el cierre de esta fase)
   - [x] 1/3 dependencias, configuración, seguridad JWT, clientes base y variables de entorno.
@@ -30,6 +30,9 @@ Fuente de verdad para saber qué está implementado. Antes de continuar, leer `A
 - [x] **Corrección de resiliencia HU-01/HU-02/HU-04**: las integraciones bloqueantes se ejecutan en un pool
       acotado y el `TimeLimiter` de 20 s envuelve la llamada lógica completa, incluidos los reintentos; los
       intentos que vencen el plazo no vuelven a consultar la API externa.
+- [x] **Monitoreo y HTTPS (ADR-010)**: Actuator usa un puerto interno para Prometheus, el health check público se
+      conserva con `SaludController`, y el Compose incorpora Prometheus, Grafana, node-exporter y Caddy para HTTPS.
+      `mvn clean verify` pasa con 146 pruebas, JaCoCo y Checkstyle en verde.
 
 ## Cómo reanudar en otra sesión
 

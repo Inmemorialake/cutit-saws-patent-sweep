@@ -1,5 +1,6 @@
 package co.edu.univalle.patentsweep.controller;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -33,6 +34,8 @@ import org.springframework.test.web.servlet.MockMvc;
 @Import({GlobalExceptionHandler.class, SecurityConfig.class, JwtProvider.class, ClockConfig.class,
         ConflictoMapper.class})
 class SeguridadJwtTest {
+
+    private static final int PUERTO_MANAGEMENT = 9091;
 
     @Autowired
     private MockMvc mockMvc;
@@ -146,5 +149,26 @@ class SeguridadJwtTest {
                         .content("{\"username\":\"admin\",\"password\":\"incorrecta\"}"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.detail").value("Credenciales inválidas"));
+    }
+
+    @Test
+    @DisplayName("Métricas: por el puerto de management la seguridad las deja pasar sin JWT")
+    void deberiaPermitirMetricasPorPuertoDeManagement() throws Exception {
+        mockMvc.perform(get("/actuator/prometheus").with(peticion -> {
+                    peticion.setLocalPort(PUERTO_MANAGEMENT);
+                    return peticion;
+                }))
+                // En el test no hay actuator: basta con que la cadena de seguridad no responda 401/403.
+                .andExpect(resultado -> assertThat(resultado.getResponse().getStatus()).isNotIn(401, 403));
+    }
+
+    @Test
+    @DisplayName("401: las métricas por el puerto público exigen JWT")
+    void deberiaRechazarMetricasPorPuertoPublico() throws Exception {
+        mockMvc.perform(get("/actuator/prometheus").with(peticion -> {
+                    peticion.setLocalPort(8085);
+                    return peticion;
+                }))
+                .andExpect(status().isUnauthorized());
     }
 }

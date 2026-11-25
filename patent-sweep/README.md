@@ -43,6 +43,8 @@ docker compose up -d --build --wait
 
 - Swagger UI: `http://localhost:8085/swagger-ui.html` (el puerto es `API_PUERTO` de `.env`)
 - Health check: `http://localhost:8085/actuator/health`
+- Grafana: `http://localhost:3000` (usuario y clave `GRAFANA_ADMIN_*` de `.env`), con los tableros de la API y del servidor
+- Métricas: solo dentro de la red de Docker, en `api-patent-sweep:9091/actuator/prometheus` (ADR-010)
 - Casos de prueba paso a paso: [GUIA_EJECUCION.md](GUIA_EJECUCION.md)
 
 Para detener: `docker compose down` (agregue `-v` para borrar también los datos de PostgreSQL).
@@ -152,7 +154,10 @@ precalculado, JWT + RBAC) vuelven con las HU que las necesitan. Su última imple
 
 - La autenticación JWT está activa. `POST /api/v1/auth/login` valida cuentas existentes sembradas desde variables
   de entorno; no hay registro ni administración de usuarios. Reemplace los valores de ejemplo antes de usar datos reales.
-- Health check y Swagger UI son públicos; `/actuator/prometheus` está restringido desde que volvió la seguridad (ADR-008).
+- El health check es público en el puerto de la API. Swagger UI también es pública y en producción se sirve por HTTPS;
+  si se decide restringirla, se puede desactivar con `springdoc.swagger-ui.enabled=false`.
+- `/actuator/prometheus` solo es accesible sin JWT por el puerto interno de management; por el puerto de la API exige JWT
+  (ADR-008, ADR-010).
 - HU-01, HU-02 y HU-04 están implementadas. HU-05 a HU-12 siguen pendientes; consulte el estado vigente en
   [`docs/progress.md`](../docs/progress.md).
 - `restart: unless-stopped` reinicia el contenedor si el proceso termina, pero no si queda `unhealthy`.
