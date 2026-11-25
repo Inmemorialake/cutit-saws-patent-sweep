@@ -320,6 +320,15 @@
     }
   });
 
+  /* HU-08 (detalle del conflicto) aún no existe: el enlace queda listo con un destino provisional. */
+  function enlaceConflicto(conflictoId, texto) {
+    return el(
+      "a",
+      { href: "#conflicto/" + conflictoId, class: "enlace-conflicto" },
+      texto,
+    );
+  }
+
   function pintarBusqueda(r, salida) {
     const lista = r.conflictos || [];
     if (lista.length === 0) {
@@ -355,8 +364,8 @@
           el(
             "tr",
             {},
-            el("td", {}, c.conflictoId),
-            el("td", { class: "ancho" }, c.tituloPatente),
+            el("td", {}, enlaceConflicto(c.conflictoId, c.conflictoId)),
+            el("td", { class: "ancho" }, enlaceConflicto(c.conflictoId, c.tituloPatente)),
             el("td", {}, c.tipoProducto),
             el(
               "td",
