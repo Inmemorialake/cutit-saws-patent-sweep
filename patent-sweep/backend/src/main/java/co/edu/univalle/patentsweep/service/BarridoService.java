@@ -127,7 +127,7 @@ public class BarridoService {
         barrido.setTotalFormulas(formulas.size());
         if (formulas.isEmpty()) {
             LOG.info(MENSAJE_SIN_FORMULAS);
-            return finalizar(barrido, 0, 0, 0, 0, 0, MENSAJE_COMPLETADO);
+            return finalizar(barrido, 0, 0, 0, 0, 0, MENSAJE_SIN_FORMULAS);
         }
 
         Configuracion configuracion;
