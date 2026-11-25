@@ -37,7 +37,8 @@ services:
     mem_limit: 64m
 
   grafana:
-    mem_limit: 256m
+    # Grafana 13 ronda los 240 MB en reposo: 384 MB le dejan margen ante consultas pesadas sin OOM.
+    mem_limit: 384m
     # En producción Grafana no publica puerto: se entra por Caddy.
     ports: !reset []
     environment:
