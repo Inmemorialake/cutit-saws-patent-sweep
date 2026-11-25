@@ -13,6 +13,7 @@ El versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 - ADR-008: restauración del alcance Sprint 1 desde el commit `238806c` y fin del arquetipo de una sola transacción.
 - ADR-009: conflicto único por fórmula y patente, sin importar la versión; matiza ADR-002.
+- ADR-010: TimeLimiter global de 20 s para integraciones HTTP bloqueantes, aplicado sobre la operación asíncrona completa.
 - `docs/discrepancias.md` con las decisiones D-1 a D-12 y `docs/progress.md` como estado de avance del Sprint 1.
 - Seguridad JWT con roles `ADMINISTRADOR`/`SERVICIO`, configuración de Resilience4j, caché Caffeine,
   reloj inyectable y clientes `RestClient` base para Materiales y la fuente de patentes (HU-00, ADR-008).

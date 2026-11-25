@@ -6,6 +6,7 @@ Fuente de verdad para saber qué está implementado. Antes de continuar, leer `A
 ## Estado actual
 
 - [x] **Fase 0 — Gobernanza**: ADR-008 (restauración Sprint 1), ADR-009 (dedupe por pareja),
+      ADR-010 (TimeLimiter global para integraciones),
       `docs/discrepancias.md`, este archivo y entrada en `CHANGELOG.md`.
 - [x] **Fase 1 — HU-00: cimientos** (commits `edc4a36`, `3a9fc6d` y el cierre de esta fase)
   - [x] 1/3 dependencias, configuración, seguridad JWT, clientes base y variables de entorno.
