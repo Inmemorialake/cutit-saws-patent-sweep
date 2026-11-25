@@ -2,7 +2,7 @@
 
 ## Identidad y prioridad
 
-Módulo **Patent Sweep** de la plataforma Cutit Saws (curso 750021C, Universidad del Valle). Backend Java 21 + Spring Boot 3.5.16 en `patent-sweep/backend`, paquete raíz `co.edu.univalle.patentsweep`. Versión vigente: `v1.0.0-beta.1`; Sprint 0 cerrado y Sprint 1 completado en código (HU-00, HU-01, HU-02 y HU-04).
+Módulo **Patent Sweep** de la plataforma Cutit Saws (curso 750021C, Universidad del Valle). Backend Java 21 + Spring Boot 3.5.16 en `patent-sweep/backend`, paquete raíz `co.edu.univalle.patentsweep`. Versión vigente: `v1.0.0-beta.3`; Sprint 0 y Sprint 1 cerrados (HU-00, HU-01, HU-02 y HU-04), desplegada en producción el 2026-11-25.
 
 **Regla de oro: el estado real del proyecto manda.** Ante discrepancias, este es el orden de precedencia:
 
@@ -73,4 +73,5 @@ API en `localhost:8085` y Grafana en `localhost:3000`; `GUIA_EJECUCION.md` tiene
 - `docs/HU/HU-00.md`, `HU-02.md` y `HU-04.md` están versionados y con contenido; `HU-01.MD` usa extensión `.MD`. Consulta `docs/progress.md` antes de asumir qué HU está implementada.
 - ADR-001…004 están a la espera de sus HU; ADR-005 y ADR-007 se leen juntos (SSH quedó sustituido por SSM).
 - ADR-008…ADR-011 dejan sin efecto parcial el arquetipo de ADR-006 y la unicidad por versión de ADR-002; el estado real se registra en `docs/progress.md`.
+- WireMock (`apis-simuladas`) lee `mocks/mappings` solo al arrancar y el CD no lo reinicia: al cambiar un mock, suba la etiqueta `co.edu.univalle.patentsweep.mocks-version` en `docker-compose.yml` para que el despliegue lo recree. `MocksDelRepositorioIntegracionTest` valida los mocks en el CI.
 - No cargar datos reales de patentes en producción; health y Swagger son públicos, las métricas solo salen por el puerto interno de management (ADR-008, ADR-010).

@@ -1,0 +1,41 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "/formulas/form-004"
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": {
+      "codigo": "form-004",
+      "nombre": "Compuesto Cerámico D",
+      "aplicacionTecnica": "Aislante para herramienta industrial",
+      "version": "1",
+      "estado": "APROBADA",
+      "componentes": [
+        {
+          "skuMaterial": "mat-040",
+          "nombreMaterial": "Zirconia",
+          "porcentaje": 40.0
+        },
+        {
+          "skuMaterial": "mat-041",
+          "nombreMaterial": "Boro",
+          "porcentaje": 30.0
+        },
+        {
+          "skuMaterial": "mat-042",
+          "nombreMaterial": "Silicato de litio",
+          "porcentaje": 20.0
+        },
+        {
+          "skuMaterial": "mat-043",
+          "nombreMaterial": "Óxido de cerio",
+          "porcentaje": 10.0
+        }
+      ]
+    }
+  }
+}
