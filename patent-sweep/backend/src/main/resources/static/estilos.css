@@ -321,3 +321,8 @@ dl.detalle dd {
   margin: 1rem 0 0;
   color: var(--suave);
 }
+
+.enlace-conflicto {
+  color: inherit;
+  text-decoration: underline;
+}

@@ -1,7 +1,7 @@
 # Progreso del Sprint 1
 
 Fuente de verdad para saber qué está implementado. Antes de continuar, leer `AGENTS.md`, este archivo y
-`git status --short --branch`. Rama de trabajo: `jmarin`.
+`git status --short --branch`. Ramas de trabajo: `jmarin` / `dtaborda` / `vyuan`.
 
 ## Estado actual
 
@@ -36,6 +36,10 @@ Fuente de verdad para saber qué está implementado. Antes de continuar, leer `A
 - [x] **Ajustes PB (C-1 a C-9) y cierre de HU-02**: retiro del arquetipo del Sprint 0, `alertasActivas` y mensajes de HU-04, `CON_CONFLICTO` solo con conflictos vigentes, mensaje de lista vacía, 20 s por intento y omisión de fórmulas descontinuadas. `mvn clean verify` pasa con 160 pruebas (con Docker), cobertura y Checkstyle en verde. Cierre de HU-02: pruebas de integración
       (`IntegracionBase`, `BusquedaManualIntegracionTest`, `BusquedaManualResilienciaTest`), retiro de la llamada
       redundante a `recalcular` en `BusquedaService` y migración V8 (ADR-012, propuesta).
+- [x] **Complemento GUI HU-02 (`static/`)**: adaptación de la interfaz web liviana (`index.html`, `app.js`,
+      `estilos.css`) reutilizando la base visual de HU-04 para la vista **Patentes > Búsqueda Manual**, botón
+      **“Buscar Coincidencias”**, validación `form-NNN`, manejo de estados/mensajes del PB y enlaces provisionales
+      (`#conflicto/{conflictoId}`) listos para HU-08.
 
 ## Cómo reanudar en otra sesión
 
