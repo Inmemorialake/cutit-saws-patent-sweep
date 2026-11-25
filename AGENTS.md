@@ -70,7 +70,7 @@ API en `localhost:8085` y Grafana en `localhost:3000`; `GUIA_EJECUCION.md` tiene
 
 - El directorio y el remoto se llaman `cutit-saws-materiales-api`, pero el contenido, el CI y el despliegue son **Patent Sweep** (`cutit-saws-patent-sweep` en README, ADRs e infra). No reescribas el proyecto por el nombre de la carpeta.
 - `docs/ia/` y `docs/referencias/` describen **Materiales/Fórmulas**: son referencia de integración, no código de este módulo.
-- `docs/HU/HU-00.md` y `docs/HU/HU-02.md` están versionados y con contenido; `HU-01.MD` usa extensión `.MD`. Consulta `docs/progress.md` antes de asumir qué HU está implementada.
+- `docs/HU/HU-00.md`, `HU-02.md` y `HU-04.md` están versionados y con contenido; `HU-01.MD` usa extensión `.MD`. Consulta `docs/progress.md` antes de asumir qué HU está implementada.
 - ADR-001…004 están a la espera de sus HU; ADR-005 y ADR-007 se leen juntos (SSH quedó sustituido por SSM).
 - ADR-008…ADR-011 dejan sin efecto parcial el arquetipo de ADR-006 y la unicidad por versión de ADR-002; el estado real se registra en `docs/progress.md`.
 - No cargar datos reales de patentes en producción; health y Swagger son públicos, las métricas solo salen por el puerto interno de management (ADR-008, ADR-010).

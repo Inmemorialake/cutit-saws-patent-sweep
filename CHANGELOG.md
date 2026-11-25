@@ -23,6 +23,8 @@ El versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 ### Añadido
 
+- `docs/HU/HU-04.md`: especificación de HU-04 (endpoint, reglas de estado, GUI, pruebas y trazabilidad).
+- ADR-012 pasa de «Propuesta» a «Aceptada»; se corrige su consecuencia sobre HU-04 (las alertas cuentan por pareja, sin filtrar la versión).
 - Pruebas de integración de HU-02 (`@SpringBootTest` con PostgreSQL por Testcontainers y WireMock).
 
 ### Corregido
