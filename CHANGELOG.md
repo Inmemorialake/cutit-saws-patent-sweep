@@ -29,6 +29,7 @@ El versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 - Límite de memoria de Grafana en producción de 256 a 384 MB: en el EC2 usaba ~242 MB en reposo (94 % del límite) y
   podía reiniciarse por OOM.
+- Una ruta inexistente (por ejemplo, la antigua `/buscar-conflictos`) respondía 500 y registraba un «Error interno»; ahora responde 404 `ProblemDetail`, y un método HTTP no soportado, 405.
 
 ## [1.0.0-beta.2] — 2026-11-24 · Sprint 1: HU-01, HU-02, monitoreo y HTTPS
 
