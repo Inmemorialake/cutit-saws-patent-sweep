@@ -60,7 +60,7 @@ class ConflictoServiceTest {
     }
 
     @Test
-    @DisplayName("no duplica por fórmula y patente aunque cambie la versión o el estado")
+    @DisplayName("no duplica una pareja ya DESCARTADA y registra SIN_CONFLICTO si no queda ninguno vigente")
     void noDeberiaDuplicarPorFormulaYPatente() {
         FormulaExternaDTO formula = formula("2");
         Patente patente = Patente.builder().patenteId(5L).codigoPatente("PAT-998822").titulo("Aleación").build();
@@ -71,7 +71,7 @@ class ConflictoServiceTest {
                 .thenReturn(Optional.of(existente));
         when(conflictoRepository.countByFormulaIdAndEstado("form-001", EstadoConflicto.DETECTADO)).thenReturn(0L);
         when(historialService.registrar(eq("form-001"), eq("2"), eq("ingeniera"),
-                eq(OrigenRevision.BUSQUEDA_MANUAL), eq(ResultadoRevision.CON_CONFLICTO),
+                eq(OrigenRevision.BUSQUEDA_MANUAL), eq(ResultadoRevision.SIN_CONFLICTO),
                 anyMap(), isNull(), any())).thenReturn(revision());
 
         List<Conflicto> resultado = servicio.registrarNuevos(formula, "ingeniera", List.of(patente()), Map.of());
@@ -79,6 +79,25 @@ class ConflictoServiceTest {
         assertThat(resultado).containsExactly(existente);
         verify(conflictoRepository, never()).save(any());
         verify(publicador, never()).publishEvent(any());
+    }
+
+    @Test
+    @DisplayName("una pareja existente aún DETECTADA mantiene el resultado CON_CONFLICTO")
+    void deberiaMantenerConflictoSiLaParejaSigueDetectada() {
+        FormulaExternaDTO formula = formula("2");
+        Patente patente = Patente.builder().patenteId(5L).codigoPatente("PAT-998822").titulo("Aleación").build();
+        Conflicto existente = Conflicto.builder().conflictoId(100001L).formulaId("form-001")
+                .patente(patente).versionFormula("2").estado(EstadoConflicto.DETECTADO).build();
+        when(patenteRepository.findByCodigoPatente("PAT-998822")).thenReturn(Optional.of(patente));
+        when(conflictoRepository.findByFormulaIdAndPatente_PatenteId("form-001", 5L))
+                .thenReturn(Optional.of(existente));
+        when(conflictoRepository.countByFormulaIdAndEstado("form-001", EstadoConflicto.DETECTADO)).thenReturn(1L);
+        when(historialService.registrar(eq("form-001"), eq("2"), eq("ingeniera"),
+                eq(OrigenRevision.BUSQUEDA_MANUAL), eq(ResultadoRevision.CON_CONFLICTO),
+                anyMap(), isNull(), any())).thenReturn(revision());
+
+        assertThat(servicio.registrarNuevos(formula, "ingeniera", List.of(patente()), Map.of()))
+                .containsExactly(existente);
     }
 
     @Test
