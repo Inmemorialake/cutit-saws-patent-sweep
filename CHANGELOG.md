@@ -9,6 +9,13 @@ El versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 ## [Unreleased]
 
+### Añadido
+
+- HU-01 (D-14): el primer barrido automático corre 30 s después de arrancar la API, en lugar de esperar una
+  frecuencia completa (24 h por defecto); los siguientes siguen la frecuencia de HU-06. Cada despliegue reinicia
+  la API, así que antes el barrido casi nunca llegaba a correr. Se controla con `BARRIDO_AL_INICIAR` (por defecto
+  `true`) y `BARRIDO_RETRASO_INICIAL` (por defecto `30s`); ShedLock sigue evitando barridos simultáneos.
+
 ### Corregido
 
 - Swagger en producción no funcionaba: el contrato OpenAPI anunciaba `http://patent-sweep.inmemorialake.dev` y el

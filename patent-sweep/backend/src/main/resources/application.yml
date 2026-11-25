@@ -71,6 +71,10 @@ patentsweep:
     admin-clave: ${ADMIN_CLAVE:}
     servicio-usuario: ${SERVICIO_USUARIO:}
     servicio-clave: ${SERVICIO_CLAVE:}
+  barrido:
+    # D-14: primer barrido poco después de arrancar; los siguientes, según la frecuencia de HU-06 (1 día por defecto).
+    al-iniciar: ${BARRIDO_AL_INICIAR:true}
+    retraso-inicial: ${BARRIDO_RETRASO_INICIAL:30s}
   materiales:
     url-base: ${MATERIALES_URL:http://apis-simuladas:8080}
   fuente-patentes:
