@@ -209,7 +209,7 @@ class MaterialesClientTest {
     }
 
     @Test
-    @DisplayName("La configuración define 3 intentos, 5 s de espera y 20 s de límite")
+    @DisplayName("La configuración define 3 intentos, 5 s de espera, 20 s por intento y 70 s en total")
     void deberiaLeerLaConfiguracionDeResiliencia() throws IOException {
         PropertySource<?> configuracion = new YamlPropertySourceLoader()
                 .load("application", new ClassPathResource("application.yml")).get(0);
@@ -219,7 +219,8 @@ class MaterialesClientTest {
         assertThat(configuracion.getProperty("resilience4j.retry.instances.materiales.wait-duration"))
                 .isEqualTo("5s");
         assertThat(configuracion.getProperty("resilience4j.timelimiter.instances.materiales.timeout-duration"))
-                .isEqualTo("20s");
+                .isEqualTo("70s");
+        assertThat(configuracion.getProperty("patentsweep.http.timeout-lectura-segundos")).isEqualTo(20);
         assertThat(configuracion.getProperty("resilience4j.timelimiter.instances.materiales.cancel-running-future"))
                 .isEqualTo(true);
     }
