@@ -391,7 +391,7 @@
     cargando(estado, "Consultando estado…");
     try {
       const r = await llamar(
-        "/patentes/estado?formulaId=" + encodeURIComponent(formulaId),
+        "/patentes/estado/" + encodeURIComponent(formulaId),
       );
       estado.replaceChildren();
       const [texto, clase] = ESTADOS_FORMULA[r.estado] || [

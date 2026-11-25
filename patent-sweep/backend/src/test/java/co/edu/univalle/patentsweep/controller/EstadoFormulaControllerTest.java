@@ -62,9 +62,9 @@ class EstadoFormulaControllerTest {
     }
 
     @Test
-    @DisplayName("400: formulaId vacío")
-    void deberiaResponder400ConFormulaVacia() throws Exception {
-        mockMvc.perform(solicitud(""))
+    @DisplayName("400: formulaId con menos dígitos de los exigidos")
+    void deberiaResponder400ConPocosDigitos() throws Exception {
+        mockMvc.perform(solicitud("form-12"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.detail").value(MENSAJE_FORMATO));
     }
@@ -90,8 +90,7 @@ class EstadoFormulaControllerTest {
     }
 
     private static MockHttpServletRequestBuilder solicitud(String formulaId) {
-        return get(RUTA)
-                .param("formulaId", formulaId)
+        return get(RUTA + "/" + formulaId)
                 .principal(new UsernamePasswordAuthenticationToken("fabricacion", null))
                 .accept(MediaType.APPLICATION_JSON);
     }

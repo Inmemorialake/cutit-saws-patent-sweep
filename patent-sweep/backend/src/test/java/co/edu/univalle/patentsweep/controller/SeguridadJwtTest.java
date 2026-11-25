@@ -54,7 +54,7 @@ class SeguridadJwtTest {
     @Test
     @DisplayName("401: exige JWT para consultar el estado de una fórmula")
     void deberiaRechazarPeticionSinToken() throws Exception {
-        mockMvc.perform(get("/api/v1/patentes/estado").param("formulaId", "form-001"))
+        mockMvc.perform(get("/api/v1/patentes/estado/form-001"))
                 .andExpect(status().isUnauthorized());
     }
 
@@ -65,7 +65,7 @@ class SeguridadJwtTest {
                 .thenReturn(new EstadoFormulaService.EstadoCalculado(EstadoFormula.LIBRE, null));
         String token = jwtProvider.generarToken("servicio", Rol.SERVICIO);
 
-        mockMvc.perform(get("/api/v1/patentes/estado").param("formulaId", "form-001")
+        mockMvc.perform(get("/api/v1/patentes/estado/form-001")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.formulaId").value("form-001"))
