@@ -75,7 +75,7 @@ class SeguridadJwtTest {
     @Test
     @DisplayName("401: exige JWT para buscar conflictos")
     void deberiaRechazarBusquedaSinToken() throws Exception {
-        mockMvc.perform(post("/api/v1/patentes/busqueda")
+        mockMvc.perform(post("/api/v1/patentes/buscar-conflictos")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"formulaId\":\"form-001\"}"))
                 .andExpect(status().isUnauthorized());
@@ -86,7 +86,7 @@ class SeguridadJwtTest {
     void deberiaRechazarBusquedaConRolServicio() throws Exception {
         String token = jwtProvider.generarToken("servicio", Rol.SERVICIO);
 
-        mockMvc.perform(post("/api/v1/patentes/busqueda")
+        mockMvc.perform(post("/api/v1/patentes/buscar-conflictos")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"formulaId\":\"form-001\"}"))
@@ -99,7 +99,7 @@ class SeguridadJwtTest {
         when(busquedaService.buscar("form-001", "ingeniera")).thenReturn(List.of());
         String token = jwtProvider.generarToken("ingeniera", Rol.ADMINISTRADOR);
 
-        mockMvc.perform(post("/api/v1/patentes/busqueda")
+        mockMvc.perform(post("/api/v1/patentes/buscar-conflictos")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"formulaId\":\"form-001\"}"))

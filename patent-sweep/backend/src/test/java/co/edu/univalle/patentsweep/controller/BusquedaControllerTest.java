@@ -37,7 +37,7 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 @WithMockUser(username = "ingeniera", roles = "ADMINISTRADOR")
 class BusquedaControllerTest {
 
-    private static final String RUTA = "/api/v1/patentes/busqueda";
+    private static final String RUTA = "/api/v1/patentes/buscar-conflictos";
     private static final String MENSAJE_FORMATO =
             "El código de la fórmula es obligatorio y debe tener el formato form-NNN";
 

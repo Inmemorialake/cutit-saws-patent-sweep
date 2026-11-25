@@ -303,7 +303,7 @@
     boton.disabled = true;
     cargando(estado, "Buscando conflictos…");
     try {
-      const r = await llamar("/patentes/busqueda", {
+      const r = await llamar("/patentes/buscar-conflictos", {
         metodo: "POST",
         cuerpo: { formulaId },
       });

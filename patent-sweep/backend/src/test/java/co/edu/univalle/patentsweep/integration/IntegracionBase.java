@@ -27,7 +27,7 @@ import org.testcontainers.containers.PostgreSQLContainer;
 @AutoConfigureMockMvc
 abstract class IntegracionBase {
 
-    protected static final String RUTA = "/api/v1/patentes/busqueda";
+    protected static final String RUTA = "/api/v1/patentes/buscar-conflictos";
     protected static final String USUARIO = "ingeniera";
 
     static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:16-alpine");
