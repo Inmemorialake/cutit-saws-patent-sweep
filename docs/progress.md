@@ -35,7 +35,7 @@ Fuente de verdad para saber qué está implementado. Antes de continuar, leer `A
       `mvn clean verify` pasa con 146 pruebas, JaCoCo y Checkstyle en verde.
 - [x] **Ajustes PB (C-1 a C-9) y cierre de HU-02**: retiro del arquetipo del Sprint 0, `alertasActivas` y mensajes de HU-04, `CON_CONFLICTO` solo con conflictos vigentes, mensaje de lista vacía, 20 s por intento y omisión de fórmulas descontinuadas. `mvn clean verify` pasa con 160 pruebas (con Docker), cobertura y Checkstyle en verde. Cierre de HU-02: pruebas de integración
       (`IntegracionBase`, `BusquedaManualIntegracionTest`, `BusquedaManualResilienciaTest`), retiro de la llamada
-      redundante a `recalcular` en `BusquedaService` y migración V8 (ADR-012, propuesta).
+      redundante a `recalcular` en `BusquedaService` y migración V8 (ADR-012, aceptada el 2026-11-25).
 - [x] **Complemento GUI HU-02 (`static/`)**: adaptación de la interfaz web liviana (`index.html`, `app.js`,
       `estilos.css`) reutilizando la base visual de HU-04 para la vista **Patentes > Búsqueda Manual**, botón
       **“Buscar Coincidencias”**, validación `form-NNN`, manejo de estados/mensajes del PB y enlaces provisionales
@@ -44,7 +44,8 @@ Fuente de verdad para saber qué está implementado. Antes de continuar, leer `A
       (D-7, criterio 2 de HU-02) y la GUI de HU-04 se alinea con el criterio 3.5: vista «Patentes > Estado de
       Barrido», botón «Ver Estado de Barrido», tabla de `alertasActivas` con enlace a HU-08 y el mensaje «La
       fórmula no tiene alertas activas». HU-01 (criterio 1.1): el barrido omitido queda en la tabla `barrido`
-      con estado `OMITIDO` (sin migración: la columna es `VARCHAR`).
+      con estado `OMITIDO` (sin migración: la columna es `VARCHAR`). Se agrega `docs/HU/HU-04.md` y ADR-012 pasa a
+      «Aceptada».
 
 ## Cómo reanudar en otra sesión
 

@@ -18,7 +18,7 @@ Sí existe:
 
 - `POST /api/v1/patentes/busqueda`: búsqueda manual (HU-02) restringida a `ADMINISTRADOR`; consulta Materiales/Fórmulas y la fuente de patentes, filtra con el motor de coincidencias, persiste conflictos/historial y devuelve 200/400/401/403/404/409/503 (D-7, ADR-009).
 - `GET /api/v1/patentes/estado/{formulaId}` (HU-04) → 200/400/401/404/500/503; devuelve `alertasActivas`, usa los mensajes del PB y verifica la fórmula en 5 s sin reintentos. El estado se calcula en cada consulta y no se persiste (ADR-003/004). El arquetipo del Sprint 0 (registro de patentes) se retiró.
-- Barrido automático (HU-01): `BarridoScheduler` con `Trigger` dinámico y ShedLock, `MaterialesClient.listarAprobadas` por páginas de 10, orquestación por fórmula con origen `BARRIDO_AUTOMATICO`, recuperación de barridos huérfanos y métricas `patentsweep.barrido.duracion` / `patentsweep.barrido.formulas{resultado}` (D-2, D-5, D-10).
+- Barrido automático (HU-01): `BarridoScheduler` con `Trigger` dinámico y ShedLock, `MaterialesClient.listarAprobadas` por páginas de 10, orquestación por fórmula con origen `BARRIDO_AUTOMATICO`, recuperación de barridos huérfanos y métricas `patentsweep.barrido.duracion` / `patentsweep.barrido.formulas{resultado}` / `patentsweep.barrido.ejecuciones{estado}` / `patentsweep.barrido.ultima.ejecucion{estado}` (D-2, D-5, D-10).
 - Errores `ProblemDetail` (RFC 9457) con `traceId`; Swagger/OpenAPI y Actuator. El health check (`SaludController`) y Swagger son públicos; Actuator corre en el puerto interno `MANAGEMENT_PUERTO` (9091) y Prometheus solo pasa sin JWT por ese puerto; en el puerto de la API las métricas exigen JWT (ADR-008, ADR-010).
 - `POST /api/v1/auth/login` autentica usuarios existentes y devuelve un JWT Bearer con expiración, username y rol; no hay registro ni administración de usuarios.
 - PostgreSQL 16 con Flyway V1–V7; entidades y repositorios mapeados para todas las tablas del esquema, con enums y excepciones propias.
@@ -70,7 +70,7 @@ API en `localhost:8085` y Grafana en `localhost:3000`; `GUIA_EJECUCION.md` tiene
 
 - El directorio y el remoto se llaman `cutit-saws-materiales-api`, pero el contenido, el CI y el despliegue son **Patent Sweep** (`cutit-saws-patent-sweep` en README, ADRs e infra). No reescribas el proyecto por el nombre de la carpeta.
 - `docs/ia/` y `docs/referencias/` describen **Materiales/Fórmulas**: son referencia de integración, no código de este módulo.
-- `docs/HU/HU-00.md` y `docs/HU/HU-02.md` están versionados y con contenido; `HU-01.MD` usa extensión `.MD`. Consulta `docs/progress.md` antes de asumir qué HU está implementada.
+- `docs/HU/HU-00.md`, `HU-02.md` y `HU-04.md` están versionados y con contenido; `HU-01.MD` usa extensión `.MD`. Consulta `docs/progress.md` antes de asumir qué HU está implementada.
 - ADR-001…004 están a la espera de sus HU; ADR-005 y ADR-007 se leen juntos (SSH quedó sustituido por SSM).
 - ADR-008…ADR-011 dejan sin efecto parcial el arquetipo de ADR-006 y la unicidad por versión de ADR-002; el estado real se registra en `docs/progress.md`.
 - No cargar datos reales de patentes en producción; health y Swagger son públicos, las métricas solo salen por el puerto interno de management (ADR-008, ADR-010).

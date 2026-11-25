@@ -16,6 +16,7 @@ import co.edu.univalle.patentsweep.model.enums.OrigenRevision;
 import co.edu.univalle.patentsweep.model.enums.ResultadoRevision;
 import co.edu.univalle.patentsweep.repository.BarridoRepository;
 import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import java.time.Clock;
@@ -24,11 +25,13 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -65,6 +68,8 @@ public class BarridoService {
     private final EstadoFormulaService estadoFormulaService;
     private final MeterRegistry meterRegistry;
     private final Clock reloj;
+    /** Segundos epoch del último barrido terminado en cada estado; 0 si no ha ocurrido desde el arranque. */
+    private final Map<EstadoBarrido, AtomicLong> ultimaEjecucion = new EnumMap<>(EstadoBarrido.class);
 
     public BarridoService(BarridoRepository barridoRepository, MaterialesClient materialesClient,
                           FuentePatentesPort fuentePatentes, MotorCoincidencias motorCoincidencias,
@@ -81,13 +86,24 @@ public class BarridoService {
         this.estadoFormulaService = estadoFormulaService;
         this.meterRegistry = meterRegistry;
         this.reloj = reloj;
+        for (EstadoBarrido estado : List.of(EstadoBarrido.COMPLETADO, EstadoBarrido.FALLIDO, EstadoBarrido.OMITIDO)) {
+            AtomicLong marca = new AtomicLong();
+            ultimaEjecucion.put(estado, marca);
+            Gauge.builder("patentsweep.barrido.ultima.ejecucion", marca, AtomicLong::get)
+                    .description("Momento (segundos epoch) del último barrido terminado en cada estado")
+                    .baseUnit("seconds")
+                    .tag("estado", estado.name())
+                    .register(meterRegistry);
+            // Se registra en 0 para que increase() de Prometheus cuente también el primer barrido tras un reinicio.
+            contadorEjecuciones(estado);
+        }
     }
 
     public Barrido ejecutar() {
         Optional<Barrido> enCurso = barridoRepository.findByEstado(EstadoBarrido.EN_CURSO);
         if (enCurso.isPresent()) {
             LOG.info("{} (iniciada el {})", MENSAJE_OMITIDO, enCurso.get().getFechaInicio());
-            return registrarOmitido();
+            return registrarEjecucion(registrarOmitido());
         }
 
         MDC.put("traceId", UUID.randomUUID().toString());
@@ -100,12 +116,12 @@ public class BarridoService {
         try {
             Barrido resultado = ejecutarBarrido(barrido);
             registrarDuracion(inicio);
-            return resultado;
+            return registrarEjecucion(resultado);
         } catch (RuntimeException excepcion) {
             LOG.error("Fallo general del barrido: {}", excepcion.getMessage());
             Barrido fallido = fallar(barrido, "Fallo general del barrido: " + excepcion.getMessage());
             registrarDuracion(inicio);
-            return fallido;
+            return registrarEjecucion(fallido);
         } finally {
             MDC.remove("traceId");
         }
@@ -271,6 +287,23 @@ public class BarridoService {
                 .tag("resultado", resultado)
                 .register(meterRegistry)
                 .increment();
+    }
+
+    /** Métricas para ver en Grafana cuándo corre cada barrido y cómo terminó (ADR-010). */
+    private Barrido registrarEjecucion(Barrido barrido) {
+        contadorEjecuciones(barrido.getEstado()).increment();
+        AtomicLong marca = ultimaEjecucion.get(barrido.getEstado());
+        if (marca != null) {
+            marca.set(Instant.now(reloj).getEpochSecond());
+        }
+        return barrido;
+    }
+
+    private Counter contadorEjecuciones(EstadoBarrido estado) {
+        return Counter.builder("patentsweep.barrido.ejecuciones")
+                .description("Barridos ejecutados, por estado final (COMPLETADO, FALLIDO u OMITIDO)")
+                .tag("estado", estado.name())
+                .register(meterRegistry);
     }
 
     private void registrarDuracion(Instant inicio) {

@@ -1,6 +1,6 @@
 # ADR-012: `UNIQUE (formula_id, patente_id)` en la tabla `conflicto`
 
-- **Estado:** Propuesta (requiere visto bueno del equipo; ADR-008 limitaba las migraciones nuevas del Sprint 1)
+- **Estado:** Aceptada (2026-11-25, por el equipo antes de la release del Sprint 1; amplía el límite de migraciones nuevas de ADR-008)
 - **Relacionado con:** ADR-002, ADR-009, HU-01 (criterio 6.2), HU-02 (criterio 3.3), tarea de Trello 9
 - **Fecha:** 2026-11-24
 
@@ -24,7 +24,9 @@ el barrido) podrían insertar la misma pareja con versiones distintas sin que la
 ## Consecuencias
 
 - La base y el servicio aplican la misma regla; la unicidad ya no depende solo de la lógica de aplicación.
-- HU-04 cuenta conflictos `DETECTADO` por fórmula y versión: un conflicto detectado con la versión 1 no se
-  cuenta para la versión 2. Es la consecuencia ya aceptada en ADR-009 y sigue pendiente de confirmar con el
-  profesor.
+- HU-04 cuenta los conflictos `DETECTADO` por pareja, sin filtrar la versión: un conflicto detectado con la
+  versión 1 sigue como alerta activa en la versión 2 hasta que se descarte (D-9). La versión solo influye en
+  si la fórmula vigente cuenta como revisada (ADR-004).
+- Verificado antes del despliegue (2026-11-25): la base de producción no tenía parejas repetidas, así que V8
+  se aplica sin detenerse.
 - Si el PO decide que el descarte vale solo por versión, habrá que revertir esta ADR con una migración nueva.

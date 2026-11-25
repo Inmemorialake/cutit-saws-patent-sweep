@@ -23,6 +23,10 @@ El versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 ### Añadido
 
+- Grafana (tablero *Patent Sweep · API*): paneles «Último barrido hace» (en rojo si pasaron más de 26 h), «Estado del último barrido» y «Barrido: ejecuciones (7 días)», con las métricas nuevas `patentsweep.barrido.ejecuciones{estado}` y `patentsweep.barrido.ultima.ejecucion{estado}`. Los contadores nacen en 0 para que Prometheus cuente también el primer barrido tras un reinicio.
+- Colección de Postman en `docs/postman/` (15 peticiones con pruebas y entornos local y producción, sin credenciales).
+- `docs/HU/HU-04.md`: especificación de HU-04 (endpoint, reglas de estado, GUI, pruebas y trazabilidad).
+- ADR-012 pasa de «Propuesta» a «Aceptada»; se corrige su consecuencia sobre HU-04 (las alertas cuentan por pareja, sin filtrar la versión).
 - Pruebas de integración de HU-02 (`@SpringBootTest` con PostgreSQL por Testcontainers y WireMock).
 
 ### Corregido

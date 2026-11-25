@@ -93,6 +93,32 @@ class BarridoServiceTest {
     }
 
     @Test
+    @DisplayName("cuenta cada barrido por estado final y guarda el momento del último para Grafana")
+    void deberiaRegistrarLasMetricasDeEjecucion() {
+        Barrido enCurso = Barrido.builder().barridoId(7L).estado(EstadoBarrido.EN_CURSO).build();
+        when(barridoRepository.findByEstado(EstadoBarrido.EN_CURSO))
+                .thenReturn(Optional.empty(), Optional.of(enCurso));
+        when(barridoRepository.save(any())).thenAnswer(invocacion -> copiar(invocacion.getArgument(0)));
+        when(materialesClient.listarAprobadas()).thenReturn(List.of());
+        BarridoService servicio = servicio();
+
+        servicio.ejecutar();
+        servicio.ejecutar();
+
+        assertThat(metricas.get("patentsweep.barrido.ejecuciones").tag("estado", "COMPLETADO").counter().count())
+                .isEqualTo(1.0);
+        assertThat(metricas.get("patentsweep.barrido.ejecuciones").tag("estado", "OMITIDO").counter().count())
+                .isEqualTo(1.0);
+        double esperado = RELOJ.instant().getEpochSecond();
+        assertThat(metricas.get("patentsweep.barrido.ultima.ejecucion").tag("estado", "COMPLETADO").gauge().value())
+                .isEqualTo(esperado);
+        assertThat(metricas.get("patentsweep.barrido.ultima.ejecucion").tag("estado", "OMITIDO").gauge().value())
+                .isEqualTo(esperado);
+        assertThat(metricas.get("patentsweep.barrido.ultima.ejecucion").tag("estado", "FALLIDO").gauge().value())
+                .isZero();
+    }
+
+    @Test
     @DisplayName("registra el inicio con la marca de tiempo del reloj inyectable y finaliza vacío")
     void deberiaRegistrarElInicio() {
         permitirGuardado();
