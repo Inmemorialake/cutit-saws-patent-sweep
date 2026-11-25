@@ -16,7 +16,7 @@ No implementes funcionalidad «porque está en el DAS»: el DAS y el backlog des
 
 Sí existe:
 
-- `POST /api/v1/patentes/buscar-conflictos`: búsqueda manual (HU-02) restringida a `ADMINISTRADOR`; consulta Materiales/Fórmulas y la fuente de patentes, filtra con el motor de coincidencias, persiste conflictos/historial y devuelve 200/400/401/403/404/409/503 (D-7, ADR-009).
+- `POST /api/v1/patentes/busqueda`: búsqueda manual (HU-02) restringida a `ADMINISTRADOR`; consulta Materiales/Fórmulas y la fuente de patentes, filtra con el motor de coincidencias, persiste conflictos/historial y devuelve 200/400/401/403/404/409/503 (D-7, ADR-009).
 - `GET /api/v1/patentes/estado/{formulaId}` (HU-04) → 200/400/401/404/500/503; devuelve `alertasActivas`, usa los mensajes del PB y verifica la fórmula en 5 s sin reintentos. El estado se calcula en cada consulta y no se persiste (ADR-003/004). El arquetipo del Sprint 0 (registro de patentes) se retiró.
 - Barrido automático (HU-01): `BarridoScheduler` con `Trigger` dinámico y ShedLock, `MaterialesClient.listarAprobadas` por páginas de 10, orquestación por fórmula con origen `BARRIDO_AUTOMATICO`, recuperación de barridos huérfanos y métricas `patentsweep.barrido.duracion` / `patentsweep.barrido.formulas{resultado}` (D-2, D-5, D-10).
 - Errores `ProblemDetail` (RFC 9457) con `traceId`; Swagger/OpenAPI y Actuator. El health check (`SaludController`) y Swagger son públicos; Actuator corre en el puerto interno `MANAGEMENT_PUERTO` (9091) y Prometheus solo pasa sin JWT por ese puerto; en el puerto de la API las métricas exigen JWT (ADR-008, ADR-010).

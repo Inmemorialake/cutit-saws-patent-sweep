@@ -60,7 +60,7 @@ Transversal: GlobalExceptionHandler (ProblemDetail RFC 9457 + traceId) · OpenAP
 
 | Método | Ruta | Respuestas | Descripción |
 |---|---|---|---|
-| `POST` | `/api/v1/patentes/buscar-conflictos` | 200 · 400 · 401 · 403 · 404 · 409 · 503 | Búsqueda manual de conflictos (solo `ADMINISTRADOR`) |
+| `POST` | `/api/v1/patentes/busqueda` | 200 · 400 · 401 · 403 · 404 · 409 · 503 | Búsqueda manual de conflictos (solo `ADMINISTRADOR`) |
 | `GET` | `/api/v1/patentes/estado/{formulaId}` | 200 · 400 · 401 · 404 · 500 · 503 | Estado calculado de una fórmula, con sus alertas activas (HU-04) |
 | `GET` | `/actuator/health` | 200 · 503 | Salud de la API y de PostgreSQL (público) |
 | `GET` | `/swagger-ui.html` · `/v3/api-docs` | 200 | Documentación OpenAPI |
@@ -114,7 +114,7 @@ Probar:
 curl -s localhost:8085/actuator/health                      # {"status":"UP"}
 
 # Con un JWT de /api/v1/auth/login (ver GUIA_EJECUCION.md):
-curl -s -X POST localhost:8085/api/v1/patentes/buscar-conflictos \
+curl -s -X POST localhost:8085/api/v1/patentes/busqueda \
   -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
   -d '{"formulaId":"form-001"}'                            # 200
 
