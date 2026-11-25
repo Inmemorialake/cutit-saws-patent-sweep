@@ -10,10 +10,10 @@ Curso 750021C Desarrollo de Software II, Universidad del Valle, 2026-2.
 | Funcionalidad | Qué hace | Endpoint |
 |---|---|---|
 | Iniciar sesión | Valida un usuario existente y devuelve un JWT Bearer | `POST /api/v1/auth/login` |
-| Registrar patente | Valida los datos, verifica que el código no exista y guarda la patente en estado `EN_TRAMITE` | `POST /api/v1/patentes/busqueda` |
-| Consultar patente | Devuelve la patente y su estado de vigencia | `GET /api/v1/patentes/estado/{id}` |
+| Interfaz web | Login, «Patentes > Búsqueda Manual» y «Patentes > Estado de Barrido» | `http://localhost:8085/` |
 | Buscar conflictos (HU-02) | Ejecuta una búsqueda manual para una fórmula; requiere rol `ADMINISTRADOR` | `POST /api/v1/patentes/busqueda` |
-| Consultar estado (HU-04) | Calcula el estado actual de una fórmula | `GET /api/v1/patentes/estado?formulaId=form-NNN` |
+| Consultar estado (HU-04) | Calcula el estado actual de una fórmula y sus alertas activas | `GET /api/v1/patentes/estado/{formulaId}` |
+| Barrido automático (HU-01) | Revisa las fórmulas aprobadas cada 24 h (la primera vez, 24 h después del arranque) | Sin endpoint; se ve en Grafana |
 | Operación | Health check público; Prometheus consulta métricas por el puerto interno de management | `GET /actuator/health`; `http://api-patent-sweep:9091/actuator/prometheus` (solo red Docker) |
 | Monitoreo | Tableros de la API y del servidor en Grafana | `http://localhost:3000` |
 | Documentación | Swagger UI y contrato OpenAPI | `/swagger-ui.html`, `/v3/api-docs` |
@@ -116,22 +116,37 @@ Respuesta `200 OK`:
 
 Credenciales inválidas devuelven `401` con `ProblemDetail`; campos vacíos devuelven `400`.
 
+### Datos de prueba (APIs simuladas)
+
+Docker Compose levanta WireMock con los mocks de `mocks/mappings` (los mismos de producción). Fórmulas disponibles:
+
+| Fórmula | Estado en Materiales | Búsqueda manual (HU-02) | Estado tras buscar o tras el barrido (HU-04) |
+|---|---|---|---|
+| `form-001` | `APROBADA` | **200** con 2 conflictos | `CONFLICTO_DETECTADO` con 2 alertas |
+| `form-002` | `APROBADA` | **200** con 1 conflicto | `CONFLICTO_DETECTADO` con 1 alerta |
+| `form-004` | `APROBADA` | **200** sin conflictos: «No se detectaron conflictos relacionados con su búsqueda» | `LIBRE` |
+| `form-003` | `DESCONTINUADA` | **409** «No se puede buscar patentes para una fórmula DESCONTINUADA» | `NO_PROCESADO` |
+| `form-999` | No existe | **404** «La fórmula consultada no fue encontrada» | **404** |
+
+El listado de aprobadas que usa el barrido (`GET /formulas?estado=APROBADA&pagina=1`) devuelve `form-001`,
+`form-002` y `form-004`; la página 2 viene vacía. Un barrido con estos datos termina `COMPLETADO` con 2 fórmulas
+con conflicto y 1 sin conflicto. `MocksDelRepositorioIntegracionTest` lo comprueba en cada CI.
+
 ### `POST /api/v1/patentes/busqueda`
 
 | Cuerpo | Resultado esperado |
 |---|---|
-| `{"codigoPatente":"PAT-000123","titulo":"Cuchilla de diamante segmentada"}` | **201** con la patente, `patenteId` y `estadoVigencia: "EN_TRAMITE"` |
-| El mismo cuerpo otra vez | **409** "Ya existe una patente registrada con el código: PAT-000123" |
-| `{"codigoPatente":"PAT-12","titulo":"X"}` | **400** "El código debe tener el formato PAT-NNNNNN" |
-| `{"codigoPatente":"PAT-000124","titulo":""}` | **400** "El título es obligatorio" |
-| Cuerpo que no es JSON | **400** "El cuerpo de la petición no es válido" |
+| `{"formulaId":"form-001"}` | **200** con los conflictos de la tabla anterior |
+| `{"formulaId":"abc"}` | **400** «El código de la fórmula es obligatorio y debe tener el formato form-NNN» |
+| Sin token | **401**; con un usuario `SERVICIO`, **403** |
 
-### `GET /api/v1/patentes/estado/{id}`
+### `GET /api/v1/patentes/estado/{formulaId}`
 
-| `id` | Resultado esperado |
+| `formulaId` | Resultado esperado |
 |---|---|
-| El `patenteId` que devolvió el POST (por ejemplo `1`) | **200** con la patente |
-| `999` | **404** "Patente no encontrada con ID: 999" |
+| `form-001` (después de buscarla) | **200** `CONFLICTO_DETECTADO` con `alertasActivas` |
+| `form-004` (después de buscarla) | **200** `LIBRE` con `alertasActivas: []` |
+| `abc` | **400** «El identificador de la fórmula no es válido» |
 
 Todos los errores vienen en formato ProblemDetail con un `traceId`, que también aparece en el log
 (`docker compose logs api-patent-sweep`).
@@ -139,11 +154,6 @@ Todos los errores vienen en formato ProblemDetail con un `traceId`, que también
 ### Alternativa con `curl`
 
 ```bash
-curl -s -X POST http://localhost:8085/api/v1/patentes/busqueda \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer <JWT>" \
-  -d '{"codigoPatente":"PAT-000123","titulo":"Cuchilla de diamante segmentada"}'
-
 curl -s -X POST http://localhost:8085/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{"username":"admin","password":"<ADMIN_CLAVE>"}'
@@ -156,7 +166,7 @@ curl -s -X POST http://localhost:8085/api/v1/patentes/busqueda \
   -H "Authorization: Bearer $TOKEN" \
   -d '{"formulaId":"form-001"}'
 
-curl -s "http://localhost:8085/api/v1/patentes/estado?formulaId=form-001" \
+curl -s http://localhost:8085/api/v1/patentes/estado/form-001 \
   -H "Authorization: Bearer $TOKEN"
 ```
 

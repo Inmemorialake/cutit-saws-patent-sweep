@@ -1,0 +1,38 @@
+{
+  "priority": 1,
+  "request": {
+    "method": "GET",
+    "urlPath": "/formulas",
+    "queryParameters": {
+      "estado": { "equalTo": "APROBADA" },
+      "pagina": { "equalTo": "1" }
+    }
+  },
+  "response": {
+    "status": 200,
+    "headers": { "Content-Type": "application/json" },
+    "jsonBody": [
+      {
+        "codigo": "form-001",
+        "nombre": "Aleación Cuchilla Diamante A",
+        "aplicacionTecnica": "Cadena de corte para motosierra Ripit 5000",
+        "estado": "APROBADA",
+        "fechaUltimaActualizacion": "15/10/2026 10:30:00"
+      },
+      {
+        "codigo": "form-002",
+        "nombre": "Recubrimiento Ligero B",
+        "aplicacionTecnica": "Disco de corte liviano",
+        "estado": "APROBADA",
+        "fechaUltimaActualizacion": "16/10/2026 09:00:00"
+      },
+      {
+        "codigo": "form-004",
+        "nombre": "Compuesto Cerámico D",
+        "aplicacionTecnica": "Aislante para herramienta industrial",
+        "estado": "APROBADA",
+        "fechaUltimaActualizacion": "17/10/2026 14:15:00"
+      }
+    ]
+  }
+}

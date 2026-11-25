@@ -9,6 +9,27 @@ El versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 ## [Unreleased]
 
+### Corregido
+
+- APIs simuladas: faltaba el mock del listado `GET /formulas?estado=APROBADA&pagina={n}`; WireMock respondía 404 y
+  el barrido automático terminaba `FALLIDO`. Ahora la página 1 devuelve `form-001`, `form-002` y `form-004` y las
+  siguientes vienen vacías.
+- El CD reemplazaba `mocks/` pero no reiniciaba WireMock, que seguía con los mocks viejos. `docker-compose.yml`
+  agrega la etiqueta `co.edu.univalle.patentsweep.mocks-version` en `apis-simuladas`: al subirla, el despliegue
+  recrea el contenedor.
+- `.gitignore` excluía `docs/postman/` (por la regla del workspace local de Postman): la colección nunca se había
+  subido. Se agrega la excepción `!docs/postman/`.
+- `GUIA_EJECUCION.md` ya no muestra el registro de patentes del Sprint 0 ni la ruta `/estado?formulaId=`.
+
+### Añadido
+
+- Mock de la fórmula `form-004` (aprobada y sin patentes que coincidan): caso `LIBRE` para la demo.
+- `MocksDelRepositorioIntegracionTest`: corre el barrido, las búsquedas y el estado contra los mocks de
+  `patent-sweep/mocks`, para que el CI detecte un mock roto.
+- Colección de Postman: casos «Sin conflictos (form-004)» y «Libre (form-004)» (17 peticiones).
+
+## [1.0.0-beta.3] — 2026-11-25 · Cierre del Sprint 1: HU-01, HU-02 y HU-04, login y GUI
+
 ### Cambiado
 
 - HU-04: ruta `GET /estado/{formulaId}`, respuesta con `alertasActivas`, mensaje de éxito y errores del PB (400/503/500) y verificación de la fórmula en 5 s sin reintentos (política `materialesVerificacion`).
@@ -215,7 +236,8 @@ conservan; el código Java se recupera desde `5d13af5`.
 
 ---
 
-[Unreleased]: https://github.com/Inmemorialake/cutit-saws-patent-sweep/compare/v1.0.0-beta.2...HEAD
+[Unreleased]: https://github.com/Inmemorialake/cutit-saws-patent-sweep/compare/v1.0.0-beta.3...HEAD
+[1.0.0-beta.3]: https://github.com/Inmemorialake/cutit-saws-patent-sweep/compare/v1.0.0-beta.2...v1.0.0-beta.3
 [1.0.0-beta.2]: https://github.com/Inmemorialake/cutit-saws-patent-sweep/compare/v1.0.0-beta.1...v1.0.0-beta.2
 [1.0.0-beta.1]: https://github.com/Inmemorialake/cutit-saws-patent-sweep/tree/v1.0.0-beta.1
 

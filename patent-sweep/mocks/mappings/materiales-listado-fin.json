@@ -1,0 +1,15 @@
+{
+  "priority": 5,
+  "request": {
+    "method": "GET",
+    "urlPath": "/formulas",
+    "queryParameters": {
+      "estado": { "equalTo": "APROBADA" }
+    }
+  },
+  "response": {
+    "status": 200,
+    "headers": { "Content-Type": "application/json" },
+    "jsonBody": []
+  }
+}
