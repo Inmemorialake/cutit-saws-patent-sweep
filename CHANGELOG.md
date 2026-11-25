@@ -9,7 +9,15 @@ El versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 ## [Unreleased]
 
+## [1.0.0-beta.2] — 2026-11-24 · Sprint 1: HU-01, HU-02, monitoreo y HTTPS
+
 ### Añadido
+
+- Monitoreo con **Prometheus + Grafana + node-exporter** en Docker Compose, con datasource y tableros provisionados
+  (*Patent Sweep · API* y *Patent Sweep · Servidor (EC2)*) e histograma de latencia HTTP para el p95 (ADR-010).
+- **Caddy** como única entrada pública en producción: HTTPS con Let's Encrypt para la API y Grafana en subdominios
+  propios, redirección HTTP → HTTPS y cabeceras de seguridad (HSTS, `nosniff`, `X-Frame-Options`…).
+- ADR-010 con el mapeo de la decisión al OWASP Top 10 (2021).
 
 - ADR-008: restauración del alcance Sprint 1 desde el commit `238806c` y fin del arquetipo de una sola transacción.
 - ADR-009: conflicto único por fórmula y patente, sin importar la versión; matiza ADR-002.
@@ -44,6 +52,16 @@ El versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
   `mvn clean verify` pasa con 134 pruebas, JaCoCo y Checkstyle en verde.
 
 ### Cambiado
+
+- Actuator se sirve en un puerto de management interno (`MANAGEMENT_PUERTO`, 9091): `/actuator/prometheus` deja de ser
+  público y solo pasa sin JWT por ese puerto. `/actuator/health` sigue en el puerto de la API con `SaludController`.
+- En producción la API queda en `127.0.0.1:8085`; desde Internet se entra por `https://<API_DOMINIO>`. El Security
+  Group abre 80/443 y cierra el 8085.
+- El documento SSM `PatentSweep-Desplegar` copia `monitoring/` y exige las variables nuevas del `.env`.
+- La prueba de humo del despliegue acepta **401** sin token en `/api/v1/patentes/estado/0` además del 404: con la seguridad
+  JWT de ADR-008 esa ruta ya no es pública y el CD habría marcado como fallido un despliegue sano.
+- node-exporter queda tras el profile `servidor` en local (en Docker Desktop sus montajes del host pueden fallar); en
+  producción siempre corre.
 
 - `AGENTS.md` describe el estado real tras HU-00, HU-01, HU-02 y HU-04: seguridad, modelo JPA, búsqueda
   manual, estado calculado y barrido automático restaurados; Prometheus continúa restringido (ADR-008).
@@ -165,7 +183,8 @@ conservan; el código Java se recupera desde `5d13af5`.
 
 ---
 
-[Unreleased]: https://github.com/Inmemorialake/cutit-saws-patent-sweep/compare/v1.0.0-beta.1...HEAD
+[Unreleased]: https://github.com/Inmemorialake/cutit-saws-patent-sweep/compare/v1.0.0-beta.2...HEAD
+[1.0.0-beta.2]: https://github.com/Inmemorialake/cutit-saws-patent-sweep/compare/v1.0.0-beta.1...v1.0.0-beta.2
 [1.0.0-beta.1]: https://github.com/Inmemorialake/cutit-saws-patent-sweep/tree/v1.0.0-beta.1
 
 <!-- Las entradas 0.2.0-beta.1 y 0.1.0-beta.2 son anteriores a la primera etiqueta y no tienen enlace. -->

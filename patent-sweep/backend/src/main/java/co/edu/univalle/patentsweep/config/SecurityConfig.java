@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import org.slf4j.MDC;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
@@ -20,12 +21,15 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.util.matcher.RequestMatcher;
 
 /**
  * Seguridad (P26 y P27, DA-11): sesión sin estado con JWT y control de acceso por rol
- * mediante {@code @PreAuthorize}. El health check y la documentación son públicos; las métricas
- * quedan restringidas desde que vuelve la seguridad (ADR-008). CSRF se desactiva porque el API
- * es sin estado y el JWT viaja en la cabecera, sin cookies de sesión.
+ * mediante {@code @PreAuthorize}. El health check y la documentación son públicos. Las métricas
+ * ({@code /actuator/prometheus}) solo se sirven en el puerto de management, que no se publica fuera de
+ * la red de Docker: ahí Prometheus las lee sin credenciales; en cualquier otro puerto exigen JWT
+ * (ADR-008, ADR-010). CSRF se desactiva porque el API es sin estado y el JWT viaja en la cabecera,
+ * sin cookies de sesión.
  */
 @Configuration
 @EnableWebSecurity
@@ -40,14 +44,24 @@ public class SecurityConfig {
         "/v3/api-docs/**"
     };
 
+    private static final String RUTA_METRICAS = "/actuator/prometheus";
+
     @Bean
     @SuppressWarnings("java:S4502")
     public SecurityFilterChain cadenaDeFiltros(HttpSecurity http, JwtAuthFilter jwtAuthFilter,
-                                               ObjectMapper objectMapper) throws Exception {
+                                               ObjectMapper objectMapper,
+                                               @Value("${management.server.port:-1}") int puertoManagement)
+            throws Exception {
+        // Solo por el puerto interno de management: si alguien publicara ese puerto por error o
+        // igualara los puertos, las métricas seguirían pidiendo JWT en el puerto público.
+        RequestMatcher metricasInternas = peticion -> puertoManagement > 0
+                && peticion.getLocalPort() == puertoManagement
+                && RUTA_METRICAS.equals(peticion.getRequestURI());
         http.csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(sesion -> sesion.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(rutas -> rutas
                         .requestMatchers(RUTAS_PUBLICAS).permitAll()
+                        .requestMatchers(metricasInternas).permitAll()
                         .anyRequest().authenticated())
                 .exceptionHandling(errores -> errores
                         .authenticationEntryPoint((peticion, respuesta, ex) -> escribir(respuesta, objectMapper,

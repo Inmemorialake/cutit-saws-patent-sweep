@@ -43,6 +43,8 @@ docker compose up -d --build --wait
 
 - Swagger UI: `http://localhost:8085/swagger-ui.html` (el puerto es `API_PUERTO` de `.env`)
 - Health check: `http://localhost:8085/actuator/health`
+- Grafana: `http://localhost:3000` (usuario y clave `GRAFANA_ADMIN_*` de `.env`), con los tableros de la API y del servidor
+- Métricas: solo dentro de la red de Docker, en `api-patent-sweep:9091/actuator/prometheus` (ADR-010)
 - Casos de prueba paso a paso: [GUIA_EJECUCION.md](GUIA_EJECUCION.md)
 
 Para detener: `docker compose down` (agregue `-v` para borrar también los datos de PostgreSQL).
@@ -151,8 +153,8 @@ precalculado, JWT + RBAC) vuelven con las HU que las necesitan. Su última imple
 ## 9. Limitaciones conocidas
 
 - **Sin autenticación** en el Sprint 0: en el EC2 cualquiera puede registrar patentes. No cargue datos reales hasta que vuelva DA-11 (ADR-006).
-- `/actuator/prometheus` y Swagger UI también son públicos en `prod`. Cuando vuelva la seguridad, hay que decidir si se
-  restringen o se apagan (`springdoc.swagger-ui.enabled=false` en `application-prod.yml`).
+- Swagger UI sigue siendo público en `prod` (ahora por HTTPS). Falta decidir si se apaga (`springdoc.swagger-ui.enabled=false`
+  en `application-prod.yml`). `/actuator/prometheus` ya no es público (ADR-010).
 - El Sprint 0 no implementa historias del backlog: HU-01 a HU-12 empiezan en el Sprint 1.
 - `restart: unless-stopped` reinicia el contenedor si el proceso termina, pero no si queda `unhealthy`.
 - Spring Boot 3.5.x puede quedar fuera del soporte de código abierto. Migrar a 4.x es una tarea planificada: exige

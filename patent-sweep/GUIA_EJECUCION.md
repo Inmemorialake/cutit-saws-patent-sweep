@@ -10,7 +10,8 @@ Arquetipo Sprint 0, versión `v1.0.0-beta.1` (rama `main`). Curso 750021C Desarr
 |---|---|---|
 | Registrar patente | Valida los datos, verifica que el código no exista y guarda la patente en estado `EN_TRAMITE` | `POST /api/v1/patentes/busqueda` |
 | Consultar patente | Devuelve la patente y su estado de vigencia | `GET /api/v1/patentes/estado/{id}` |
-| Operación | Health check y métricas para Prometheus | `GET /actuator/health`, `GET /actuator/prometheus` |
+| Operación | Health check público y métricas para Prometheus (puerto interno) | `GET /actuator/health`; métricas en `:9091/actuator/prometheus` |
+| Monitoreo | Tableros de la API y del servidor en Grafana | `http://localhost:3000` |
 | Documentación | Swagger UI y contrato OpenAPI | `/swagger-ui.html`, `/v3/api-docs` |
 
 **Tecnología:** Java 21, Spring Boot 3.5, arquitectura multicapa, PostgreSQL 16 con Flyway, errores ProblemDetail
@@ -64,6 +65,9 @@ Copie `.env.example` como `.env`. Los valores que trae funcionan tal cual para p
 | `API_PUERTO` | Puerto de la API (8085 por defecto; se evita el 8080, por recomendación de OWASP) |
 | `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` | Conexión a PostgreSQL (la base se crea con estos datos) |
 | `DB_POOL_MAX` | Máximo de conexiones del pool HikariCP |
+| `MANAGEMENT_PUERTO` | Puerto interno de Actuator para Prometheus (9091; no se publica y debe ser distinto de `API_PUERTO`) |
+| `GRAFANA_ADMIN_USUARIO`, `GRAFANA_ADMIN_CLAVE` | Usuario administrador de Grafana |
+| `API_DOMINIO`, `GRAFANA_DOMINIO` | Solo producción: subdominios que Caddy sirve por HTTPS |
 
 Si el puerto `8085` está ocupado, cambie `API_PUERTO` y use ese puerto en todas las URL de esta guía.
 

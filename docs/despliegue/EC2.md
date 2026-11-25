@@ -3,9 +3,11 @@
 Guía para dejar Patent Sweep corriendo en una instancia EC2 con Docker Compose y desplegarlo desde GitHub Actions
 **sin SSH y sin el puerto 22 abierto**, dentro de la **experiencia de Proyectos** de AWS. Las decisiones están en
 [ADR-005](../adrs/ADR-005-despliegue-ec2-compose-ghcr.md) (EC2 + Compose + GHCR) y
-[ADR-007](../adrs/ADR-007-cd-con-ssm-sin-ssh.md) (SSM con un documento propio).
+[ADR-007](../adrs/ADR-007-cd-con-ssm-sin-ssh.md) (SSM con un documento propio) y
+[ADR-010](../adrs/ADR-010-monitoreo-y-acceso-https.md) (HTTPS con Caddy y monitoreo con Prometheus + Grafana).
 
-> Esta guía usa marcadores: `<REGION>` (la del proyecto, por ejemplo `us-east-2`), `<IP_DEL_EC2>` y `<ID_INSTANCIA>`.
+> Esta guía usa marcadores: `<REGION>` (la del proyecto, por ejemplo `us-east-2`), `<IP_DEL_EC2>`, `<ID_INSTANCIA>`,
+> `<API_DOMINIO>` y `<GRAFANA_DOMINIO>` (los subdominios de la sección 2).
 > El repositorio es **público**: no escriba en él IP, IDs de cuenta o de instancia, llaves ni secretos.
 
 ## 1. Cómo funciona
@@ -18,12 +20,18 @@ merge a main ─► CI ─► CD (.github/workflows/cd.yml)
    2. con el usuario IAM de despliegue, lanza el documento SSM "PatentSweep-Desplegar" en el EC2
       con solo dos parámetros: el SHA del commit y el digest de la imagen
    3. en el EC2 (agente SSM, como root), el documento:
-      verifica que el SHA pertenezca a main · descarga compose y mocks de ese commit ·
-      fija la imagen por digest · pull + up -d · health check · prueba de humo
+      verifica que el SHA pertenezca a main · descarga compose, mocks y monitoring de ese commit ·
+      fija la imagen por digest · pull + up -d · health check · prueba de humo (ProblemDetail 401 o 404)
                        ▼
-EC2 (Ubuntu 24.04) ─ docker compose ─┬─ api-patent-sweep  (puerto 8085, público)
+EC2 (Ubuntu 24.04) ─ docker compose ─┬─ caddy             (80/443 públicos, HTTPS de Let's Encrypt)
+                                     │     ├─ https://<API_DOMINIO>     ─► api-patent-sweep:8085
+                                     │     └─ https://<GRAFANA_DOMINIO> ─► grafana:3000
+                                     ├─ api-patent-sweep  (8085 solo en 127.0.0.1; actuator en 9091 interno)
                                      ├─ postgres          (solo red interna, volumen datos-postgres)
-                                     └─ apis-simuladas    (WireMock, solo red interna)
+                                     ├─ apis-simuladas    (WireMock, solo red interna)
+                                     ├─ prometheus        (solo red interna, 15 días de retención)
+                                     ├─ node-exporter     (solo red interna, métricas del servidor)
+                                     └─ grafana           (solo red interna; se entra por Caddy con login)
 ```
 
 - **Sin puerto 22.** El agente SSM del EC2 sale hacia AWS y nadie entra. El acceso manual es por **Session Manager** (sección 12).
@@ -35,7 +43,10 @@ EC2 (Ubuntu 24.04) ─ docker compose ─┬─ api-patent-sweep  (puerto 8085, 
 - **Imagen inmutable.** Se despliega `imagen@sha256:<digest>`, no un tag que se pueda mover.
 - La imagen **se construye en GitHub Actions**, no en el EC2: una instancia pequeña no aguanta un build de Maven.
 - El servidor usa `patent-sweep/docker-compose.yml` más `patent-sweep/docker-compose.prod.yml` (imagen de GHCR y
-  límites de memoria: API 768 MB con `-Xmx448m`, Postgres 384 MB y WireMock 256 MB).
+  límites de memoria: API 768 MB con `-Xmx448m`, Postgres 384 MB, WireMock 256 MB, Prometheus 384 MB,
+  Grafana 256 MB, node-exporter y Caddy 64 MB cada uno).
+- **Solo HTTPS desde Internet.** Caddy termina TLS con certificados de Let's Encrypt que renueva solo, redirige HTTP a
+  HTTPS y añade cabeceras de seguridad (HSTS, `nosniff`, `X-Frame-Options`…). La API ya no se publica en el 8085.
 - El `.env` de producción **vive solo en el servidor** (`/opt/patent-sweep/.env`). Actions nunca lo crea ni lo modifica.
 - La versión desplegada queda en `/opt/patent-sweep/imagen.env` (`IMAGE_REF=<imagen>@sha256:...`).
 
@@ -63,10 +74,26 @@ EC2 (Ubuntu 24.04) ─ docker compose ─┬─ api-patent-sweep  (puerto 8085, 
 
 | Tipo | Puerto | Origen | Motivo |
 |---|---|---|---|
-| TCP personalizado | 8085/tcp | `0.0.0.0/0` (y `::/0` si usa IPv6) | API (`API_PUERTO`) |
+| HTTP | 80/tcp | `0.0.0.0/0` | Validación de Let's Encrypt y redirección a HTTPS |
+| HTTPS | 443/tcp | `0.0.0.0/0` | API y Grafana por Caddy |
 
-- **Ninguna regla para el 22.**
-- **Nunca** abra 5432 (PostgreSQL) ni 8080 (WireMock): solo existen en la red interna de Docker.
+- **Ninguna regla para el 22 ni para el 8085.** La API solo escucha en `127.0.0.1:8085` (para el health check del
+  despliegue); desde Internet se entra por `https://<API_DOMINIO>`.
+- **Nunca** abra 5432 (PostgreSQL), 8080 (WireMock), 9090 (Prometheus), 9091 (métricas de la API), 9100
+  (node-exporter) ni 3000 (Grafana): solo existen en la red interna de Docker.
+
+### Dominios (Cloudflare)
+
+Cree dos registros **`A`** que apunten a la Elastic IP, en modo **DNS only (nube gris)**: así Caddy obtiene los
+certificados él mismo (desafío HTTP-01 por el puerto 80) y no hay que configurar nada más en Cloudflare.
+
+| Registro | Uso |
+|---|---|
+| `<API_DOMINIO>` (por ejemplo `patent-sweep.<su-dominio>`) | API y Swagger UI |
+| `<GRAFANA_DOMINIO>` (por ejemplo `grafana-patent-sweep.<su-dominio>`) | Grafana |
+
+> Con la nube naranja (proxy) los certificados de Let's Encrypt se complican y hay que poner SSL en *Full (strict)*;
+> como la IP ya es conocida, no aporta lo suficiente para este proyecto.
 - La salida (*outbound*) debe permitir HTTPS (443). La regla por defecto, "todo el tráfico", sirve.
 
 ## 3. Infraestructura de despliegue (CloudFormation)
@@ -131,11 +158,24 @@ clave() { openssl rand -base64 48 | tr -dc 'A-Za-z0-9' | head -c "$1"; }
 sed -i \
   -e "s|^SPRING_PROFILES_ACTIVE=.*|SPRING_PROFILES_ACTIVE=prod|" \
   -e "s|^DB_PASSWORD=.*|DB_PASSWORD=$(clave 32)|" \
+  -e "s|^JWT_SECRET=.*|JWT_SECRET=$(clave 64)|" \
+  -e "s|^ADMIN_CLAVE=.*|ADMIN_CLAVE=$(clave 24)|" \
+  -e "s|^SERVICIO_CLAVE=.*|SERVICIO_CLAVE=$(clave 24)|" \
+  -e "s|^GRAFANA_ADMIN_CLAVE=.*|GRAFANA_ADMIN_CLAVE=$(clave 24)|" \
+  -e "s|^API_DOMINIO=.*|API_DOMINIO=<API_DOMINIO>|" \
+  -e "s|^GRAFANA_DOMINIO=.*|GRAFANA_DOMINIO=<GRAFANA_DOMINIO>|" \
   .env
 
 # Comprobación sin mostrar valores: deben salir 0 marcadores "cambiar" y el perfil prod.
 grep -c 'cambiar' .env; grep '^SPRING_PROFILES_ACTIVE' .env
 ```
+
+Las claves de administrador de la API y de Grafana se consultan, cuando haga falta, con
+`grep -E '^(ADMIN|GRAFANA_ADMIN)_CLAVE=' /opt/patent-sweep/.env` desde Session Manager.
+
+Si el `.env` ya existía (servidor creado antes del Sprint 1), agregue al final las variables que falten comparándolo
+con `.env.example`: `grep -oE '^[A-Z_]+=' .env.example | while read v; do grep -q "^$v" .env || echo "falta $v"; done`.
+El despliegue falla con un mensaje claro si falta alguna de las de HTTPS o monitoreo.
 
 > `DB_PASSWORD` solo se aplica la **primera vez** que se crea el volumen de PostgreSQL. Si la cambia después, también
 > debe cambiarla dentro de la base (o borrar el volumen y perder los datos).
@@ -186,9 +226,11 @@ Mientras falten, el workflow publica la imagen y **omite** el despliegue con un 
 4. Compruebe desde su equipo:
 
 ```bash
-curl http://<IP_DEL_EC2>:8085/actuator/health                 # {"status":"UP"}
-curl -i http://<IP_DEL_EC2>:8085/api/v1/patentes/estado/0       # 404 en ProblemDetail
-# Swagger UI: http://<IP_DEL_EC2>:8085/swagger-ui.html
+curl https://<API_DOMINIO>/actuator/health                    # {"status":"UP"}
+curl -I http://<API_DOMINIO>/actuator/health                    # 308 hacia https://
+curl -sI https://<API_DOMINIO>/actuator/prometheus | head -1    # 401: las métricas no son públicas
+# Swagger UI: https://<API_DOMINIO>/swagger-ui.html
+# Grafana:    https://<GRAFANA_DOMINIO>
 ```
 
 **Despliegue manual** (sin GitHub), con el mismo documento:
@@ -271,6 +313,9 @@ deja de responder. Para evitarlo:
 | "El commit … no pertenece a main" | Se intentó desplegar un commit que no es ancestro de `main` |
 | Estado `TimedOut` o `Failed` | Lea el grupo *Salida del servidor* del job. Las causas típicas son la falta de `.env` o de `/opt/patent-sweep`, o un paquete de GHCR privado |
 | Health no llega a UP | En Session Manager: `cd /opt/patent-sweep && docker compose --env-file .env --env-file imagen.env -f docker-compose.yml -f docker-compose.prod.yml logs api-patent-sweep` |
+| El navegador avisa de certificado inválido o Caddy registra `challenge failed` | El registro `A` no apunta a la Elastic IP, está en nube naranja o el 80 está cerrado en el Security Group: `dc logs caddy` |
+| Grafana dice "Bad Gateway" | Grafana todavía arranca o se reinicia: `dc ps grafana` y `dc logs grafana` |
+| Prometheus marca la API como `down` | `MANAGEMENT_PUERTO` del `.env` no coincide con el target de `monitoring/prometheus/prometheus.yml` (9091) |
 | Contenedor reiniciándose (OOM) | Revise `docker stats`. Suba la instancia o baje `-Xmx` en `docker-compose.prod.yml` |
 | `denied: permission_denied: write_package` al publicar | El repositorio no tiene rol **Write** sobre el paquete de GHCR (sección 5, paso 2) |
 | `set: Illegal option -o pipefail` en un comando manual de Run Command | `AWS-RunShellScript` ejecuta con `sh` (dash), no con bash. Envuelva el script en `bash -s <<'FIN' … FIN`, como hace `PatentSweep-Desplegar` |
@@ -318,6 +363,7 @@ docker ps                                  # contenedores en ejecución
 dc ps                                      # estado y salud de los tres servicios
 dc logs -f --tail=100 api-patent-sweep     # logs de la API (Ctrl+C para salir)
 dc logs --tail=50 postgres                 # logs de la base de datos
+dc logs --tail=50 caddy                    # certificados y accesos HTTPS
 docker stats --no-stream                   # memoria y CPU de cada contenedor
 curl -s localhost:8085/actuator/health     # salud de la API desde el servidor
 cat imagen.env                             # imagen (digest) desplegada
