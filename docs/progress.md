@@ -33,7 +33,7 @@ Fuente de verdad para saber qué está implementado. Antes de continuar, leer `A
 - [x] **Monitoreo y HTTPS (ADR-010)**: Actuator usa un puerto interno para Prometheus, el health check público se
       conserva con `SaludController`, y el Compose incorpora Prometheus, Grafana, node-exporter y Caddy para HTTPS.
       `mvn clean verify` pasa con 146 pruebas, JaCoCo y Checkstyle en verde.
-- [ ] **Cierre de HU-02 (pendiente de validar con `mvn clean verify`)**: pruebas de integración
+- [x] **Ajustes PB (C-1 a C-9) y cierre de HU-02**: retiro del arquetipo del Sprint 0, `alertasActivas` y mensajes de HU-04, `CON_CONFLICTO` solo con conflictos vigentes, mensaje de lista vacía, 20 s por intento y omisión de fórmulas descontinuadas. `mvn clean verify` pasa con 160 pruebas (con Docker), cobertura y Checkstyle en verde. Cierre de HU-02: pruebas de integración
       (`IntegracionBase`, `BusquedaManualIntegracionTest`, `BusquedaManualResilienciaTest`), retiro de la llamada
       redundante a `recalcular` en `BusquedaService` y migración V8 (ADR-012, propuesta).
 

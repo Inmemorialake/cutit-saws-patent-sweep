@@ -11,6 +11,10 @@ El versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 ### Cambiado
 
+- HU-04: ruta `GET /estado/{formulaId}`, respuesta con `alertasActivas`, mensaje de éxito y errores del PB (400/503/500) y verificación de la fórmula en 5 s sin reintentos (política `materialesVerificacion`).
+- HU-02: la búsqueda manual se mantiene en `POST /buscar-conflictos` (ruta final por decidir, D-7).
+- HU-01/HU-02: el resultado del historial es `CON_CONFLICTO` solo con conflictos vigentes; el barrido guarda el mensaje del PB con la lista vacía y omite las fórmulas `DESCONTINUADAS` sin marcar fallo técnico.
+- Integraciones: 20 s por intento y tope de 70 s por llamada lógica (antes 20 s en total).
 - HU-02: `BusquedaService` ya no vuelve a consultar Materiales después de guardar conflictos e historial
   (la llamada a `recalcular` descartaba su resultado y podía convertir una búsqueda guardada en un 503).
 - Migración V8 (ADR-012): el `UNIQUE` de `conflicto` pasa a `(formula_id, patente_id)`, sin la versión.
