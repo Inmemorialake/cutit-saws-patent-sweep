@@ -9,6 +9,13 @@ El versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 ## [Unreleased]
 
+### Corregido
+
+- Swagger en producción no funcionaba: el contrato OpenAPI anunciaba `http://patent-sweep.inmemorialake.dev` y el
+  navegador bloqueaba las peticiones por contenido mixto (página HTTPS que llama a HTTP). Con
+  `server.forward-headers-strategy: native`, la API usa las cabeceras `X-Forwarded-Proto/Host` que envía Caddy y
+  anuncia `https://`.
+
 ## [1.0.0-beta.4] — 2026-11-25 · Barrido funcional en producción
 
 ### Corregido
