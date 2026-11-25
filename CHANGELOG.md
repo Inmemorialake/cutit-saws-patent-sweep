@@ -9,6 +9,20 @@ El versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 ## [Unreleased]
 
+### Corregido
+
+- APIs simuladas: faltaba el mock del listado `GET /formulas?estado=APROBADA&pagina={n}`; WireMock respondía 404 y
+  el barrido automático terminaba `FALLIDO`. Ahora la página 1 devuelve `form-001`, `form-002` y `form-004` y las
+  siguientes vienen vacías.
+- `GUIA_EJECUCION.md` ya no muestra el registro de patentes del Sprint 0 ni la ruta `/estado?formulaId=`.
+
+### Añadido
+
+- Mock de la fórmula `form-004` (aprobada y sin patentes que coincidan): caso `LIBRE` para la demo.
+- `MocksDelRepositorioIntegracionTest`: corre el barrido, las búsquedas y el estado contra los mocks de
+  `patent-sweep/mocks`, para que el CI detecte un mock roto.
+- Colección de Postman: casos «Sin conflictos (form-004)» y «Libre (form-004)» (17 peticiones).
+
 ## [1.0.0-beta.3] — 2026-11-25 · Cierre del Sprint 1: HU-01, HU-02 y HU-04, login y GUI
 
 ### Cambiado
