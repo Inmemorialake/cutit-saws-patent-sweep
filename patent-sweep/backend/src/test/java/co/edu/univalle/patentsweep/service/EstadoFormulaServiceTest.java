@@ -53,6 +53,7 @@ class EstadoFormulaServiceTest {
 
     @BeforeEach
     void preparar() {
+        when(materialesClient.verificarFormula("form-001")).thenReturn(formula("2"));
         when(materialesClient.obtenerFormula("form-001")).thenReturn(formula("2"));
         when(conflictoRepository.findByFormulaIdAndVersionFormulaAndEstadoOrderByFechaDeteccionDesc(anyString(),
                 anyString(), eq(EstadoConflicto.DETECTADO))).thenReturn(List.of());
@@ -81,9 +82,11 @@ class EstadoFormulaServiceTest {
     }
 
     @Test
-    @DisplayName("recalcular delega en el cálculo del estado vigente")
+    @DisplayName("recalcular calcula el mismo estado pero consulta a Materiales con la política normal")
     void deberiaRecalcularElMismoEstado() {
         assertThat(servicio.recalcular("form-001")).isEqualTo(servicio.consultarEstado("form-001"));
+        verify(materialesClient).obtenerFormula("form-001");
+        verify(materialesClient).verificarFormula("form-001");
     }
 
     @Test
@@ -190,7 +193,7 @@ class EstadoFormulaServiceTest {
     @DisplayName("Una fórmula sin versión se consulta con la versión SIN_VERSION")
     void deberiaConsultarConSinVersionCuandoMaterialesNoLaTrae() {
         // Arrange
-        when(materialesClient.obtenerFormula("form-001")).thenReturn(formula(null));
+        when(materialesClient.verificarFormula("form-001")).thenReturn(formula(null));
         when(conflictoRepository.findByFormulaIdAndVersionFormulaAndEstadoOrderByFechaDeteccionDesc("form-001",
                 "SIN_VERSION", EstadoConflicto.DETECTADO))
                 .thenReturn(List.of(Conflicto.builder().conflictoId(1L).build()));
@@ -206,7 +209,7 @@ class EstadoFormulaServiceTest {
     @DisplayName("Si Materiales no conoce la fórmula se propaga el 404 sin calcular nada")
     void deberiaPropagarLaFormulaNoEncontrada() {
         // Arrange
-        when(materialesClient.obtenerFormula("form-404")).thenThrow(new FormulaNoEncontradaException());
+        when(materialesClient.verificarFormula("form-404")).thenThrow(new FormulaNoEncontradaException());
 
         // Act / Assert
         assertThatThrownBy(() -> servicio.consultarEstado("form-404"))

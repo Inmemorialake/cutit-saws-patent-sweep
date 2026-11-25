@@ -49,7 +49,7 @@ public class EstadoFormulaService {
 
     /** Alias usado por HU-02 y HU-01: recalcula el estado vigente sin persistirlo. */
     public EstadoCalculado recalcular(String formulaId) {
-        return consultarEstado(formulaId);
+        return calcular(formulaId, materialesClient.obtenerFormula(formulaId));
     }
 
     /**
@@ -58,7 +58,10 @@ public class EstadoFormulaService {
      * solo en otra versión) o último intento fallido, y en cualquier otro caso LIBRE.
      */
     public EstadoCalculado consultarEstado(String formulaId) {
-        FormulaExternaDTO formula = materialesClient.obtenerFormula(formulaId);
+        return calcular(formulaId, materialesClient.verificarFormula(formulaId));
+    }
+
+    private EstadoCalculado calcular(String formulaId, FormulaExternaDTO formula) {
         Optional<RevisionFormula> ultima = revisionRepository
                 .findFirstByFormulaIdOrderByFechaRevisionDescRevisionIdDesc(formulaId);
         LocalDateTime fecha = ultima.map(RevisionFormula::getFechaRevision).orElse(null);

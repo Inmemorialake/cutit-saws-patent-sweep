@@ -52,6 +52,11 @@ public class ResilientExternalCallExecutor {
         return ejecutar("materiales", "Materiales/Fórmulas", operacion);
     }
 
+    /** Verificación de HU-04: política propia de Materiales con 5 s y un solo intento (PB 4). */
+    public <T> T ejecutarVerificacionMateriales(Supplier<T> operacion) {
+        return ejecutar("materialesVerificacion", "Materiales/Fórmulas", operacion);
+    }
+
     public <T> T ejecutarFuentePatentes(Supplier<T> operacion) {
         return ejecutar("fuentePatentes", "la fuente de patentes", operacion);
     }

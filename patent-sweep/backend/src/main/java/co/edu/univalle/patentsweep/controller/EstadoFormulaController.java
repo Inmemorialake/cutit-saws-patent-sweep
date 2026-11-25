@@ -43,10 +43,11 @@ public class EstadoFormulaController {
     @ApiResponse(responseCode = "400", description = "El formulaId no tiene el formato form-NNN")
     @ApiResponse(responseCode = "401", description = "No autenticado")
     @ApiResponse(responseCode = "404", description = "La fórmula no existe")
+    @ApiResponse(responseCode = "503", description = "Materiales no respondió en 5 s")
     @ApiResponse(responseCode = "500", description = "Error interno del servidor")
     public ResponseEntity<EstadoFormulaResponseDTO> consultarEstado(
             @PathVariable
-            @Pattern(regexp = "^form-\\d{3}$", message = "El código de la fórmula es obligatorio y debe tener el formato form-NNN")
+            @Pattern(regexp = "^form-\\d{3}$", message = "El identificador de la fórmula no es válido")
             String formulaId) {
 
         var resultado = estadoFormulaService.consultarEstado(formulaId);

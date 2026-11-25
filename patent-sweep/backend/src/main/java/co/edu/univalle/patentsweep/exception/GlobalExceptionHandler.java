@@ -80,7 +80,7 @@ public class GlobalExceptionHandler {
                 "No fue posible procesar la solicitud. Intente nuevamente");
     }
 
-    private ResponseEntity<ProblemDetail> responder(HttpStatus estado, String titulo, String detalle) {
+    ResponseEntity<ProblemDetail> responder(HttpStatus estado, String titulo, String detalle) {
         ProblemDetail problema = ProblemDetail.forStatusAndDetail(estado, detalle);
         problema.setTitle(titulo);
         problema.setProperty("traceId", MDC.get("traceId"));

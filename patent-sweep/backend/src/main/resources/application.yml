@@ -94,6 +94,10 @@ resilience4j:
         wait-duration: 5s
         retry-exceptions:
           - co.edu.univalle.patentsweep.exception.ServicioNoDisponibleException
+      materialesVerificacion:
+        # PB HU-04: la consulta de estado verifica la fórmula una sola vez y en 5 s como máximo.
+        max-attempts: 1
+        wait-duration: 5s
       fuentePatentes:
         max-attempts: 3
         wait-duration: 5s
@@ -105,12 +109,22 @@ resilience4j:
         # D-5: límite global de 20 s por llamada lógica; cancela la espera de reintentos restantes.
         timeout-duration: 20s
         cancel-running-future: true
+      materialesVerificacion:
+        timeout-duration: 5s
+        cancel-running-future: true
       fuentePatentes:
         timeout-duration: 20s
         cancel-running-future: true
   circuitbreaker:
     instances:
       materiales:
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+        record-exceptions:
+          - co.edu.univalle.patentsweep.exception.ServicioNoDisponibleException
+      materialesVerificacion:
         sliding-window-size: 10
         minimum-number-of-calls: 5
         failure-rate-threshold: 50

@@ -45,6 +45,8 @@ class MaterialesClientTest {
         llamadas = Mockito.mock(ResilientExternalCallExecutor.class);
         Mockito.doAnswer(invocacion -> ((Supplier<?>) invocacion.getArgument(0)).get())
                 .when(llamadas).ejecutarMateriales(Mockito.any());
+        Mockito.doAnswer(invocacion -> ((Supplier<?>) invocacion.getArgument(0)).get())
+                .when(llamadas).ejecutarVerificacionMateriales(Mockito.any());
         cliente = new MaterialesClient(constructor.build(), llamadas);
     }
 
@@ -68,6 +70,24 @@ class MaterialesClientTest {
         assertThat(formula.estaDescontinuada()).isFalse();
         assertThat(formula.componentes()).hasSize(1);
         assertThat(formula.componentes().get(0).nombreMaterial()).isEqualTo("Hierro");
+        servidor.verify();
+    }
+
+    @Test
+    @DisplayName("La verificación de HU-04 usa la política de 5 s sin reintentos y lee la misma fórmula")
+    void deberiaVerificarLaFormulaConLaPoliticaCorta() {
+        // Arrange
+        servidor.expect(requestTo(URL))
+                .andRespond(withSuccess("{\"codigo\":\"form-001\",\"version\":\"3\",\"estado\":\"APROBADA\"}",
+                        MediaType.APPLICATION_JSON));
+
+        // Act
+        FormulaExternaDTO formula = cliente.verificarFormula("form-001");
+
+        // Assert
+        assertThat(formula.versionRegistrada()).isEqualTo("3");
+        Mockito.verify(llamadas).ejecutarVerificacionMateriales(Mockito.any());
+        Mockito.verify(llamadas, Mockito.never()).ejecutarMateriales(Mockito.any());
         servidor.verify();
     }
 
@@ -202,6 +222,19 @@ class MaterialesClientTest {
                 .isEqualTo("20s");
         assertThat(configuracion.getProperty("resilience4j.timelimiter.instances.materiales.cancel-running-future"))
                 .isEqualTo(true);
+    }
+
+    @Test
+    @DisplayName("La verificación de HU-04 se configura con 5 s de límite y un solo intento")
+    void deberiaLeerLaConfiguracionDeLaVerificacion() throws IOException {
+        PropertySource<?> configuracion = new YamlPropertySourceLoader()
+                .load("application", new ClassPathResource("application.yml")).get(0);
+
+        assertThat(configuracion.getProperty("resilience4j.retry.instances.materialesVerificacion.max-attempts"))
+                .isEqualTo(1);
+        assertThat(configuracion
+                .getProperty("resilience4j.timelimiter.instances.materialesVerificacion.timeout-duration"))
+                .isEqualTo("5s");
     }
 
     private static String paginaJson(int cantidad, int pagina) {
