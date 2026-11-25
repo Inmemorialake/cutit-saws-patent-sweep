@@ -36,23 +36,6 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
-    @DisplayName("404 cuando no se encuentra la patente, con su traceId")
-    void deberiaConvertirPatenteNoEncontradaEnProblemDetail() {
-        ResponseEntity<ProblemDetail> respuesta = manejador.manejarPatenteNoEncontrada(new PatenteNoEncontradaException("No encontrada"));
-
-        verificar(respuesta, HttpStatus.NOT_FOUND, "No encontrada");
-        assertThat(respuesta.getBody()).isNotNull();
-        assertThat(respuesta.getBody().getProperties()).containsEntry("traceId", "traza-123");
-    }
-
-    @Test
-    @DisplayName("409 cuando la patente ya existe (duplicada)")
-    void deberiaConvertirPatenteDuplicadaEnProblemDetail() {
-        verificar(manejador.manejarPatenteDuplicada(new PatenteDuplicadaException("La patente ya existe")),
-                HttpStatus.CONFLICT, "La patente ya existe");
-    }
-
-    @Test
     @DisplayName("500 genérico ocultando los detalles internos del error")
     void deberiaOcultarLosDetallesDeUnErrorInterno() {
         verificar(manejador.manejarErrorInterno(new IllegalStateException("clave secreta")),
@@ -90,10 +73,12 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
-    @DisplayName("404 cuando la fórmula consultada no existe")
+    @DisplayName("404 cuando la fórmula consultada no existe, con su traceId")
     void deberiaConvertirFormulaNoEncontradaEnProblemDetail() {
-        verificar(manejador.manejarFormulaNoEncontrada(new FormulaNoEncontradaException()),
-                HttpStatus.NOT_FOUND, "La fórmula consultada no fue encontrada");
+        ResponseEntity<ProblemDetail> respuesta = manejador.manejarFormulaNoEncontrada(new FormulaNoEncontradaException());
+
+        verificar(respuesta, HttpStatus.NOT_FOUND, "La fórmula consultada no fue encontrada");
+        assertThat(respuesta.getBody().getProperties()).containsEntry("traceId", "traza-123");
     }
 
     @Test

@@ -12,12 +12,11 @@ import co.edu.univalle.patentsweep.config.JwtProvider;
 import co.edu.univalle.patentsweep.config.SecurityConfig;
 import co.edu.univalle.patentsweep.controller.mapper.ConflictoMapper;
 import co.edu.univalle.patentsweep.exception.GlobalExceptionHandler;
-import co.edu.univalle.patentsweep.model.Patente;
-import co.edu.univalle.patentsweep.model.enums.EstadoVigenciaPatente;
+import co.edu.univalle.patentsweep.model.enums.EstadoFormula;
 import co.edu.univalle.patentsweep.model.enums.Rol;
 import co.edu.univalle.patentsweep.service.AutenticacionService;
 import co.edu.univalle.patentsweep.service.BusquedaService;
-import co.edu.univalle.patentsweep.service.PatenteService;
+import co.edu.univalle.patentsweep.service.EstadoFormulaService;
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -30,7 +29,7 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-@WebMvcTest({PatenteController.class, BusquedaController.class, AutenticacionController.class})
+@WebMvcTest({EstadoFormulaController.class, BusquedaController.class, AutenticacionController.class})
 @Import({GlobalExceptionHandler.class, SecurityConfig.class, JwtProvider.class, ClockConfig.class,
         ConflictoMapper.class})
 class SeguridadJwtTest {
@@ -44,7 +43,7 @@ class SeguridadJwtTest {
     private JwtProvider jwtProvider;
 
     @MockitoBean
-    private PatenteService patenteService;
+    private EstadoFormulaService estadoFormulaService;
 
     @MockitoBean
     private BusquedaService busquedaService;
@@ -53,27 +52,24 @@ class SeguridadJwtTest {
     private AutenticacionService autenticacionService;
 
     @Test
-    @DisplayName("401: exige JWT para consultar el estado de una patente")
+    @DisplayName("401: exige JWT para consultar el estado de una fórmula")
     void deberiaRechazarPeticionSinToken() throws Exception {
-        mockMvc.perform(get("/api/v1/patentes/estado/1"))
+        mockMvc.perform(get("/api/v1/patentes/estado").param("formulaId", "form-001"))
                 .andExpect(status().isUnauthorized());
     }
 
     @Test
     @DisplayName("200: acepta un JWT válido")
     void deberiaAceptarTokenValido() throws Exception {
-        when(patenteService.obtenerPorId(1L)).thenReturn(Patente.builder()
-                .patenteId(1L)
-                .codigoPatente("PAT-123456")
-                .titulo("Cuchilla láser")
-                .estadoVigencia(EstadoVigenciaPatente.EN_TRAMITE)
-                .build());
+        when(estadoFormulaService.consultarEstado("form-001"))
+                .thenReturn(new EstadoFormulaService.EstadoCalculado(EstadoFormula.LIBRE, null));
         String token = jwtProvider.generarToken("servicio", Rol.SERVICIO);
 
-        mockMvc.perform(get("/api/v1/patentes/estado/1")
+        mockMvc.perform(get("/api/v1/patentes/estado").param("formulaId", "form-001")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.patenteId").value(1));
+                .andExpect(jsonPath("$.formulaId").value("form-001"))
+                .andExpect(jsonPath("$.estado").value("LIBRE"));
     }
 
     @Test

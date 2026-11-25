@@ -45,16 +45,6 @@ public class GlobalExceptionHandler {
                 "El cuerpo de la petición no es válido");
     }
 
-    @ExceptionHandler(PatenteNoEncontradaException.class)
-    public ResponseEntity<ProblemDetail> manejarPatenteNoEncontrada(PatenteNoEncontradaException ex) {
-        return responder(HttpStatus.NOT_FOUND, "Recurso no encontrado", ex.getMessage());
-    }
-
-    @ExceptionHandler(PatenteDuplicadaException.class)
-    public ResponseEntity<ProblemDetail> manejarPatenteDuplicada(PatenteDuplicadaException ex) {
-        return responder(HttpStatus.CONFLICT, "Conflicto de negocio", ex.getMessage());
-    }
-
     @ExceptionHandler(FormulaNoEncontradaException.class)
     public ResponseEntity<ProblemDetail> manejarFormulaNoEncontrada(FormulaNoEncontradaException ex) {
         return responder(HttpStatus.NOT_FOUND, "Recurso no encontrado", ex.getMessage());
