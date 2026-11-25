@@ -22,6 +22,10 @@ spring:
 
 server:
   port: ${API_PUERTO}
+  # Detrás de Caddy (HTTPS, ADR-010) la API recibe HTTP: con "native", Tomcat usa X-Forwarded-Proto/Host
+  # del proxy (solo desde redes internas, como la red Docker) para que OpenAPI/Swagger anuncie https://
+  # y el navegador no bloquee las peticiones por contenido mixto.
+  forward-headers-strategy: native
   error:
     include-stacktrace: never
     include-message: never
