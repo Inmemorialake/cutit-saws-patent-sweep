@@ -9,7 +9,73 @@ El versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 ## [Unreleased]
 
-_Sin cambios todavía._
+## [1.0.0-beta.2] — 2026-11-24 · Sprint 1: HU-01, HU-02, monitoreo y HTTPS
+
+### Añadido
+
+- Monitoreo con **Prometheus + Grafana + node-exporter** en Docker Compose, con datasource y tableros provisionados
+  (*Patent Sweep · API* y *Patent Sweep · Servidor (EC2)*) e histograma de latencia HTTP para el p95 (ADR-010).
+- **Caddy** como única entrada pública en producción: HTTPS con Let's Encrypt para la API y Grafana en subdominios
+  propios, redirección HTTP → HTTPS y cabeceras de seguridad (HSTS, `nosniff`, `X-Frame-Options`…).
+- ADR-010 con el mapeo de la decisión al OWASP Top 10 (2021).
+
+- ADR-008: restauración del alcance Sprint 1 desde el commit `238806c` y fin del arquetipo de una sola transacción.
+- ADR-009: conflicto único por fórmula y patente, sin importar la versión; matiza ADR-002.
+- `docs/discrepancias.md` con las decisiones D-1 a D-12 y `docs/progress.md` como estado de avance del Sprint 1.
+- Seguridad JWT con roles `ADMINISTRADOR`/`SERVICIO`, configuración de Resilience4j, caché Caffeine,
+  reloj inyectable y clientes `RestClient` base para Materiales y la fuente de patentes (HU-00, ADR-008).
+- Variables de entorno para JWT y las URL de integraciones en `.env.example` y Docker Compose.
+- Entidades y repositorios JPA para las tablas del esquema V1–V6: `conflicto`, `revision_formula`,
+  `configuracion`, `evaluacion_formula`, `notificacion` y `usuario`, con sus enums de estado (P04, P17, P18).
+- Excepciones de integración y reglas de negocio, con handlers `ProblemDetail` 404/409/401/403/503 (P07, P19).
+- Pruebas base de `JwtProvider`, filtro de seguridad, usuarios semilla y handlers `ProblemDetail` (HU-00).
+- `POST /api/v1/patentes/buscar-conflictos`: búsqueda manual restringida a `ADMINISTRADOR`, con filtros por
+  clasificación/antigüedad, cálculo del porcentaje de coincidencia, persistencia de conflictos e historial,
+  publicación de `ConflictoDetectadoEvent` y respuestas 200/400/401/403/404/409/503 (HU-02, D-7, ADR-009).
+- Clientes funcionales `MaterialesClient` y `FuentePatentesClient` con reintentos/circuit breaker, motor
+  `MotorCoincidencias`, `ConfiguracionService`, `ConflictoService` y `HistorialService` (HU-02).
+- Pruebas de HU-02: motor, clientes con WireMock, controlador, servicios, dedupe por pareja y seguridad
+  401/403; `mvn clean verify` pasa con 94 pruebas, JaCoCo y Checkstyle en verde.
+- `GET /api/v1/patentes/estado?formulaId=form-NNN` (HU-04): estado calculado en cada consulta, sin tabla
+  ni columna de estado persistida, con respuestas 200/400/401/404/500 (ADR-003, D-3 y D-8).
+- `EstadoFormulaService.consultarEstado`/`recalcular`: conflicto `DETECTADO` de la versión vigente,
+  evaluación abierta, revisión ausente/fallida/de otra versión y `LIBRE`, en ese orden (ADR-004).
+- `BusquedaService` invoca `EstadoFormulaService.recalcular(formulaId)` al terminar la búsqueda manual (HU-02).
+- Pruebas de HU-04: servicio (11 casos), controlador y integración del flujo; `mvn clean verify` pasa con
+  110 pruebas, JaCoCo y Checkstyle en verde.
+- Barrido automático (HU-01): planificador `Trigger` con ShedLock y recuperación de barridos huérfanos
+  (`V7__shedlock.sql`), cliente de Materiales paginado en 10, orquestación por fórmula con origen
+  `BARRIDO_AUTOMATICO`, reintento/timeout de 20 s y cierre con conteos y `Barrido completado exitosamente`.
+- Métricas Micrometer del barrido: `patentsweep.barrido.duracion` y
+  `patentsweep.barrido.formulas{resultado="con_conflicto|sin_conflicto|no_procesado"}` (D-2, D-5, D-10).
+- Pruebas de HU-01: planificador, recuperación, paginación, orquestación, cierre y métricas;
+  `mvn clean verify` pasa con 134 pruebas, JaCoCo y Checkstyle en verde.
+
+### Cambiado
+
+- Actuator se sirve en un puerto de management interno (`MANAGEMENT_PUERTO`, 9091): `/actuator/prometheus` deja de ser
+  público y solo pasa sin JWT por ese puerto. `/actuator/health` sigue en el puerto de la API con `SaludController`.
+- En producción la API queda en `127.0.0.1:8085`; desde Internet se entra por `https://<API_DOMINIO>`. El Security
+  Group abre 80/443 y cierra el 8085.
+- El documento SSM `PatentSweep-Desplegar` copia `monitoring/` y exige las variables nuevas del `.env`.
+- La prueba de humo del despliegue acepta **401** sin token en `/api/v1/patentes/estado/0` además del 404: con la seguridad
+  JWT de ADR-008 esa ruta ya no es pública y el CD habría marcado como fallido un despliegue sano.
+- node-exporter queda tras el profile `servidor` en local (en Docker Desktop sus montajes del host pueden fallar); en
+  producción siempre corre.
+
+- `AGENTS.md` describe el estado real tras HU-00, HU-01, HU-02 y HU-04: seguridad, modelo JPA, búsqueda
+  manual, estado calculado y barrido automático restaurados; Prometheus continúa restringido (ADR-008).
+- La búsqueda manual usa `POST /buscar-conflictos` con el usuario del JWT; `POST /busqueda` sigue siendo solo de registro (D-7).
+- Conviven `GET /estado/{id}` y `GET /estado?formulaId=...`; la primera no se rompe (D-8).
+- Un conflicto se identifica por fórmula y patente, sin duplicarse aunque cambie la versión o el estado (ADR-009).
+
+### Corregido
+
+- `JwtAuthFilter` se registra como bean en `SecurityConfig` para no romper los slices `@WebMvcTest`.
+- CI y Dockerfile toleran el HTTP 429 de Maven Central: caché de Maven con `restore-keys`, espera creciente
+  hasta 300 s y reintentos internos de Wagon, sin intervención manual ni infraestructura adicional.
+- `SecurityConfig` documenta y suprime `java:S4502`: CSRF no aplica en una API stateless con JWT en la
+  cabecera y sin cookies de sesión.
 
 ---
 
@@ -117,7 +183,8 @@ conservan; el código Java se recupera desde `5d13af5`.
 
 ---
 
-[Unreleased]: https://github.com/Inmemorialake/cutit-saws-patent-sweep/compare/v1.0.0-beta.1...HEAD
+[Unreleased]: https://github.com/Inmemorialake/cutit-saws-patent-sweep/compare/v1.0.0-beta.2...HEAD
+[1.0.0-beta.2]: https://github.com/Inmemorialake/cutit-saws-patent-sweep/compare/v1.0.0-beta.1...v1.0.0-beta.2
 [1.0.0-beta.1]: https://github.com/Inmemorialake/cutit-saws-patent-sweep/tree/v1.0.0-beta.1
 
 <!-- Las entradas 0.2.0-beta.1 y 0.1.0-beta.2 son anteriores a la primera etiqueta y no tienen enlace. -->

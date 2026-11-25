@@ -15,6 +15,8 @@ import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.mock.http.MockHttpInputMessage;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.validation.BeanPropertyBindingResult;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -85,6 +87,57 @@ class GlobalExceptionHandlerTest {
     void deberiaConvertirConstraintViolation() {
         ConstraintViolationException ex = new ConstraintViolationException("Parámetro inválido", Set.of());
         verificar(manejador.manejarConstraintViolation(ex), HttpStatus.BAD_REQUEST, "Parámetro de consulta no válido");
+    }
+
+    @Test
+    @DisplayName("404 cuando la fórmula consultada no existe")
+    void deberiaConvertirFormulaNoEncontradaEnProblemDetail() {
+        verificar(manejador.manejarFormulaNoEncontrada(new FormulaNoEncontradaException()),
+                HttpStatus.NOT_FOUND, "La fórmula consultada no fue encontrada");
+    }
+
+    @Test
+    @DisplayName("409 cuando la fórmula está descontinuada")
+    void deberiaConvertirFormulaDescontinuadaEnProblemDetail() {
+        verificar(manejador.manejarFormulaDescontinuada(new FormulaDescontinuadaException()),
+                HttpStatus.CONFLICT, "No se puede buscar patentes para una fórmula DESCONTINUADA");
+    }
+
+    @Test
+    @DisplayName("503 cuando un servicio externo no está disponible")
+    void deberiaConvertirServicioNoDisponibleEnProblemDetail() {
+        verificar(manejador.manejarServicioNoDisponible(
+                        new ServicioNoDisponibleException("timeout", new IllegalStateException("causa"))),
+                HttpStatus.SERVICE_UNAVAILABLE, "No fue posible realizar la consulta. Intente nuevamente");
+    }
+
+    @Test
+    @DisplayName("401 cuando las credenciales son inválidas")
+    void deberiaConvertirCredencialesInvalidasEnProblemDetail() {
+        verificar(manejador.manejarCredenciales(new BadCredentialsException("clave incorrecta")),
+                HttpStatus.UNAUTHORIZED, "Credenciales inválidas");
+    }
+
+    @Test
+    @DisplayName("403 cuando el usuario no tiene permisos")
+    void deberiaConvertirAccesoDenegadoEnProblemDetail() {
+        verificar(manejador.manejarAccesoDenegado(new AccessDeniedException("sin rol")),
+                HttpStatus.FORBIDDEN, "No tiene permisos para realizar esta operación");
+    }
+
+    @Test
+    @DisplayName("500 sin filtrar detalles de una integración externa")
+    void deberiaOcultarDetallesDeIntegracionExterna() {
+        verificar(manejador.manejarErrorInterno(
+                        new IntegracionExternaException("token interno", new IllegalStateException("causa"))),
+                HttpStatus.INTERNAL_SERVER_ERROR, "No fue posible procesar la solicitud. Intente nuevamente");
+    }
+
+    @Test
+    @DisplayName("500 sin filtrar detalles de una configuración ausente")
+    void deberiaOcultarDetallesDeConfiguracionAusente() {
+        verificar(manejador.manejarErrorInterno(new ConfiguracionNoEncontradaException()),
+                HttpStatus.INTERNAL_SERVER_ERROR, "No fue posible procesar la solicitud. Intente nuevamente");
     }
 
     @SuppressWarnings("unused")

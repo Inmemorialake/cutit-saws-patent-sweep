@@ -1,5 +1,6 @@
 # Despliegue local de Patent Sweep (P22). Todos los valores salen del archivo .env (ver .env.example).
-# Solo se publica el puerto de la API; la base de datos y las APIs simuladas quedan en la red interna.
+# Se publican la API y Grafana (este último solo en 127.0.0.1); la base de datos, las APIs simuladas y
+# Prometheus quedan en la red interna.
 services:
   postgres:
     image: postgres:16.15-alpine3.24
@@ -18,9 +19,8 @@ services:
       - patent-sweep-red
     restart: unless-stopped
 
-  # [Archetype Convention Addition] Simula las APIs de Materiales/Fórmulas, Notificaciones y la fuente
-  # de patentes (ADR-001). El arquetipo Sprint 0 aún no las consume: quedan listas para las HU de
-  # integración (HU-02, HU-03, HU-12). Ver mocks/mappings.
+  # Simula las APIs de Materiales/Fórmulas, Notificaciones y la fuente de patentes (ADR-001).
+  # Las HU de integración (HU-01, HU-02, HU-03, HU-12) consumen estos mocks. Ver mocks/mappings.
   apis-simuladas:
     image: wiremock/wiremock:3.13.2
     volumes:
@@ -35,12 +35,22 @@ services:
     environment:
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE}
       API_PUERTO: ${API_PUERTO}
+      # Puerto interno de Actuator (métricas para Prometheus). No se publica: solo la red de Docker lo ve.
+      MANAGEMENT_PUERTO: ${MANAGEMENT_PUERTO}
       DB_HOST: ${DB_HOST}
       DB_PORT: ${DB_PORT}
       DB_NAME: ${DB_NAME}
       DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
       DB_POOL_MAX: ${DB_POOL_MAX}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRACION_MINUTOS: ${JWT_EXPIRACION_MINUTOS}
+      ADMIN_USUARIO: ${ADMIN_USUARIO}
+      ADMIN_CLAVE: ${ADMIN_CLAVE}
+      SERVICIO_USUARIO: ${SERVICIO_USUARIO}
+      SERVICIO_CLAVE: ${SERVICIO_CLAVE}
+      MATERIALES_URL: ${MATERIALES_URL}
+      FUENTE_PATENTES_URL: ${FUENTE_PATENTES_URL}
     ports:
       - "${API_PUERTO}:${API_PUERTO}"
     depends_on:
@@ -58,9 +68,73 @@ services:
       - patent-sweep-red
     restart: unless-stopped
 
+  # --- Monitoreo (ADR-010): Prometheus recolecta, Grafana muestra. Prometheus y node-exporter no publican
+  # puertos; Grafana solo en 127.0.0.1 en local (en producción entra por Caddy con HTTPS).
+  prometheus:
+    image: prom/prometheus:v3.15.1
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=15d
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - datos-prometheus:/prometheus
+    depends_on:
+      - api-patent-sweep
+    networks:
+      - patent-sweep-red
+    restart: unless-stopped
+
+  # Métricas del servidor (CPU, RAM, disco, red). Lee /proc, /sys y la raíz del host en solo lectura.
+  # Solo tiene sentido en el EC2 (Linux): en Docker Desktop esos montajes pueden fallar. Se activa en
+  # docker-compose.prod.yml; en local, use `docker compose --profile servidor up -d` si está en Linux.
+  node-exporter:
+    image: prom/node-exporter:v1.12.1
+    profiles: [servidor]
+    command:
+      - --path.procfs=/host/proc
+      - --path.sysfs=/host/sys
+      - --path.rootfs=/host/root
+      - --collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc|run)($$|/)
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/host/root:ro,rslave
+    pid: host
+    networks:
+      - patent-sweep-red
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:13.3.1
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USUARIO}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_CLAVE}
+      # Sin registro abierto, sin acceso anónimo, sin enviar datos de uso a terceros (OWASP A01/A05).
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_AUTH_DISABLE_LOGIN_FORM: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_SECURITY_DISABLE_GRAVATAR: "true"
+      GF_SECURITY_COOKIE_SAMESITE: strict
+      GF_SNAPSHOTS_EXTERNAL_ENABLED: "false"
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/etc/grafana/dashboards:ro
+      - datos-grafana:/var/lib/grafana
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      - prometheus
+    networks:
+      - patent-sweep-red
+    restart: unless-stopped
+
 networks:
   patent-sweep-red:
     driver: bridge
 
 volumes:
   datos-postgres:
+  datos-prometheus:
+  datos-grafana:
