@@ -2,7 +2,7 @@
 
 ## Identidad y prioridad
 
-Módulo **Patent Sweep** de la plataforma Cutit Saws (curso 750021C, Universidad del Valle). Backend Java 21 + Spring Boot 3.5.16 en `patent-sweep/backend`, paquete raíz `co.edu.univalle.patentsweep`. Versión vigente: `v1.0.0-beta.1`; Sprint 0 cerrado y Sprint 1 completado en código (HU-00, HU-01, HU-02 y HU-04).
+Módulo **Patent Sweep** de la plataforma Cutit Saws (curso 750021C, Universidad del Valle). Backend Java 21 + Spring Boot 3.5.16 en `patent-sweep/backend`, paquete raíz `co.edu.univalle.patentsweep`. Versión vigente: `v1.0.0-beta.3`; Sprint 0 y Sprint 1 cerrados (HU-00, HU-01, HU-02 y HU-04), desplegada en producción el 2026-11-25.
 
 **Regla de oro: el estado real del proyecto manda.** Ante discrepancias, este es el orden de precedencia:
 

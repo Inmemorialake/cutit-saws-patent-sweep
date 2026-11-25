@@ -24,7 +24,7 @@ Esta API (**Patent Sweep**) es responsable de la **vigilancia y validación cruz
 | **Es consumida por** | Materiales / Fórmulas — validación de componentes contra patentes |
 | **Es consumida por** | Fabricación — validación de lotes de producción |
 
-### Estado actual: Sprint 1 · `v1.0.0-beta.2`
+### Estado actual: Sprint 1 cerrado · `v1.0.0-beta.3`
 
 El backend implementa HU-00 (JWT y cimientos), HU-01 (barrido automático), HU-02 (búsqueda manual de conflictos) y HU-04 (estado de la fórmula), con pruebas, CI, análisis de calidad y despliegue continuo. El arquetipo de registro y consulta de patentes del Sprint 0 (ADR-006) se retiró; HU-03 y HU-05 a HU-12 siguen pendientes. Estado detallado en [`docs/progress.md`](docs/progress.md).
 
