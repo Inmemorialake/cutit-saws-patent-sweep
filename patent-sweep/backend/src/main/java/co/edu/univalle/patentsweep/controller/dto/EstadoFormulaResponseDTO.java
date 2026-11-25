@@ -3,6 +3,7 @@ package co.edu.univalle.patentsweep.controller.dto;
 import co.edu.univalle.patentsweep.model.enums.EstadoFormula;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.LocalDateTime;
+import java.util.List;
 
 /** Respuesta del estado calculado de una fórmula para Fabricación (PB HU-04). */
 public record EstadoFormulaResponseDTO(
@@ -12,6 +13,8 @@ public record EstadoFormulaResponseDTO(
         EstadoFormula estado,
         @Schema(description = "Fecha y hora de la última revisión efectuada", example = "2026-10-19T10:30:00")
         LocalDateTime fechaUltimaRevision,
+        @Schema(description = "Conflictos vigentes (DETECTADO) de la versión actual de la fórmula; vacía si no hay")
+        List<AlertaActivaDTO> alertasActivas,
         @Schema(description = "Mensaje descriptivo para el proceso de fabricación")
         String mensaje) {
 }

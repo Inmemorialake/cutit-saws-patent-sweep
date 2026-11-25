@@ -81,6 +81,20 @@ class ResilientExternalCallExecutorTest {
     }
 
     @Test
+    @DisplayName("La verificación de HU-04 no reintenta: un fallo se propaga tras un solo intento")
+    void noDeberiaReintentarLaVerificacionDeMateriales() {
+        ResilientExternalCallExecutor executor = crearExecutor(Duration.ofSeconds(2), Duration.ofMillis(10));
+        AtomicInteger llamadas = new AtomicInteger();
+
+        assertThatThrownBy(() -> executor.ejecutarVerificacionMateriales(() -> {
+            llamadas.incrementAndGet();
+            throw new ServicioNoDisponibleException("Fallo simulado");
+        })).isInstanceOf(ServicioNoDisponibleException.class);
+
+        assertThat(llamadas).hasValue(1);
+    }
+
+    @Test
     @DisplayName("Ejecuta Materiales y devuelve el resultado exitoso")
     void deberiaDevolverResultadoDeMateriales() {
         ResilientExternalCallExecutor executor = crearExecutor(Duration.ofSeconds(2), Duration.ofMillis(10));
@@ -224,6 +238,10 @@ class ResilientExternalCallExecutorTest {
         RetryRegistry retryRegistry = RetryRegistry.ofDefaults();
         retryRegistry.retry("materiales", retryConfig);
         retryRegistry.retry("fuentePatentes", retryConfig);
+        retryRegistry.retry("materialesVerificacion", RetryConfig.custom()
+                .maxAttempts(1)
+                .retryExceptions(ServicioNoDisponibleException.class)
+                .build());
 
         TimeLimiterConfig timeLimiterConfig = TimeLimiterConfig.custom()
                 .timeoutDuration(timeout)
@@ -232,6 +250,7 @@ class ResilientExternalCallExecutorTest {
         TimeLimiterRegistry timeLimiterRegistry = TimeLimiterRegistry.ofDefaults();
         timeLimiterRegistry.timeLimiter("materiales", timeLimiterConfig);
         timeLimiterRegistry.timeLimiter("fuentePatentes", timeLimiterConfig);
+        timeLimiterRegistry.timeLimiter("materialesVerificacion", timeLimiterConfig);
 
         return new ResilientExternalCallExecutor(retryRegistry, CircuitBreakerRegistry.ofDefaults(),
                 timeLimiterRegistry, executor, resilienceScheduler);

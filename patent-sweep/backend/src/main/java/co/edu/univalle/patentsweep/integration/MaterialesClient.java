@@ -39,6 +39,11 @@ public class MaterialesClient {
         return llamadas.ejecutarMateriales(() -> obtenerFormulaRemota(formulaId));
     }
 
+    /** Igual que {@link #obtenerFormula} pero con el límite de 5 s y sin reintentos que pide el PB en HU-04. */
+    public FormulaExternaDTO verificarFormula(String formulaId) {
+        return llamadas.ejecutarVerificacionMateriales(() -> obtenerFormulaRemota(formulaId));
+    }
+
     private FormulaExternaDTO obtenerFormulaRemota(String formulaId) {
         try {
             FormulaExternaDTO formula = restClient.get()

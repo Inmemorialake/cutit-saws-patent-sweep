@@ -91,7 +91,8 @@ class BarridoServiceTest {
 
         assertThat(barrido.getEstado()).isEqualTo(EstadoBarrido.COMPLETADO);
         assertThat(barrido.getFechaInicio()).isEqualTo(FIN);
-        assertThat(barrido.getMensaje()).isEqualTo("Barrido completado exitosamente");
+        assertThat(barrido.getMensaje())
+                .isEqualTo("No hay fórmulas registradas en estado APROBADA para evaluar");
         verify(materialesClient, never()).obtenerFormula(anyString());
         verifyNoInteractions(configuracionService, fuentePatentes, conflictoService, historialService,
                 estadoFormulaService);
@@ -220,22 +221,20 @@ class BarridoServiceTest {
     }
 
     @Test
-    @DisplayName("cuenta como no procesada una fórmula descontinuada")
-    void deberiaRegistrarFalloDeFormulaDescontinuada() {
+    @DisplayName("omite una fórmula descontinuada sin registrarla como fallo técnico")
+    void deberiaOmitirUnaFormulaDescontinuada() {
         permitirGuardado();
         when(materialesClient.listarAprobadas()).thenReturn(List.of(resumen("form-001")));
         when(configuracionService.criteriosVigentes()).thenReturn(configuracion());
         when(materialesClient.obtenerFormula("form-001")).thenReturn(formulaDescontinuada("form-001"));
-        when(historialService.registrar(anyString(), anyString(), eq("SISTEMA"),
-                eq(OrigenRevision.BARRIDO_AUTOMATICO), eq(ResultadoRevision.FALLO_TECNICO),
-                anyMap(), any(), any())).thenReturn(revision());
 
         Barrido barrido = servicio().ejecutar();
 
         assertThat(barrido.getEstado()).isEqualTo(EstadoBarrido.COMPLETADO);
-        assertThat(barrido.getNoProcesadas()).isEqualTo(1);
+        assertThat(barrido.getNoProcesadas()).isZero();
         assertThat(barrido.getTotalProcesadas()).isZero();
-        verifyNoInteractions(fuentePatentes, conflictoService);
+        assertThat(barrido.getTotalFormulas()).isZero();
+        verifyNoInteractions(fuentePatentes, conflictoService, historialService);
     }
 
     @Test
