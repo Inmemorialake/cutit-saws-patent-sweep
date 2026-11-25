@@ -303,7 +303,7 @@
     boton.disabled = true;
     cargando(estado, "Buscando conflictos…");
     try {
-      const r = await llamar("/patentes/buscar-conflictos", {
+      const r = await llamar("/patentes/busqueda", {
         metodo: "POST",
         cuerpo: { formulaId },
       });
@@ -383,7 +383,46 @@
     salida.append(el("div", { class: "tabla-wrap" }, tabla));
   }
 
-  /* ---------- HU-04: Estado de fórmula ---------- */
+  /* HU-04 (criterio 3.5): tabla de alertas activas; cada fila lleva al detalle del conflicto (HU-08). */
+  function pintarAlertas(alertas, salida) {
+    salida.append(el("h3", {}, "Alertas activas"));
+    if (alertas.length === 0) {
+      const caja = el("div");
+      salida.append(caja);
+      return mostrarAviso(
+        caja,
+        "info",
+        "Sin alertas",
+        "La fórmula no tiene alertas activas",
+      );
+    }
+    const cols = ["conflictoId", "tituloPatente", "fechaDeteccion"];
+    const tabla = el(
+      "table",
+      {},
+      el(
+        "thead",
+        {},
+        el("tr", {}, ...cols.map((c) => el("th", { scope: "col" }, c))),
+      ),
+      el(
+        "tbody",
+        {},
+        ...alertas.map((a) =>
+          el(
+            "tr",
+            {},
+            el("td", {}, enlaceConflicto(a.conflictoId, a.conflictoId)),
+            el("td", { class: "ancho" }, enlaceConflicto(a.conflictoId, a.tituloPatente)),
+            el("td", {}, fmtFechaHora(a.fechaDeteccion)),
+          ),
+        ),
+      ),
+    );
+    salida.append(el("div", { class: "tabla-wrap" }, tabla));
+  }
+
+  /* ---------- HU-04: Estado de barrido ---------- */
   $("form-estado").addEventListener("submit", async (ev) => {
     ev.preventDefault();
     const formulaId = validarFormula(
@@ -421,6 +460,7 @@
           el("dd", {}, r.mensaje || "—"),
         ),
       );
+      pintarAlertas(r.alertasActivas || [], salida);
     } catch (e) {
       if (e.estado === 401) return;
       const d = describirError(e);

@@ -40,6 +40,11 @@ Fuente de verdad para saber qué está implementado. Antes de continuar, leer `A
       `estilos.css`) reutilizando la base visual de HU-04 para la vista **Patentes > Búsqueda Manual**, botón
       **“Buscar Coincidencias”**, validación `form-NNN`, manejo de estados/mensajes del PB y enlaces provisionales
       (`#conflicto/{conflictoId}`) listos para HU-08.
+- [x] **Cierre de brechas del PB en HU-02/HU-04**: la búsqueda manual pasa a `POST /api/v1/patentes/busqueda`
+      (D-7, criterio 2 de HU-02) y la GUI de HU-04 se alinea con el criterio 3.5: vista «Patentes > Estado de
+      Barrido», botón «Ver Estado de Barrido», tabla de `alertasActivas` con enlace a HU-08 y el mensaje «La
+      fórmula no tiene alertas activas». HU-01 (criterio 1.1): el barrido omitido queda en la tabla `barrido`
+      con estado `OMITIDO` (sin migración: la columna es `VARCHAR`).
 
 ## Cómo reanudar en otra sesión
 

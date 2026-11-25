@@ -40,4 +40,4 @@ Flyway V1–V6 se conservaron, de modo que el esquema físico ya contiene `barri
 - El trabajo se fragmenta en commits cortos y se registra en `docs/progress.md` para poder reanudarlo en
   otra sesión sin perder estado.
 
-> **Nota (2026-11-25):** la decisión de conservar `/busqueda` y `/estado/{id}` del arquetipo quedó sin efecto: ambas rutas del Sprint 0 se retiraron. La búsqueda manual sigue en `/buscar-conflictos` hasta que el equipo defina la ruta final y el estado usa `/estado/{formulaId}` (D-7, D-8).
+> **Nota (2026-11-25):** la decisión de conservar `/busqueda` y `/estado/{id}` del arquetipo quedó sin efecto: ambas rutas del Sprint 0 se retiraron. La búsqueda manual quedó en `POST /busqueda`, como pide el PB, y el estado usa `/estado/{formulaId}` (D-7, D-8).

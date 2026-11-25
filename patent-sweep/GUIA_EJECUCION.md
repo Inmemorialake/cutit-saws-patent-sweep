@@ -12,7 +12,7 @@ Curso 750021C Desarrollo de Software II, Universidad del Valle, 2026-2.
 | Iniciar sesión | Valida un usuario existente y devuelve un JWT Bearer | `POST /api/v1/auth/login` |
 | Registrar patente | Valida los datos, verifica que el código no exista y guarda la patente en estado `EN_TRAMITE` | `POST /api/v1/patentes/busqueda` |
 | Consultar patente | Devuelve la patente y su estado de vigencia | `GET /api/v1/patentes/estado/{id}` |
-| Buscar conflictos (HU-02) | Ejecuta una búsqueda manual para una fórmula; requiere rol `ADMINISTRADOR` | `POST /api/v1/patentes/buscar-conflictos` |
+| Buscar conflictos (HU-02) | Ejecuta una búsqueda manual para una fórmula; requiere rol `ADMINISTRADOR` | `POST /api/v1/patentes/busqueda` |
 | Consultar estado (HU-04) | Calcula el estado actual de una fórmula | `GET /api/v1/patentes/estado?formulaId=form-NNN` |
 | Operación | Health check público; Prometheus consulta métricas por el puerto interno de management | `GET /actuator/health`; `http://api-patent-sweep:9091/actuator/prometheus` (solo red Docker) |
 | Monitoreo | Tableros de la API y del servidor en Grafana | `http://localhost:3000` |
@@ -151,7 +151,7 @@ curl -s -X POST http://localhost:8085/api/v1/auth/login \
 # Copie accessToken de la respuesta en la variable TOKEN.
 TOKEN="<JWT>"
 
-curl -s -X POST http://localhost:8085/api/v1/patentes/buscar-conflictos \
+curl -s -X POST http://localhost:8085/api/v1/patentes/busqueda \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $TOKEN" \
   -d '{"formulaId":"form-001"}'

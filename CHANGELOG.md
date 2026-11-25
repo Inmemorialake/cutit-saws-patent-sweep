@@ -12,7 +12,9 @@ El versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 ### Cambiado
 
 - HU-04: ruta `GET /estado/{formulaId}`, respuesta con `alertasActivas`, mensaje de éxito y errores del PB (400/503/500) y verificación de la fórmula en 5 s sin reintentos (política `materialesVerificacion`).
-- HU-02: la búsqueda manual se mantiene en `POST /buscar-conflictos` (ruta final por decidir, D-7).
+- HU-02: la búsqueda manual pasa a `POST /api/v1/patentes/busqueda`, como pide el PB; se retira `POST /buscar-conflictos` (D-7).
+- HU-04 (GUI): la vista se llama «Patentes > Estado de Barrido», el botón «Ver Estado de Barrido» y muestra la tabla de `alertasActivas` (o «La fórmula no tiene alertas activas»).
+- HU-01 (criterio 1.1): un barrido omitido por haber otro en curso queda en la auditoría (`barrido`) con estado `OMITIDO` y el mensaje «Barrido omitido: existe una ejecución en curso»; antes solo iba al log.
 - HU-01/HU-02: el resultado del historial es `CON_CONFLICTO` solo con conflictos vigentes; el barrido guarda el mensaje del PB con la lista vacía y omite las fórmulas `DESCONTINUADAS` sin marcar fallo técnico.
 - Integraciones: 20 s por intento y tope de 70 s por llamada lógica (antes 20 s en total).
 - HU-02: `BusquedaService` ya no vuelve a consultar Materiales después de guardar conflictos e historial
@@ -27,6 +29,7 @@ El versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 - Límite de memoria de Grafana en producción de 256 a 384 MB: en el EC2 usaba ~242 MB en reposo (94 % del límite) y
   podía reiniciarse por OOM.
+- Una ruta inexistente (por ejemplo, la antigua `/buscar-conflictos`) respondía 500 y registraba un «Error interno»; ahora responde 404 `ProblemDetail`, y un método HTTP no soportado, 405.
 
 ## [1.0.0-beta.2] — 2026-11-24 · Sprint 1: HU-01, HU-02, monitoreo y HTTPS
 
