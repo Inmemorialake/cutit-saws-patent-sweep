@@ -9,6 +9,16 @@ El versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 ## [Unreleased]
 
+### Cambiado
+
+- HU-02: `BusquedaService` ya no vuelve a consultar Materiales después de guardar conflictos e historial
+  (la llamada a `recalcular` descartaba su resultado y podía convertir una búsqueda guardada en un 503).
+- Migración V8 (ADR-012): el `UNIQUE` de `conflicto` pasa a `(formula_id, patente_id)`, sin la versión.
+
+### Añadido
+
+- Pruebas de integración de HU-02 (`@SpringBootTest` con PostgreSQL por Testcontainers y WireMock).
+
 ## [1.0.0-beta.2] — 2026-11-24 · Sprint 1: HU-01, HU-02, monitoreo y HTTPS
 
 ### Añadido

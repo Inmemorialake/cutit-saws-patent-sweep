@@ -14,7 +14,7 @@ convenciones de trabajo y, por último, DAS/backlog.
 | D-6 | `fechaUltimaActualizacion` | Aparece en el contrato de Materiales. | No se usa en la lógica; solo se conserva en el DTO si hace falta. |
 | D-7 | Ruta de búsqueda manual | `POST /busqueda` registra patentes en Sprint 0 (ADR-006); HU-02 lo define como búsqueda de conflictos. | Se mantiene el registro en `/busqueda` y se crea `/buscar-conflictos`. |
 | D-8 | Ruta de estado | Sprint 0: `/estado/{id}`; HU-04: `/estado?formulaId=...`. | Conviven ambas; la consulta por identificador no se rompe. |
-| D-9 | Unicidad de conflictos | ADR-002/V3: por fórmula + patente + versión; PB/HU-01: por fórmula + patente. | Dedupe por pareja en el servicio (ADR-009); `UNIQUE` de V3 intacto. |
+| D-9 | Unicidad de conflictos | ADR-002/V3: por fórmula + patente + versión; PB/HU-01: por fórmula + patente. | Dedupe por pareja en el servicio (ADR-009) y `UNIQUE (formula_id, patente_id)` en la base desde V8 (ADR-012). |
 | D-10 | Columnas de `barrido` | V1: `total_fallidos`/`mensaje_error`; HU-01: `noProcesadas`/mensaje de cierre. | Se reutilizan las columnas existentes mapped a nombres de dominio; sin migración nueva. |
 | D-11 | Seguridad y dependencias | ADR-006 retiró JWT, Resilience4j y caché; HU-00/HU-01 los exigen. | Se restauran con ADR-008; `/health` abierto y `/prometheus` restringido. |
 | D-12 | Documentación HU | `AGENTS.md` decía que HU-00/HU-02 estaban vacías; están versionadas con contenido. | Se corrige `AGENTS.md` y se usa `docs/progress.md` como estado de avance. |

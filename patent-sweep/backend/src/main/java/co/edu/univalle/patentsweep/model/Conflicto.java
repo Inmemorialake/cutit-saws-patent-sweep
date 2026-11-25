@@ -25,11 +25,11 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-/** Coincidencia entre una fórmula y una patente (ER: Conflicto; única por fórmula, patente y versión, DA-17). */
+/** Coincidencia entre una fórmula y una patente (ER: Conflicto; única por fórmula y patente, ADR-012). */
 @Entity
 @Table(name = "conflicto",
-        uniqueConstraints = @UniqueConstraint(name = "uq_conflicto_formula_patente_version",
-                columnNames = {"formula_id", "patente_id", "version_formula"}))
+        uniqueConstraints = @UniqueConstraint(name = "uq_conflicto_formula_patente",
+                columnNames = {"formula_id", "patente_id"}))
 @Getter
 @Setter
 @NoArgsConstructor

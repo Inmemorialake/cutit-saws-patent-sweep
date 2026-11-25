@@ -17,11 +17,8 @@ public interface ConflictoRepository extends JpaRepository<Conflicto, Long> {
     Optional<Conflicto> findByFormulaIdAndPatente_PatenteIdAndVersionFormula(String formulaId, Long patenteId,
                                                                               String versionFormula);
 
-    long countByFormulaIdAndVersionFormulaAndEstado(String formulaId, String versionFormula,
-                                                    EstadoConflicto estado);
-
-    List<Conflicto> findByFormulaIdAndVersionFormulaAndEstadoOrderByFechaDeteccionDesc(
-            String formulaId, String versionFormula, EstadoConflicto estado);
+    List<Conflicto> findByFormulaIdAndEstadoOrderByFechaDeteccionDesc(
+            String formulaId, EstadoConflicto estado);
 
     long countByFormulaIdAndEstado(String formulaId, EstadoConflicto estado);
 }

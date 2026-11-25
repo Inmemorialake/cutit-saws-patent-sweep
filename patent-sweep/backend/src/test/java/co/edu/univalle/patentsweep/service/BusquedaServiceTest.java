@@ -8,6 +8,7 @@ import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -59,15 +60,13 @@ class BusquedaServiceTest {
     private ConflictoService conflictoService;
     @Mock
     private HistorialService historialService;
-    @Mock
-    private EstadoFormulaService estadoFormulaService;
 
     private BusquedaService servicio;
 
     @BeforeEach
     void preparar() {
         servicio = new BusquedaService(materialesClient, fuentePatentes, motorCoincidencias,
-                configuracionService, conflictoService, historialService, estadoFormulaService, RELOJ);
+                configuracionService, conflictoService, historialService, RELOJ);
     }
 
     @Test
@@ -88,7 +87,8 @@ class BusquedaServiceTest {
         List<Conflicto> resultado = servicio.buscar("form-001", "ingeniera");
 
         assertThat(resultado).containsExactly(conflicto);
-        verify(estadoFormulaService).recalcular("form-001");
+        // Una sola consulta a Materiales: no se vuelve a llamar después de guardar conflictos e historial.
+        verify(materialesClient, times(1)).obtenerFormula("form-001");
         ArgumentCaptor<Map<String, Object>> parametros = ArgumentCaptor.captor();
         verify(conflictoService).registrarNuevos(eq(formula), eq("ingeniera"), anyList(), parametros.capture());
         assertThat(parametros.getValue())

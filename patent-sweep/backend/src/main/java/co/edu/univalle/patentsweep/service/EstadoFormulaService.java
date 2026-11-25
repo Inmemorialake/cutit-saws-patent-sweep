@@ -54,7 +54,7 @@ public class EstadoFormulaService {
 
     /**
      * Primero verifica en Materiales que la fórmula exista (404 si no) y toma su versión vigente. Después
-     * aplica, en orden: conflicto DETECTADO de esa versión, evaluación abierta, nunca revisada (o revisada
+     * aplica, en orden: conflicto DETECTADO (único por fórmula y patente, ADR-012), evaluación abierta, nunca revisada (o revisada
      * solo en otra versión) o último intento fallido, y en cualquier otro caso LIBRE.
      */
     public EstadoCalculado consultarEstado(String formulaId) {
@@ -67,8 +67,7 @@ public class EstadoFormulaService {
         LocalDateTime fecha = ultima.map(RevisionFormula::getFechaRevision).orElse(null);
 
         List<Conflicto> vigentes = conflictoRepository
-                .findByFormulaIdAndVersionFormulaAndEstadoOrderByFechaDeteccionDesc(
-                        formulaId, formula.versionRegistrada(), EstadoConflicto.DETECTADO);
+                .findByFormulaIdAndEstadoOrderByFechaDeteccionDesc(formulaId, EstadoConflicto.DETECTADO);
         if (!vigentes.isEmpty()) {
             return new EstadoCalculado(EstadoFormula.CONFLICTO_DETECTADO, fecha, vigentes);
         }

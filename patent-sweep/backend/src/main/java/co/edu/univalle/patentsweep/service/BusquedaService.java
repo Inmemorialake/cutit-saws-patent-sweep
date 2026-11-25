@@ -30,20 +30,18 @@ public class BusquedaService {
     private final ConfiguracionService configuracionService;
     private final ConflictoService conflictoService;
     private final HistorialService historialService;
-    private final EstadoFormulaService estadoFormulaService;
     private final Clock reloj;
 
     public BusquedaService(MaterialesClient materialesClient, FuentePatentesPort fuentePatentes,
                            MotorCoincidencias motorCoincidencias, ConfiguracionService configuracionService,
                            ConflictoService conflictoService, HistorialService historialService,
-                           EstadoFormulaService estadoFormulaService, Clock reloj) {
+                           Clock reloj) {
         this.materialesClient = materialesClient;
         this.fuentePatentes = fuentePatentes;
         this.motorCoincidencias = motorCoincidencias;
         this.configuracionService = configuracionService;
         this.conflictoService = conflictoService;
         this.historialService = historialService;
-        this.estadoFormulaService = estadoFormulaService;
         this.reloj = reloj;
     }
 
@@ -70,7 +68,6 @@ public class BusquedaService {
         parametros.put("patentesCandidatas", candidatas.stream().map(PatenteExternaDTO::patenteId).toList());
         List<PatenteExternaDTO> coincidencias = motorCoincidencias.filtrarConflictos(formula, candidatas);
         List<Conflicto> conflictos = conflictoService.registrarNuevos(formula, username, coincidencias, parametros);
-        estadoFormulaService.recalcular(formulaId);
         return conflictos;
     }
 
