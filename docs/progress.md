@@ -1,7 +1,7 @@
 # Progreso del Sprint 1
 
 Fuente de verdad para saber qué está implementado. Antes de continuar, leer `AGENTS.md`, este archivo y
-`git status --short --branch`. Rama de trabajo: `jmarin`.
+`git status --short --branch`. Ramas de trabajo: `jmarin` / `dtaborda` / `vyuan`.
 
 ## Estado actual
 
@@ -33,6 +33,10 @@ Fuente de verdad para saber qué está implementado. Antes de continuar, leer `A
 - [x] **Monitoreo y HTTPS (ADR-010)**: Actuator usa un puerto interno para Prometheus, el health check público se
       conserva con `SaludController`, y el Compose incorpora Prometheus, Grafana, node-exporter y Caddy para HTTPS.
       `mvn clean verify` pasa con 146 pruebas, JaCoCo y Checkstyle en verde.
+- [x] **Complemento GUI HU-02 (`static/`)**: adaptación de la interfaz web liviana (`index.html`, `app.js`,
+      `estilos.css`) reutilizando la base visual de HU-04 para la vista **Patentes > Búsqueda Manual**, botón
+      **“Buscar Coincidencias”**, validación `form-NNN`, manejo de estados/mensajes del PB y enlaces provisionales
+      (`#conflicto/{conflictoId}`) listos para HU-08.
 
 ## Cómo reanudar en otra sesión
 
