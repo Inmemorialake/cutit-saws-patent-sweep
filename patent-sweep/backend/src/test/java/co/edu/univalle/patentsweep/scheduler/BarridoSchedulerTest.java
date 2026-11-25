@@ -18,6 +18,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.scheduling.config.ScheduledTaskRegistrar;
 import org.springframework.scheduling.config.TriggerTask;
+import org.springframework.scheduling.support.SimpleTriggerContext;
 
 @ExtendWith(MockitoExtension.class)
 class BarridoSchedulerTest {
@@ -37,8 +38,7 @@ class BarridoSchedulerTest {
 
     @BeforeEach
     void preparar() {
-        scheduler = new BarridoScheduler(barridoService, configuracionService,
-                Clock.fixed(AHORA, ZoneOffset.UTC), self);
+        scheduler = nuevo(false);
     }
 
     @Test
@@ -48,8 +48,8 @@ class BarridoSchedulerTest {
                 .thenReturn(Duration.ofHours(6), Duration.ofDays(2));
         TriggerTask tarea = registrarTarea();
 
-        Instant primera = tarea.getTrigger().nextExecution(null);
-        Instant segunda = tarea.getTrigger().nextExecution(null);
+        Instant primera = tarea.getTrigger().nextExecution(tras(AHORA));
+        Instant segunda = tarea.getTrigger().nextExecution(tras(AHORA));
 
         assertThat(primera).isEqualTo(AHORA.plus(Duration.ofHours(6)));
         assertThat(segunda).isEqualTo(AHORA.plus(Duration.ofDays(2)));
@@ -61,7 +61,7 @@ class BarridoSchedulerTest {
         when(configuracionService.frecuenciaVigente()).thenReturn(Duration.ofDays(1));
         TriggerTask tarea = registrarTarea();
 
-        assertThat(tarea.getTrigger().nextExecution(null))
+        assertThat(tarea.getTrigger().nextExecution(tras(AHORA)))
                 .isEqualTo(AHORA.plus(Duration.ofDays(1)));
     }
 
@@ -81,6 +81,41 @@ class BarridoSchedulerTest {
         scheduler.ejecutar();
 
         verify(barridoService).ejecutar();
+    }
+
+    @Test
+    @DisplayName("con al-iniciar, el primer barrido corre tras el retraso inicial y los siguientes según la frecuencia")
+    void deberiaEjecutarElPrimerBarridoAlIniciar() {
+        when(configuracionService.frecuenciaVigente()).thenReturn(Duration.ofDays(1));
+        scheduler = nuevo(true);
+        TriggerTask tarea = registrarTarea();
+
+        Instant primera = tarea.getTrigger().nextExecution(new SimpleTriggerContext());
+        Instant siguiente = tarea.getTrigger().nextExecution(tras(AHORA));
+
+        assertThat(primera).isEqualTo(AHORA.plus(Duration.ofSeconds(30)));
+        assertThat(siguiente).isEqualTo(AHORA.plus(Duration.ofDays(1)));
+        verify(configuracionService).frecuenciaVigente();
+    }
+
+    @Test
+    @DisplayName("sin al-iniciar, el primer barrido espera la frecuencia completa")
+    void deberiaEsperarLaFrecuenciaSinAlIniciar() {
+        when(configuracionService.frecuenciaVigente()).thenReturn(Duration.ofDays(1));
+        TriggerTask tarea = registrarTarea();
+
+        assertThat(tarea.getTrigger().nextExecution(new SimpleTriggerContext()))
+                .isEqualTo(AHORA.plus(Duration.ofDays(1)));
+    }
+
+    private BarridoScheduler nuevo(boolean alIniciar) {
+        return new BarridoScheduler(barridoService, configuracionService, Clock.fixed(AHORA, ZoneOffset.UTC), self,
+                alIniciar, Duration.ofSeconds(30));
+    }
+
+    /** Contexto de un trigger que ya completó una ejecución en el instante dado. */
+    private static SimpleTriggerContext tras(Instant instante) {
+        return new SimpleTriggerContext(instante, instante, instante);
     }
 
     private TriggerTask registrarTarea() {

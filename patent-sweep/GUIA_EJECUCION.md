@@ -13,7 +13,7 @@ Curso 750021C Desarrollo de Software II, Universidad del Valle, 2026-2.
 | Interfaz web | Login, «Patentes > Búsqueda Manual» y «Patentes > Estado de Barrido» | `http://localhost:8085/` |
 | Buscar conflictos (HU-02) | Ejecuta una búsqueda manual para una fórmula; requiere rol `ADMINISTRADOR` | `POST /api/v1/patentes/busqueda` |
 | Consultar estado (HU-04) | Calcula el estado actual de una fórmula y sus alertas activas | `GET /api/v1/patentes/estado/{formulaId}` |
-| Barrido automático (HU-01) | Revisa las fórmulas aprobadas cada 24 h (la primera vez, 24 h después del arranque) | Sin endpoint; se ve en Grafana |
+| Barrido automático (HU-01) | Revisa las fórmulas aprobadas 30 s después de arrancar y luego cada 24 h (`BARRIDO_AL_INICIAR`, `BARRIDO_RETRASO_INICIAL`) | Sin endpoint; se ve en Grafana |
 | Operación | Health check público; Prometheus consulta métricas por el puerto interno de management | `GET /actuator/health`; `http://api-patent-sweep:9091/actuator/prometheus` (solo red Docker) |
 | Monitoreo | Tableros de la API y del servidor en Grafana | `http://localhost:3000` |
 | Documentación | Swagger UI y contrato OpenAPI | `/swagger-ui.html`, `/v3/api-docs` |

@@ -22,6 +22,10 @@ spring:
 
 server:
   port: ${API_PUERTO}
+  # Detrás de Caddy (HTTPS, ADR-010) la API recibe HTTP: con "native", Tomcat usa X-Forwarded-Proto/Host
+  # del proxy (solo desde redes internas, como la red Docker) para que OpenAPI/Swagger anuncie https://
+  # y el navegador no bloquee las peticiones por contenido mixto.
+  forward-headers-strategy: native
   error:
     include-stacktrace: never
     include-message: never
@@ -67,6 +71,10 @@ patentsweep:
     admin-clave: ${ADMIN_CLAVE:}
     servicio-usuario: ${SERVICIO_USUARIO:}
     servicio-clave: ${SERVICIO_CLAVE:}
+  barrido:
+    # D-14: primer barrido poco después de arrancar; los siguientes, según la frecuencia de HU-06 (1 día por defecto).
+    al-iniciar: ${BARRIDO_AL_INICIAR:true}
+    retraso-inicial: ${BARRIDO_RETRASO_INICIAL:30s}
   materiales:
     url-base: ${MATERIALES_URL:http://apis-simuladas:8080}
   fuente-patentes:
