@@ -1,0 +1,734 @@
+{
+  "info": {
+    "_postman_id": "45ac1049-67f8-41f7-a465-9a24cb9c9566",
+    "name": "Patent Sweep API — Sprint 1",
+    "description": "Pruebas de la API de Patent Sweep (HU-00, HU-01, HU-02, HU-04).\n\n**Uso:** importe la colección y uno de los entornos de `docs/postman/` (local o producción), escriba `username` y `password` en el entorno (nunca en la colección) y ejecute primero **Autenticación > Login**: guarda el token en `token` y el resto de peticiones lo usa como Bearer. Para correr todo de una vez use *Run collection*.\n\nLos resultados esperados corresponden a las APIs simuladas (WireMock en `patent-sweep/mocks`). La búsqueda manual guarda conflictos e historial en la base del entorno que use.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Salud y documentación",
+      "item": [
+        {
+          "name": "Health check",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"status UP\", () => pm.expect(pm.response.json().status).to.eql(\"UP\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/actuator/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "actuator",
+                "health"
+              ]
+            },
+            "description": "Público. Refleja la salud de la API y de PostgreSQL.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "OpenAPI (JSON)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v3/api-docs",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v3",
+                "api-docs"
+              ]
+            },
+            "description": "Público. Contrato OpenAPI; la interfaz Swagger está en /swagger-ui/index.html.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Autenticación",
+      "item": [
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 200\", () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"Devuelve un token Bearer\", () => { pm.expect(j.accessToken).to.be.a(\"string\"); pm.expect(j.tokenType).to.eql(\"Bearer\"); });",
+                  "pm.collectionVariables.set(\"token\", j.accessToken);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Valida un usuario existente (sembrado desde ADMIN_* / SERVICIO_* del .env) y guarda el accessToken en la variable de colección `token`."
+          }
+        },
+        {
+          "name": "Login con credenciales inválidas",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 401\", () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Debe responder 401 con un mensaje genérico.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{username}}\",\n  \"password\": \"clave-incorrecta\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Sin token → 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 401\", () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/patentes/estado/form-001",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "patentes",
+                "estado",
+                "form-001"
+              ]
+            },
+            "description": "Cualquier ruta de patentes sin JWT responde 401.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "HU-02 Búsqueda manual",
+      "description": "POST /api/v1/patentes/busqueda — solo rol ADMINISTRADOR.",
+      "item": [
+        {
+          "name": "Con coincidencias (form-001)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Hay conflictos\", () => pm.expect(pm.response.json().conflictos.length).to.be.above(0));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/patentes/busqueda",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "patentes",
+                "busqueda"
+              ]
+            },
+            "description": "Con los mocks devuelve 2 conflictos.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"formulaId\": \"form-001\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Sin conflictos (form-004)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Sin conflictos y mensaje del PB\", () => { const j = pm.response.json(); pm.expect(j.conflictos).to.eql([]); pm.expect(j.mensaje).to.eql(\"No se detectaron conflictos relacionados con su búsqueda\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/patentes/busqueda",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "patentes",
+                "busqueda"
+              ]
+            },
+            "description": "Fórmula aprobada sin patentes que coincidan: 200 con lista vacía.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"formulaId\": \"form-004\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Fórmula descontinuada (form-003) → 409",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 409\", () => pm.response.to.have.status(409));",
+                  "pm.test(\"Es un ProblemDetail con traceId\", () => { const j = pm.response.json(); pm.expect(j).to.have.property(\"detail\"); pm.expect(j).to.have.property(\"traceId\"); });",
+                  "pm.test(\"Mensaje del PB\", () => pm.expect(pm.response.json().detail).to.eql(\"No se puede buscar patentes para una fórmula DESCONTINUADA\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/patentes/busqueda",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "patentes",
+                "busqueda"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"formulaId\": \"form-003\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Fórmula inexistente (form-999) → 404",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 404\", () => pm.response.to.have.status(404));",
+                  "pm.test(\"Es un ProblemDetail con traceId\", () => { const j = pm.response.json(); pm.expect(j).to.have.property(\"detail\"); pm.expect(j).to.have.property(\"traceId\"); });",
+                  "pm.test(\"Mensaje del PB\", () => pm.expect(pm.response.json().detail).to.eql(\"La fórmula consultada no fue encontrada\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/patentes/busqueda",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "patentes",
+                "busqueda"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"formulaId\": \"form-999\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Formato inválido → 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Es un ProblemDetail con traceId\", () => { const j = pm.response.json(); pm.expect(j).to.have.property(\"detail\"); pm.expect(j).to.have.property(\"traceId\"); });",
+                  "pm.test(\"Mensaje del PB\", () => pm.expect(pm.response.json().detail).to.eql(\"El código de la fórmula es obligatorio y debe tener el formato form-NNN\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/patentes/busqueda",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "patentes",
+                "busqueda"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"formulaId\": \"abc\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "HU-04 Estado de barrido",
+      "description": "GET /api/v1/patentes/estado/{formulaId} — cualquier rol autenticado.",
+      "item": [
+        {
+          "name": "Con alertas (form-001)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 200\", () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"CONFLICTO_DETECTADO con alertas\", () => { pm.expect(j.estado).to.eql(\"CONFLICTO_DETECTADO\"); pm.expect(j.alertasActivas.length).to.be.above(0); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/patentes/estado/form-001",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "patentes",
+                "estado",
+                "form-001"
+              ]
+            },
+            "description": "Tras la búsqueda de form-001: CONFLICTO_DETECTADO con alertasActivas."
+          }
+        },
+        {
+          "name": "Libre (form-004)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 200\", () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"LIBRE sin alertas\", () => { pm.expect(j.estado).to.eql(\"LIBRE\"); pm.expect(j.fechaUltimaRevision).to.not.eql(null); pm.expect(j.alertasActivas).to.eql([]); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/patentes/estado/form-004",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "patentes",
+                "estado",
+                "form-004"
+              ]
+            },
+            "description": "Tras la búsqueda de form-004: LIBRE, con fecha de revisión y sin alertas."
+          }
+        },
+        {
+          "name": "Sin revisar (form-003)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 200\", () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"NO_PROCESADO sin alertas\", () => { pm.expect(j.estado).to.eql(\"NO_PROCESADO\"); pm.expect(j.fechaUltimaRevision).to.eql(null); pm.expect(j.alertasActivas).to.eql([]); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/patentes/estado/form-003",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "patentes",
+                "estado",
+                "form-003"
+              ]
+            },
+            "description": "NO_PROCESADO, sin fecha y alertasActivas vacío."
+          }
+        },
+        {
+          "name": "Fórmula inexistente (form-999) → 404",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 404\", () => pm.response.to.have.status(404));",
+                  "pm.test(\"Es un ProblemDetail con traceId\", () => { const j = pm.response.json(); pm.expect(j).to.have.property(\"detail\"); pm.expect(j).to.have.property(\"traceId\"); });",
+                  "pm.test(\"Mensaje del PB\", () => pm.expect(pm.response.json().detail).to.eql(\"La fórmula consultada no fue encontrada\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/patentes/estado/form-999",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "patentes",
+                "estado",
+                "form-999"
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "Formato inválido → 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Es un ProblemDetail con traceId\", () => { const j = pm.response.json(); pm.expect(j).to.have.property(\"detail\"); pm.expect(j).to.have.property(\"traceId\"); });",
+                  "pm.test(\"Mensaje del PB\", () => pm.expect(pm.response.json().detail).to.eql(\"El identificador de la fórmula no es válido\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/patentes/estado/abc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "patentes",
+                "estado",
+                "abc"
+              ]
+            },
+            "description": ""
+          }
+        }
+      ]
+    },
+    {
+      "name": "Rutas inválidas",
+      "item": [
+        {
+          "name": "Ruta antigua /buscar-conflictos → 404",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 404\", () => pm.response.to.have.status(404));",
+                  "pm.test(\"Es un ProblemDetail con traceId\", () => { const j = pm.response.json(); pm.expect(j).to.have.property(\"detail\"); pm.expect(j).to.have.property(\"traceId\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/patentes/buscar-conflictos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "patentes",
+                "buscar-conflictos"
+              ]
+            },
+            "description": "Retirada en v1.0.0-beta.3.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"formulaId\": \"form-001\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Método no permitido → 405",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 405\", () => pm.response.to.have.status(405));",
+                  "pm.test(\"Es un ProblemDetail con traceId\", () => { const j = pm.response.json(); pm.expect(j).to.have.property(\"detail\"); pm.expect(j).to.have.property(\"traceId\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/patentes/busqueda",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "patentes",
+                "busqueda"
+              ]
+            },
+            "description": ""
+          }
+        }
+      ]
+    }
+  ]
+}
