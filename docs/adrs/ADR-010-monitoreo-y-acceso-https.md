@@ -72,7 +72,7 @@ A03 (inyección) no cambia con esta decisión: se sigue atendiendo con JPA param
   curso deben usar el dominio.
 - El `.env` del servidor necesita `MANAGEMENT_PUERTO`, `API_DOMINIO`, `GRAFANA_DOMINIO`, `GRAFANA_ADMIN_USUARIO` y
   `GRAFANA_ADMIN_CLAVE`, y el stack `patent-sweep-cd` debe volver a desplegarse para actualizar el documento SSM.
-- El monitoreo consume unos 770 MB de límite de memoria adicional. Cabe en la t8i.small porque el uso real es
+- El monitoreo consume unos 900 MB de límite de memoria adicional (Grafana pasó de 256 a 384 MB tras medir ~240 MB en reposo en el EC2). Cabe en la t8i.small porque el uso real es
   menor y hay 2 GB de swap; si aparece OOM se reduce la retención de Prometheus o se sube la instancia.
 - `MANAGEMENT_PUERTO` debe ser distinto de `API_PUERTO`. Si coincidieran, actuator volvería al puerto público y las
   métricas quedarían detrás del JWT, así que Prometheus no podría leerlas.
