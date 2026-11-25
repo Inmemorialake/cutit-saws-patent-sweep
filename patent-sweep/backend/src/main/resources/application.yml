@@ -72,13 +72,14 @@ patentsweep:
   fuente-patentes:
     url-base: ${FUENTE_PATENTES_URL:http://apis-simuladas:8080}
   http:
-    # Límite global de 20 s por intento (PB HU-01/02, S-07).
+    # Límite por intento HTTP; el límite global de 20 s lo aplica Resilience4j (D-5).
     timeout-conexion-segundos: 5
     timeout-lectura-segundos: 20
   coincidencia:
     # Regla del PB (HU-01, criterio 6): al menos el 50 % de los materiales y como mínimo 2.
     porcentaje-minimo: 50
     minimo-materiales: 2
+  # Dimensionamiento compartido por los pools independientes de notificaciones e integraciones HTTP.
   async:
     nucleo: 2
     maximo: 4
@@ -103,8 +104,10 @@ resilience4j:
       materiales:
         # D-5: límite global de 20 s por llamada lógica; cancela la espera de reintentos restantes.
         timeout-duration: 20s
+        cancel-running-future: true
       fuentePatentes:
         timeout-duration: 20s
+        cancel-running-future: true
   circuitbreaker:
     instances:
       materiales:

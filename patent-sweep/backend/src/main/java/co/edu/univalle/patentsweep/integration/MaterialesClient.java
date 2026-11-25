@@ -5,9 +5,6 @@ import co.edu.univalle.patentsweep.exception.IntegracionExternaException;
 import co.edu.univalle.patentsweep.exception.ServicioNoDisponibleException;
 import co.edu.univalle.patentsweep.integration.dto.FormulaExternaDTO;
 import co.edu.univalle.patentsweep.integration.dto.FormulaResumenDTO;
-import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
-import io.github.resilience4j.retry.annotation.Retry;
-import io.github.resilience4j.timelimiter.annotation.TimeLimiter;
 import java.util.ArrayList;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -29,16 +26,20 @@ public class MaterialesClient {
     private static final int TAMANO_PAGINA = 10;
 
     private final RestClient restClient;
+    private final ResilientExternalCallExecutor llamadas;
 
-    public MaterialesClient(@Qualifier("materialesRestClient") RestClient restClient) {
+    public MaterialesClient(@Qualifier("materialesRestClient") RestClient restClient,
+                            ResilientExternalCallExecutor llamadas) {
         this.restClient = restClient;
+        this.llamadas = llamadas;
     }
 
     /** GET /formulas/{codigo}: detalle de una fórmula con sus componentes. */
-    @Retry(name = "materiales")
-    @CircuitBreaker(name = "materiales")
-    @TimeLimiter(name = "materiales")
     public FormulaExternaDTO obtenerFormula(String formulaId) {
+        return llamadas.ejecutarMateriales(() -> obtenerFormulaRemota(formulaId));
+    }
+
+    private FormulaExternaDTO obtenerFormulaRemota(String formulaId) {
         try {
             FormulaExternaDTO formula = restClient.get()
                     .uri("/formulas/{codigo}", formulaId)
@@ -63,10 +64,11 @@ public class MaterialesClient {
      * HU-01-1B: recorre `GET /formulas?estado=APROBADA&pagina={n}` en páginas de 10 hasta recibir
      * una lista vacía. El tamaño es fijo en código (D-2); el llamador no puede cambiarlo.
      */
-    @Retry(name = "materiales")
-    @CircuitBreaker(name = "materiales")
-    @TimeLimiter(name = "materiales")
     public List<FormulaResumenDTO> listarAprobadas() {
+        return llamadas.ejecutarMateriales(this::listarAprobadasRemoto);
+    }
+
+    private List<FormulaResumenDTO> listarAprobadasRemoto() {
         List<FormulaResumenDTO> aprobadas = new ArrayList<>();
         int pagina = 1;
         try {

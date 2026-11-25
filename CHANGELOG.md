@@ -21,10 +21,14 @@ El versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 - ADR-008: restauración del alcance Sprint 1 desde el commit `238806c` y fin del arquetipo de una sola transacción.
 - ADR-009: conflicto único por fórmula y patente, sin importar la versión; matiza ADR-002.
+- ADR-011: TimeLimiter global de 20 s para integraciones HTTP bloqueantes, aplicado sobre la operación asíncrona completa.
 - `docs/discrepancias.md` con las decisiones D-1 a D-12 y `docs/progress.md` como estado de avance del Sprint 1.
 - Seguridad JWT con roles `ADMINISTRADOR`/`SERVICIO`, configuración de Resilience4j, caché Caffeine,
   reloj inyectable y clientes `RestClient` base para Materiales y la fuente de patentes (HU-00, ADR-008).
 - Variables de entorno para JWT y las URL de integraciones en `.env.example` y Docker Compose.
+- `POST /api/v1/auth/login`: autentica usuarios existentes y devuelve un JWT Bearer, el vencimiento en segundos,
+  el usuario y el rol; credenciales inválidas responden 401 con `ProblemDetail`.
+- Pruebas de autenticación para el login público, validación de entradas, respuesta genérica 401 y claims del JWT.
 - Entidades y repositorios JPA para las tablas del esquema V1–V6: `conflicto`, `revision_formula`,
   `configuracion`, `evaluacion_formula`, `notificacion` y `usuario`, con sus enums de estado (P04, P17, P18).
 - Excepciones de integración y reglas de negocio, con handlers `ProblemDetail` 404/409/401/403/503 (P07, P19).
@@ -71,6 +75,8 @@ El versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 ### Corregido
 
+- Las integraciones HTTP aplican el `TimeLimiter` de Resilience4j alrededor de la llamada asíncrona completa,
+  incluidos los reintentos, sin interceptar métodos bloqueantes con una anotación incompatible.
 - `JwtAuthFilter` se registra como bean en `SecurityConfig` para no romper los slices `@WebMvcTest`.
 - CI y Dockerfile toleran el HTTP 429 de Maven Central: caché de Maven con `restore-keys`, espera creciente
   hasta 300 s y reintentos internos de Wagon, sin intervención manual ni infraestructura adicional.

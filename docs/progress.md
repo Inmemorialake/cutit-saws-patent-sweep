@@ -6,6 +6,7 @@ Fuente de verdad para saber qué está implementado. Antes de continuar, leer `A
 ## Estado actual
 
 - [x] **Fase 0 — Gobernanza**: ADR-008 (restauración Sprint 1), ADR-009 (dedupe por pareja),
+      ADR-010 (monitoreo y HTTPS), ADR-011 (TimeLimiter global para integraciones),
       `docs/discrepancias.md`, este archivo y entrada en `CHANGELOG.md`.
 - [x] **Fase 1 — HU-00: cimientos** (commits `edc4a36`, `3a9fc6d` y el cierre de esta fase)
   - [x] 1/3 dependencias, configuración, seguridad JWT, clientes base y variables de entorno.
@@ -21,6 +22,17 @@ Fuente de verdad para saber qué está implementado. Antes de continuar, leer `A
 - [x] **Fase 4 — HU-01: barrido** (4 commits `HU-01-1A` … `HU-01-1D`): planificador dinámico con
       ShedLock, cliente paginado, núcleo por fórmula, cierre/auditoría/métricas. `mvn clean verify`
       pasa con 134 pruebas, cobertura y Checkstyle en verde.
+- [x] **Complemento de HU-00 — Login JWT**: `POST /api/v1/auth/login` valida usuarios existentes y emite
+      token Bearer con vencimiento, username y rol; `401` genérico para credenciales inválidas y `400` para
+      campos vacíos. No incluye registro ni administración de cuentas. `mvn clean verify` pasa con 142
+      pruebas; Checkstyle, JaCoCo y la construcción Docker están en verde. Login y uso del token también se
+      comprobaron contra PostgreSQL efímero con Docker Compose.
+- [x] **Corrección de resiliencia HU-01/HU-02/HU-04**: las integraciones bloqueantes se ejecutan en un pool
+      acotado y el `TimeLimiter` de 20 s envuelve la llamada lógica completa, incluidos los reintentos; los
+      intentos que vencen el plazo no vuelven a consultar la API externa.
+- [x] **Monitoreo y HTTPS (ADR-010)**: Actuator usa un puerto interno para Prometheus, el health check público se
+      conserva con `SaludController`, y el Compose incorpora Prometheus, Grafana, node-exporter y Caddy para HTTPS.
+      `mvn clean verify` pasa con 146 pruebas, JaCoCo y Checkstyle en verde.
 
 ## Cómo reanudar en otra sesión
 

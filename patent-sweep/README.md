@@ -152,10 +152,14 @@ precalculado, JWT + RBAC) vuelven con las HU que las necesitan. Su última imple
 
 ## 9. Limitaciones conocidas
 
-- **Sin autenticación** en el Sprint 0: en el EC2 cualquiera puede registrar patentes. No cargue datos reales hasta que vuelva DA-11 (ADR-006).
-- Swagger UI sigue siendo público en `prod` (ahora por HTTPS). Falta decidir si se apaga (`springdoc.swagger-ui.enabled=false`
-  en `application-prod.yml`). `/actuator/prometheus` ya no es público (ADR-010).
-- El Sprint 0 no implementa historias del backlog: HU-01 a HU-12 empiezan en el Sprint 1.
+- La autenticación JWT está activa. `POST /api/v1/auth/login` valida cuentas existentes sembradas desde variables
+  de entorno; no hay registro ni administración de usuarios. Reemplace los valores de ejemplo antes de usar datos reales.
+- El health check es público en el puerto de la API. Swagger UI también es pública y en producción se sirve por HTTPS;
+  si se decide restringirla, se puede desactivar con `springdoc.swagger-ui.enabled=false`.
+- `/actuator/prometheus` solo es accesible sin JWT por el puerto interno de management; por el puerto de la API exige JWT
+  (ADR-008, ADR-010).
+- HU-01, HU-02 y HU-04 están implementadas. HU-05 a HU-12 siguen pendientes; consulte el estado vigente en
+  [`docs/progress.md`](../docs/progress.md).
 - `restart: unless-stopped` reinicia el contenedor si el proceso termina, pero no si queda `unhealthy`.
 - Spring Boot 3.5.x puede quedar fuera del soporte de código abierto. Migrar a 4.x es una tarea planificada: exige
   springdoc 3.x y revisar la configuración de pruebas (`@WebMvcTest`).

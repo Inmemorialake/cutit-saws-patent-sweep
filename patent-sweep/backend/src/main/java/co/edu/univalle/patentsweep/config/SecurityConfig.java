@@ -37,6 +37,7 @@ import org.springframework.security.web.util.matcher.RequestMatcher;
 public class SecurityConfig {
 
     private static final String[] RUTAS_PUBLICAS = {
+        "/", "/index.html", "/estilos.css", "/app.js",
         "/api/v1/auth/login",
         "/actuator/health",
         "/swagger-ui.html",
