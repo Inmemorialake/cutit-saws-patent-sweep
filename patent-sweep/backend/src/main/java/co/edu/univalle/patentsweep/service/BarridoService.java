@@ -1,7 +1,6 @@
 package co.edu.univalle.patentsweep.service;
 
 import co.edu.univalle.patentsweep.exception.ConfiguracionNoEncontradaException;
-import co.edu.univalle.patentsweep.exception.FormulaDescontinuadaException;
 import co.edu.univalle.patentsweep.exception.IntegracionExternaException;
 import co.edu.univalle.patentsweep.exception.ServicioNoDisponibleException;
 import co.edu.univalle.patentsweep.integration.MaterialesClient;
@@ -145,19 +144,23 @@ public class BarridoService {
         int conConflicto = 0;
         int sinConflicto = 0;
         int noProcesadas = 0;
+        int omitidas = 0;
 
         for (FormulaResumenDTO resumen : formulas) {
             String formulaId = resumen.codigo();
             FormulaExternaDTO formula;
             try {
                 formula = materialesClient.obtenerFormula(formulaId);
-                if (formula.estaDescontinuada()) {
-                    throw new FormulaDescontinuadaException();
-                }
             } catch (RuntimeException excepcion) {
                 LOG.error("No se pudo obtener el detalle de {}: {}", formulaId, excepcion.getMessage());
                 registrarFallo(formulaId, SIN_VERSION, Map.of("formula", formulaId), excepcion.getMessage());
                 noProcesadas++;
+                continue;
+            }
+            if (formula.estaDescontinuada()) {
+                // El PB no la pide en el barrido: se omite sin marcarla como fallo técnico (C-9).
+                LOG.info("Se omite {}: la fórmula está DESCONTINUADA", formulaId);
+                omitidas++;
                 continue;
             }
 
@@ -204,7 +207,7 @@ public class BarridoService {
 
         LOG.info("Barrido finalizado: {} procesadas, {} no procesadas",
                 procesadas, noProcesadas);
-        return finalizar(barrido, formulas.size(), procesadas, conConflicto, sinConflicto,
+        return finalizar(barrido, formulas.size() - omitidas, procesadas, conConflicto, sinConflicto,
                 noProcesadas, MENSAJE_COMPLETADO);
     }
 
