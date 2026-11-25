@@ -44,7 +44,7 @@ EC2 (Ubuntu 24.04) ─ docker compose ─┬─ caddy             (80/443 públi
 - La imagen **se construye en GitHub Actions**, no en el EC2: una instancia pequeña no aguanta un build de Maven.
 - El servidor usa `patent-sweep/docker-compose.yml` más `patent-sweep/docker-compose.prod.yml` (imagen de GHCR y
   límites de memoria: API 768 MB con `-Xmx448m`, Postgres 384 MB, WireMock 256 MB, Prometheus 384 MB,
-  Grafana 256 MB, node-exporter y Caddy 64 MB cada uno).
+  Grafana 384 MB, node-exporter y Caddy 64 MB cada uno).
 - **Solo HTTPS desde Internet.** Caddy termina TLS con certificados de Let's Encrypt que renueva solo, redirige HTTP a
   HTTPS y añade cabeceras de seguridad (HSTS, `nosniff`, `X-Frame-Options`…). La API ya no se publica en el 8085.
 - El `.env` de producción **vive solo en el servidor** (`/opt/patent-sweep/.env`). Actions nunca lo crea ni lo modifica.
