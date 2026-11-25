@@ -23,6 +23,11 @@ services:
   # Las HU de integración (HU-01, HU-02, HU-03, HU-12) consumen estos mocks. Ver mocks/mappings.
   apis-simuladas:
     image: wiremock/wiremock:3.13.2
+    # WireMock lee los mocks solo al arrancar y el CD reemplaza la carpeta mocks/ sin reiniciarlo.
+    # Cambiar esta etiqueta altera la configuración del servicio y obliga a "docker compose up -d" a
+    # recrearlo: súbala cada vez que cambie algo en mocks/mappings.
+    labels:
+      co.edu.univalle.patentsweep.mocks-version: "2026-11-25.1"
     volumes:
       - ./mocks/mappings:/home/wiremock/mappings:ro
     networks:

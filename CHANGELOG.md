@@ -14,6 +14,11 @@ El versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 - APIs simuladas: faltaba el mock del listado `GET /formulas?estado=APROBADA&pagina={n}`; WireMock respondía 404 y
   el barrido automático terminaba `FALLIDO`. Ahora la página 1 devuelve `form-001`, `form-002` y `form-004` y las
   siguientes vienen vacías.
+- El CD reemplazaba `mocks/` pero no reiniciaba WireMock, que seguía con los mocks viejos. `docker-compose.yml`
+  agrega la etiqueta `co.edu.univalle.patentsweep.mocks-version` en `apis-simuladas`: al subirla, el despliegue
+  recrea el contenedor.
+- `.gitignore` excluía `docs/postman/` (por la regla del workspace local de Postman): la colección nunca se había
+  subido. Se agrega la excepción `!docs/postman/`.
 - `GUIA_EJECUCION.md` ya no muestra el registro de patentes del Sprint 0 ni la ruta `/estado?formulaId=`.
 
 ### Añadido
