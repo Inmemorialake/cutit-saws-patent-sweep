@@ -47,6 +47,7 @@ public class BarridoService {
     private static final DateTimeFormatter FORMATO_FECHA = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
     private static final String USUARIO_SISTEMA = "SISTEMA";
     private static final String SIN_VERSION = "SIN_VERSION";
+    private static final String MENSAJE_OMITIDO = "Barrido omitido: existe una ejecución en curso";
     private static final String MENSAJE_COMPLETADO = "Barrido completado exitosamente";
     private static final String MENSAJE_SIN_FORMULAS =
             "No hay fórmulas registradas en estado APROBADA para evaluar";
@@ -85,9 +86,8 @@ public class BarridoService {
     public Barrido ejecutar() {
         Optional<Barrido> enCurso = barridoRepository.findByEstado(EstadoBarrido.EN_CURSO);
         if (enCurso.isPresent()) {
-            LOG.info("Barrido omitido: existe una ejecución en curso iniciada el {}",
-                    enCurso.get().getFechaInicio());
-            return enCurso.get();
+            LOG.info("{} (iniciada el {})", MENSAJE_OMITIDO, enCurso.get().getFechaInicio());
+            return registrarOmitido();
         }
 
         MDC.put("traceId", UUID.randomUUID().toString());
@@ -295,6 +295,22 @@ public class BarridoService {
 
     private Barrido fallar(Barrido barrido, RuntimeException excepcion) {
         return fallar(barrido, excepcion.getMessage());
+    }
+
+    /** HU-01 criterio 1.1: deja constancia en la auditoría de que el barrido no se inició. */
+    private Barrido registrarOmitido() {
+        LocalDateTime ahora = LocalDateTime.now(reloj);
+        return barridoRepository.save(Barrido.builder()
+                .estado(EstadoBarrido.OMITIDO)
+                .fechaInicio(ahora)
+                .fechaFin(ahora)
+                .totalFormulas(0)
+                .totalProcesadas(0)
+                .totalConConflicto(0)
+                .totalSinConflicto(0)
+                .noProcesadas(0)
+                .mensaje(MENSAJE_OMITIDO)
+                .build());
     }
 
     private Barrido fallar(Barrido barrido, String mensaje) {

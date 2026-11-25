@@ -19,7 +19,10 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.validation.BeanPropertyBindingResult;
 import org.springframework.validation.FieldError;
+import org.springframework.http.HttpMethod;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 class GlobalExceptionHandlerTest {
 
@@ -94,6 +97,21 @@ class GlobalExceptionHandlerTest {
         verificar(manejador.manejarServicioNoDisponible(
                         new ServicioNoDisponibleException("timeout", new IllegalStateException("causa"))),
                 HttpStatus.SERVICE_UNAVAILABLE, "No fue posible realizar la consulta. Intente nuevamente");
+    }
+
+    @Test
+    @DisplayName("404 cuando la ruta no existe, en lugar de un error interno")
+    void deberiaConvertirRutaInexistenteEnProblemDetail() {
+        verificar(manejador.manejarRutaInexistente(
+                        new NoResourceFoundException(HttpMethod.POST, "api/v1/patentes/buscar-conflictos")),
+                HttpStatus.NOT_FOUND, "La ruta solicitada no existe");
+    }
+
+    @Test
+    @DisplayName("405 cuando el método HTTP no está permitido en la ruta")
+    void deberiaConvertirMetodoNoSoportadoEnProblemDetail() {
+        verificar(manejador.manejarMetodoNoSoportado(new HttpRequestMethodNotSupportedException("DELETE")),
+                HttpStatus.METHOD_NOT_ALLOWED, "El método HTTP no está permitido para esta ruta");
     }
 
     @Test

@@ -72,13 +72,24 @@ class BarridoServiceTest {
     private EstadoFormulaService estadoFormulaService;
 
     @Test
-    @DisplayName("no inicia otro barrido si ya hay uno en curso")
+    @DisplayName("no inicia otro barrido si ya hay uno en curso y lo registra como omitido en la auditoría")
     void deberiaOmitirUnBarridoEnCurso() {
         Barrido enCurso = Barrido.builder().barridoId(7L).estado(EstadoBarrido.EN_CURSO).build();
         when(barridoRepository.findByEstado(EstadoBarrido.EN_CURSO)).thenReturn(Optional.of(enCurso));
+        when(barridoRepository.save(any())).thenAnswer(invocacion -> invocacion.getArgument(0));
 
-        assertThat(servicio().ejecutar()).isSameAs(enCurso);
-        verify(barridoRepository, never()).save(any());
+        Barrido omitido = servicio().ejecutar();
+
+        assertThat(omitido).isNotSameAs(enCurso);
+        assertThat(omitido.getEstado()).isEqualTo(EstadoBarrido.OMITIDO);
+        assertThat(omitido.getMensaje()).isEqualTo("Barrido omitido: existe una ejecución en curso");
+        assertThat(omitido.getFechaInicio()).isEqualTo(FIN);
+        assertThat(omitido.getFechaFin()).isEqualTo(FIN);
+        assertThat(omitido.getTotalFormulas()).isZero();
+        assertThat(enCurso.getEstado()).isEqualTo(EstadoBarrido.EN_CURSO);
+        verify(barridoRepository, times(1)).save(any());
+        verifyNoInteractions(materialesClient, fuentePatentes, configuracionService, conflictoService,
+                historialService, estadoFormulaService);
     }
 
     @Test
