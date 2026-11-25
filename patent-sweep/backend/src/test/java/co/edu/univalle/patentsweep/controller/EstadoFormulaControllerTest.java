@@ -6,11 +6,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import co.edu.univalle.patentsweep.config.JacksonConfig;
+import co.edu.univalle.patentsweep.controller.mapper.ConflictoMapper;
 import co.edu.univalle.patentsweep.exception.FormulaNoEncontradaException;
+import co.edu.univalle.patentsweep.model.Conflicto;
+import co.edu.univalle.patentsweep.model.Patente;
 import co.edu.univalle.patentsweep.exception.GlobalExceptionHandler;
 import co.edu.univalle.patentsweep.model.enums.EstadoFormula;
 import co.edu.univalle.patentsweep.service.EstadoFormulaService;
 import java.time.LocalDateTime;
+import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,7 +30,7 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 /** Criterios de aceptación de HU-04 vistos desde el contrato REST: códigos HTTP y mensajes exactos. */
 @WebMvcTest(EstadoFormulaController.class)
 @AutoConfigureMockMvc(addFilters = false)
-@Import({GlobalExceptionHandler.class, JacksonConfig.class})
+@Import({GlobalExceptionHandler.class, JacksonConfig.class, ConflictoMapper.class})
 class EstadoFormulaControllerTest {
 
     private static final String RUTA = "/api/v1/patentes/estado";
@@ -50,7 +54,26 @@ class EstadoFormulaControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.formulaId").value("form-001"))
                 .andExpect(jsonPath("$.estado").value("LIBRE"))
-                .andExpect(jsonPath("$.mensaje").value("La fórmula se encuentra en estado LIBRE para su uso en fabricación."));
+                .andExpect(jsonPath("$.alertasActivas").isEmpty())
+                .andExpect(jsonPath("$.mensaje").value("Estado de la fórmula consultado correctamente"));
+    }
+
+    @Test
+    @DisplayName("200: con conflicto vigente lista las alertas activas")
+    void deberiaResponder200ConAlertasActivas() throws Exception {
+        LocalDateTime deteccion = LocalDateTime.of(2026, 10, 19, 9, 0, 0);
+        Patente patente = Patente.builder().titulo("Aleación para cadenas de corte").build();
+        Conflicto conflicto = Conflicto.builder().conflictoId(100001L).patente(patente)
+                .fechaDeteccion(deteccion).build();
+        when(estadoFormulaService.consultarEstado("form-001")).thenReturn(new EstadoFormulaService.EstadoCalculado(
+                EstadoFormula.CONFLICTO_DETECTADO, deteccion, List.of(conflicto)));
+
+        mockMvc.perform(solicitud("form-001"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.estado").value("CONFLICTO_DETECTADO"))
+                .andExpect(jsonPath("$.alertasActivas[0].conflictoId").value("100001"))
+                .andExpect(jsonPath("$.alertasActivas[0].tituloPatente").value("Aleación para cadenas de corte"))
+                .andExpect(jsonPath("$.alertasActivas[0].fechaDeteccion").exists());
     }
 
     @Test

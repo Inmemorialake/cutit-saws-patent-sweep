@@ -2,6 +2,7 @@ package co.edu.univalle.patentsweep.controller;
 
 import co.edu.univalle.patentsweep.config.OpenApiConfig;
 import co.edu.univalle.patentsweep.controller.dto.EstadoFormulaResponseDTO;
+import co.edu.univalle.patentsweep.controller.mapper.ConflictoMapper;
 import co.edu.univalle.patentsweep.service.EstadoFormulaService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -23,12 +24,15 @@ import org.springframework.web.bind.annotation.RestController;
 @Validated
 public class EstadoFormulaController {
 
+    static final String MENSAJE_EXITO = "Estado de la fórmula consultado correctamente";
+
     private final EstadoFormulaService estadoFormulaService;
+    private final ConflictoMapper mapper;
 
-    public EstadoFormulaController(EstadoFormulaService estadoFormulaService) {
+    public EstadoFormulaController(EstadoFormulaService estadoFormulaService, ConflictoMapper mapper) {
         this.estadoFormulaService = estadoFormulaService;
+        this.mapper = mapper;
     }
-
 
     @GetMapping("/estado/{formulaId}")
     @Operation(summary = "Consultar el estado de una fórmula frente al barrido de patentes",
@@ -50,7 +54,8 @@ public class EstadoFormulaController {
                 formulaId,
                 resultado.estado(),
                 resultado.fechaUltimaRevision(),
-                "La fórmula se encuentra en estado " + resultado.estado() + " para su uso en fabricación."
+                resultado.alertasActivas().stream().map(mapper::aAlerta).toList(),
+                MENSAJE_EXITO
         ));
     }
 }

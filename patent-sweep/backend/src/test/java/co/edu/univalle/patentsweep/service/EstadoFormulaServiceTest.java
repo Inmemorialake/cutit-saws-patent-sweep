@@ -12,6 +12,7 @@ import static org.mockito.Mockito.when;
 import co.edu.univalle.patentsweep.exception.FormulaNoEncontradaException;
 import co.edu.univalle.patentsweep.integration.MaterialesClient;
 import co.edu.univalle.patentsweep.integration.dto.FormulaExternaDTO;
+import co.edu.univalle.patentsweep.model.Conflicto;
 import co.edu.univalle.patentsweep.model.RevisionFormula;
 import co.edu.univalle.patentsweep.model.enums.EstadoConflicto;
 import co.edu.univalle.patentsweep.model.enums.EstadoFormula;
@@ -53,8 +54,8 @@ class EstadoFormulaServiceTest {
     @BeforeEach
     void preparar() {
         when(materialesClient.obtenerFormula("form-001")).thenReturn(formula("2"));
-        when(conflictoRepository.countByFormulaIdAndVersionFormulaAndEstado(anyString(), anyString(),
-                eq(EstadoConflicto.DETECTADO))).thenReturn(0L);
+        when(conflictoRepository.findByFormulaIdAndVersionFormulaAndEstadoOrderByFechaDeteccionDesc(anyString(),
+                anyString(), eq(EstadoConflicto.DETECTADO))).thenReturn(List.of());
         when(evaluacionRepository.existsByFormulaIdAndEstadoIn(anyString(), anyCollection())).thenReturn(false);
         when(revisionRepository.findFirstByFormulaIdOrderByFechaRevisionDescRevisionIdDesc("form-001"))
                 .thenReturn(Optional.of(revision(ResultadoRevision.SIN_CONFLICTO)));
@@ -64,8 +65,10 @@ class EstadoFormulaServiceTest {
     @DisplayName("Con un conflicto DETECTADO de la versión vigente el estado es CONFLICTO_DETECTADO")
     void deberiaMarcarConflictoDetectadoCuandoHayConflictosVigentes() {
         // Arrange
-        when(conflictoRepository.countByFormulaIdAndVersionFormulaAndEstado("form-001", "2",
-                EstadoConflicto.DETECTADO)).thenReturn(2L);
+        List<Conflicto> vigentes = List.of(Conflicto.builder().conflictoId(2L).build(),
+                Conflicto.builder().conflictoId(1L).build());
+        when(conflictoRepository.findByFormulaIdAndVersionFormulaAndEstadoOrderByFechaDeteccionDesc("form-001", "2",
+                EstadoConflicto.DETECTADO)).thenReturn(vigentes);
 
         // Act
         EstadoFormulaService.EstadoCalculado resultado = servicio.consultarEstado("form-001");
@@ -73,6 +76,7 @@ class EstadoFormulaServiceTest {
         // Assert
         assertThat(resultado.estado()).isEqualTo(EstadoFormula.CONFLICTO_DETECTADO);
         assertThat(resultado.fechaUltimaRevision()).isEqualTo(FECHA);
+        assertThat(resultado.alertasActivas()).isEqualTo(vigentes);
         verify(evaluacionRepository, never()).existsByFormulaIdAndEstadoIn(anyString(), anyCollection());
     }
 
@@ -86,14 +90,15 @@ class EstadoFormulaServiceTest {
     @DisplayName("Un conflicto de otra versión no cuenta: se mira solo la versión vigente (DA-17)")
     void noDeberiaContarConflictosDeOtraVersion() {
         // Arrange
-        when(conflictoRepository.countByFormulaIdAndVersionFormulaAndEstado("form-001", "1",
-                EstadoConflicto.DETECTADO)).thenReturn(5L);
+        when(conflictoRepository.findByFormulaIdAndVersionFormulaAndEstadoOrderByFechaDeteccionDesc("form-001", "1",
+                EstadoConflicto.DETECTADO)).thenReturn(List.of(Conflicto.builder().conflictoId(5L).build()));
 
         // Act
         EstadoFormulaService.EstadoCalculado resultado = servicio.consultarEstado("form-001");
 
         // Assert
         assertThat(resultado.estado()).isEqualTo(EstadoFormula.LIBRE);
+        assertThat(resultado.alertasActivas()).isEmpty();
     }
 
     @Test
@@ -186,8 +191,9 @@ class EstadoFormulaServiceTest {
     void deberiaConsultarConSinVersionCuandoMaterialesNoLaTrae() {
         // Arrange
         when(materialesClient.obtenerFormula("form-001")).thenReturn(formula(null));
-        when(conflictoRepository.countByFormulaIdAndVersionFormulaAndEstado("form-001", "SIN_VERSION",
-                EstadoConflicto.DETECTADO)).thenReturn(1L);
+        when(conflictoRepository.findByFormulaIdAndVersionFormulaAndEstadoOrderByFechaDeteccionDesc("form-001",
+                "SIN_VERSION", EstadoConflicto.DETECTADO))
+                .thenReturn(List.of(Conflicto.builder().conflictoId(1L).build()));
 
         // Act
         EstadoFormulaService.EstadoCalculado resultado = servicio.consultarEstado("form-001");

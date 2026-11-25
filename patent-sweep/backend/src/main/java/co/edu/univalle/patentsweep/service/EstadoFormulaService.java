@@ -2,6 +2,7 @@ package co.edu.univalle.patentsweep.service;
 
 import co.edu.univalle.patentsweep.integration.MaterialesClient;
 import co.edu.univalle.patentsweep.integration.dto.FormulaExternaDTO;
+import co.edu.univalle.patentsweep.model.Conflicto;
 import co.edu.univalle.patentsweep.model.RevisionFormula;
 import co.edu.univalle.patentsweep.model.enums.EstadoConflicto;
 import co.edu.univalle.patentsweep.model.enums.EstadoFormula;
@@ -38,7 +39,12 @@ public class EstadoFormulaService {
     }
 
     /** Estado calculado y fecha de la última revisión (nula si la fórmula no se ha revisado o falló). */
-    public record EstadoCalculado(EstadoFormula estado, LocalDateTime fechaUltimaRevision) {
+    public record EstadoCalculado(EstadoFormula estado, LocalDateTime fechaUltimaRevision,
+                                  List<Conflicto> alertasActivas) {
+
+        public EstadoCalculado(EstadoFormula estado, LocalDateTime fechaUltimaRevision) {
+            this(estado, fechaUltimaRevision, List.of());
+        }
     }
 
     /** Alias usado por HU-02 y HU-01: recalcula el estado vigente sin persistirlo. */
@@ -57,9 +63,11 @@ public class EstadoFormulaService {
                 .findFirstByFormulaIdOrderByFechaRevisionDescRevisionIdDesc(formulaId);
         LocalDateTime fecha = ultima.map(RevisionFormula::getFechaRevision).orElse(null);
 
-        if (conflictoRepository.countByFormulaIdAndVersionFormulaAndEstado(
-                formulaId, formula.versionRegistrada(), EstadoConflicto.DETECTADO) > 0) {
-            return new EstadoCalculado(EstadoFormula.CONFLICTO_DETECTADO, fecha);
+        List<Conflicto> vigentes = conflictoRepository
+                .findByFormulaIdAndVersionFormulaAndEstadoOrderByFechaDeteccionDesc(
+                        formulaId, formula.versionRegistrada(), EstadoConflicto.DETECTADO);
+        if (!vigentes.isEmpty()) {
+            return new EstadoCalculado(EstadoFormula.CONFLICTO_DETECTADO, fecha, vigentes);
         }
         if (evaluacionRepository.existsByFormulaIdAndEstadoIn(formulaId, EVALUACIONES_ABIERTAS)) {
             return new EstadoCalculado(EstadoFormula.PENDIENTE_REVISION, fecha);
