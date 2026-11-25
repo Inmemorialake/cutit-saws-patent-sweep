@@ -24,9 +24,9 @@ Esta API (**Patent Sweep**) es responsable de la **vigilancia y validación cruz
 | **Es consumida por** | Materiales / Fórmulas — validación de componentes contra patentes |
 | **Es consumida por** | Fabricación — validación de lotes de producción |
 
-### Estado actual: Sprint 0 (arquetipo) · `v1.0.0-beta.1`
+### Estado actual: Sprint 1 · `v1.0.0-beta.2`
 
-El backend implementa **una sola transacción completa**, registrar y consultar una patente, que recorre todas las capas, con pruebas, CI, análisis de calidad y despliegue continuo. Las historias del backlog (HU-01 a HU-12) se implementan desde el Sprint 1. Ver [ADR-006](docs/adrs/ADR-006-arquetipo-sprint-0-una-transaccion.md).
+El backend implementa HU-00 (JWT y cimientos), HU-01 (barrido automático), HU-02 (búsqueda manual de conflictos) y HU-04 (estado de la fórmula), con pruebas, CI, análisis de calidad y despliegue continuo. El arquetipo de registro y consulta de patentes del Sprint 0 (ADR-006) se retiró; HU-03 y HU-05 a HU-12 siguen pendientes. Estado detallado en [`docs/progress.md`](docs/progress.md).
 
 ---
 
@@ -35,13 +35,14 @@ El backend implementa **una sola transacción completa**, registrar y consultar 
 Arquitectura **multicapa** sobre Java 21 y Spring Boot 3 (DAS DA-02), con base de datos propia PostgreSQL 16 (DA-01):
 
 ```
-Cliente ──► PatenteController (REST, DTO, validación)        /api/v1/patentes/...
+Cliente ──► BusquedaController · EstadoFormulaController (REST, DTO, validación)   /api/v1/patentes/...
                  │
                  ▼
-            PatenteService (reglas: código único, estado inicial)   @Transactional
+            BusquedaService · EstadoFormulaService · BarridoService   @Transactional
                  │
+                 ├──► MaterialesClient · FuentePatentesClient (Resilience4j)
                  ▼
-             PatenteRepository (Spring Data JPA) ──► PostgreSQL 16 (migraciones Flyway V1–V7)
+            Repositorios (Spring Data JPA) ──► PostgreSQL 16 (migraciones Flyway V1–V8)
 
 Transversal: GlobalExceptionHandler (ProblemDetail RFC 9457 + traceId) · OpenAPI · Actuator/Prometheus
 ```
@@ -59,10 +60,8 @@ Transversal: GlobalExceptionHandler (ProblemDetail RFC 9457 + traceId) · OpenAP
 
 | Método | Ruta | Respuestas | Descripción |
 |---|---|---|---|
-| `POST` | `/api/v1/patentes/busqueda` | 201 · 400 · 409 | Registra una patente (`codigoPatente` con formato `PAT-NNNNNN`, `titulo`, y opcionalmente `tipoProducto` y `resumen`) en estado `EN_TRAMITE` |
-| `GET` | `/api/v1/patentes/estado/{id}` | 200 · 404 | Consulta una patente y su estado de vigencia |
-| `POST` | `/api/v1/patentes/buscar-conflictos` | 200 · 400 · 401 · 403 · 404 · 409 · 503 | Búsqueda manual de conflictos (solo `ADMINISTRADOR`) |
-| `GET` | `/api/v1/patentes/estado?formulaId=form-NNN` | 200 · 400 · 401 · 404 · 500 | Estado calculado de una fórmula |
+| `POST` | `/api/v1/patentes/busqueda` | 200 · 400 · 401 · 403 · 404 · 409 · 503 | Búsqueda manual de conflictos (solo `ADMINISTRADOR`) |
+| `GET` | `/api/v1/patentes/estado/{formulaId}` | 200 · 400 · 401 · 404 · 500 · 503 | Estado calculado de una fórmula, con sus alertas activas (HU-04) |
 | `GET` | `/actuator/health` | 200 · 503 | Salud de la API y de PostgreSQL (público) |
 | `GET` | `/swagger-ui.html` · `/v3/api-docs` | 200 | Documentación OpenAPI |
 
@@ -79,7 +78,7 @@ Los errores se devuelven en formato **ProblemDetail** con `traceId`.
 - El planificador lee la frecuencia de la fila activa de `configuracion` (`frecuencia_valor`, `frecuencia_unidad` y `frecuencia_horas`) en cada ciclo. Para cambiarla, actualice esa fila (o inserte una nueva activa); el nuevo intervalo aplica en la siguiente ejecución sin reiniciar. HU-10 añadirá el endpoint de configuración.
 - El barrido consulta Materiales/Fórmulas en páginas de 10 fórmulas aprobadas, busca patentes candidatas, reutiliza el motor de coincidencias de HU-02 y registra cada resultado con origen `BARRIDO_AUTOMATICO` y usuario `SISTEMA`. Un fallo por fórmula la deja `NO_PROCESADO` y no detiene el barrido.
 - `@SchedulerLock` con ShedLock evita dos ejecuciones concurrentes aunque haya varias réplicas. Si el proceso se reinicia con un barrido `EN_CURSO`, el recuperador lo marca `FALLIDO` al arrancar.
-- Métricas en `/actuator/prometheus`, solo por el puerto interno de management (`MANAGEMENT_PUERTO`, ADR-010), que Prometheus recolecta y Grafana muestra en el tablero *Patent Sweep · API*: `patentsweep.barrido.duracion` (Timer) y `patentsweep.barrido.formulas{resultado="con_conflicto|sin_conflicto|no_procesado"}` (Counter). Los logs del barrido incluyen `traceId`.
+- Métricas en `/actuator/prometheus`, solo por el puerto interno de management (`MANAGEMENT_PUERTO`, ADR-010), que Prometheus recolecta y Grafana muestra en el tablero *Patent Sweep · API*: `patentsweep.barrido.duracion` (Timer) y `patentsweep.barrido.formulas{resultado="con_conflicto|sin_conflicto|no_procesado"}` (Counter), `patentsweep.barrido.ejecuciones{estado="COMPLETADO|FALLIDO|OMITIDO"}` (Counter) y `patentsweep.barrido.ultima.ejecucion{estado}` (Gauge, segundos epoch). El tablero muestra hace cuánto fue el último barrido, su estado y una barra por ejecución en 7 días. Los logs del barrido incluyen `traceId`.
 
 ---
 
@@ -114,11 +113,13 @@ Probar:
 ```bash
 curl -s localhost:8085/actuator/health                      # {"status":"UP"}
 
+# Con un JWT de /api/v1/auth/login (ver GUIA_EJECUCION.md):
 curl -s -X POST localhost:8085/api/v1/patentes/busqueda \
-  -H 'Content-Type: application/json' \
-  -d '{"codigoPatente":"PAT-000123","titulo":"Cuchilla de diamante segmentada"}'   # 201
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"formulaId":"form-001"}'                            # 200
 
-curl -s localhost:8085/api/v1/patentes/estado/1             # 200
+curl -s localhost:8085/api/v1/patentes/estado/form-001 \
+  -H "Authorization: Bearer $TOKEN"                         # 200
 ```
 
 Swagger UI: **http://localhost:8085/swagger-ui.html** · Más casos de prueba: [`patent-sweep/GUIA_EJECUCION.md`](patent-sweep/GUIA_EJECUCION.md)

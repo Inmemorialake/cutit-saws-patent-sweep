@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-/** Búsqueda manual de conflictos (HU-02): el registro de patentes sigue en {@code POST /busqueda}. */
+/** Búsqueda manual de patentes en conflicto con una fórmula (HU-02): {@code POST /api/v1/patentes/busqueda}. */
 @RestController
 @RequestMapping("/api/v1/patentes")
 @Tag(name = "Búsqueda de patentes", description = "Detección manual de conflictos entre fórmulas y patentes")
@@ -32,7 +32,7 @@ public class BusquedaController {
         this.conflictoMapper = conflictoMapper;
     }
 
-    @PostMapping("/buscar-conflictos")
+    @PostMapping("/busqueda")
     @PreAuthorize("hasRole('ADMINISTRADOR')")
     @Operation(
             summary = "Buscar patentes en conflicto con una fórmula",

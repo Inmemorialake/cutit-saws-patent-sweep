@@ -29,3 +29,5 @@ clientes HTTP con Resilience4j, JWT), y eso excedía y complicaba lo que el Spri
 - La cobertura (JaCoCo) se mide sobre un código pequeño: 100 % hoy. El umbral del 80 % por paquete (`service` y `exception`) sigue vigente.
 - Las rutas `/busqueda` y `/estado/{id}` se mantienen porque son las acordadas para el arquetipo, aunque `/busqueda`
   registre una patente. HU-02 redefine el contrato real de búsqueda.
+
+> **Nota (2026-11-25):** el arquetipo de registro y consulta de patentes (`PatenteController`, `PatenteService`, `/busqueda` y `/estado/{id}`) se retiró del código al alinear el Sprint 1 con el PB. `POST /buscar-conflictos` (HU-02) y `GET /estado/{formulaId}` (HU-04) lo reemplazan; ver `docs/discrepancias.md` (D-7, D-8).

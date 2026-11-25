@@ -12,9 +12,11 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.FieldError;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 /** Convierte cada excepción en un ProblemDetail (RFC 9457) con traceId (P07, P19). */
 @Slf4j
@@ -45,16 +47,6 @@ public class GlobalExceptionHandler {
                 "El cuerpo de la petición no es válido");
     }
 
-    @ExceptionHandler(PatenteNoEncontradaException.class)
-    public ResponseEntity<ProblemDetail> manejarPatenteNoEncontrada(PatenteNoEncontradaException ex) {
-        return responder(HttpStatus.NOT_FOUND, "Recurso no encontrado", ex.getMessage());
-    }
-
-    @ExceptionHandler(PatenteDuplicadaException.class)
-    public ResponseEntity<ProblemDetail> manejarPatenteDuplicada(PatenteDuplicadaException ex) {
-        return responder(HttpStatus.CONFLICT, "Conflicto de negocio", ex.getMessage());
-    }
-
     @ExceptionHandler(FormulaNoEncontradaException.class)
     public ResponseEntity<ProblemDetail> manejarFormulaNoEncontrada(FormulaNoEncontradaException ex) {
         return responder(HttpStatus.NOT_FOUND, "Recurso no encontrado", ex.getMessage());
@@ -70,6 +62,18 @@ public class GlobalExceptionHandler {
         log.error("Servicio externo no disponible: {}", ex.getMessage());
         return responder(HttpStatus.SERVICE_UNAVAILABLE, "Servicio no disponible",
                 "No fue posible realizar la consulta. Intente nuevamente");
+    }
+
+    /** Una ruta inexistente (por ejemplo, la antigua /buscar-conflictos) es un 404, no un error interno. */
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ProblemDetail> manejarRutaInexistente(NoResourceFoundException ex) {
+        return responder(HttpStatus.NOT_FOUND, "Recurso no encontrado", "La ruta solicitada no existe");
+    }
+
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ProblemDetail> manejarMetodoNoSoportado(HttpRequestMethodNotSupportedException ex) {
+        return responder(HttpStatus.METHOD_NOT_ALLOWED, "Método no permitido",
+                "El método HTTP no está permitido para esta ruta");
     }
 
     @ExceptionHandler(AuthenticationException.class)
@@ -90,7 +94,7 @@ public class GlobalExceptionHandler {
                 "No fue posible procesar la solicitud. Intente nuevamente");
     }
 
-    private ResponseEntity<ProblemDetail> responder(HttpStatus estado, String titulo, String detalle) {
+    ResponseEntity<ProblemDetail> responder(HttpStatus estado, String titulo, String detalle) {
         ProblemDetail problema = ProblemDetail.forStatusAndDetail(estado, detalle);
         problema.setTitle(titulo);
         problema.setProperty("traceId", MDC.get("traceId"));

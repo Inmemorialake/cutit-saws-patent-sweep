@@ -2,6 +2,7 @@ package co.edu.univalle.patentsweep.service;
 
 import co.edu.univalle.patentsweep.integration.MaterialesClient;
 import co.edu.univalle.patentsweep.integration.dto.FormulaExternaDTO;
+import co.edu.univalle.patentsweep.model.Conflicto;
 import co.edu.univalle.patentsweep.model.RevisionFormula;
 import co.edu.univalle.patentsweep.model.enums.EstadoConflicto;
 import co.edu.univalle.patentsweep.model.enums.EstadoFormula;
@@ -38,28 +39,37 @@ public class EstadoFormulaService {
     }
 
     /** Estado calculado y fecha de la última revisión (nula si la fórmula no se ha revisado o falló). */
-    public record EstadoCalculado(EstadoFormula estado, LocalDateTime fechaUltimaRevision) {
+    public record EstadoCalculado(EstadoFormula estado, LocalDateTime fechaUltimaRevision,
+                                  List<Conflicto> alertasActivas) {
+
+        public EstadoCalculado(EstadoFormula estado, LocalDateTime fechaUltimaRevision) {
+            this(estado, fechaUltimaRevision, List.of());
+        }
     }
 
     /** Alias usado por HU-02 y HU-01: recalcula el estado vigente sin persistirlo. */
     public EstadoCalculado recalcular(String formulaId) {
-        return consultarEstado(formulaId);
+        return calcular(formulaId, materialesClient.obtenerFormula(formulaId));
     }
 
     /**
      * Primero verifica en Materiales que la fórmula exista (404 si no) y toma su versión vigente. Después
-     * aplica, en orden: conflicto DETECTADO de esa versión, evaluación abierta, nunca revisada (o revisada
+     * aplica, en orden: conflicto DETECTADO (único por fórmula y patente, ADR-012), evaluación abierta, nunca revisada (o revisada
      * solo en otra versión) o último intento fallido, y en cualquier otro caso LIBRE.
      */
     public EstadoCalculado consultarEstado(String formulaId) {
-        FormulaExternaDTO formula = materialesClient.obtenerFormula(formulaId);
+        return calcular(formulaId, materialesClient.verificarFormula(formulaId));
+    }
+
+    private EstadoCalculado calcular(String formulaId, FormulaExternaDTO formula) {
         Optional<RevisionFormula> ultima = revisionRepository
                 .findFirstByFormulaIdOrderByFechaRevisionDescRevisionIdDesc(formulaId);
         LocalDateTime fecha = ultima.map(RevisionFormula::getFechaRevision).orElse(null);
 
-        if (conflictoRepository.countByFormulaIdAndVersionFormulaAndEstado(
-                formulaId, formula.versionRegistrada(), EstadoConflicto.DETECTADO) > 0) {
-            return new EstadoCalculado(EstadoFormula.CONFLICTO_DETECTADO, fecha);
+        List<Conflicto> vigentes = conflictoRepository
+                .findByFormulaIdAndEstadoOrderByFechaDeteccionDesc(formulaId, EstadoConflicto.DETECTADO);
+        if (!vigentes.isEmpty()) {
+            return new EstadoCalculado(EstadoFormula.CONFLICTO_DETECTADO, fecha, vigentes);
         }
         if (evaluacionRepository.existsByFormulaIdAndEstadoIn(formulaId, EVALUACIONES_ABIERTAS)) {
             return new EstadoCalculado(EstadoFormula.PENDIENTE_REVISION, fecha);

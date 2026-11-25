@@ -12,11 +12,11 @@ import co.edu.univalle.patentsweep.config.JwtProvider;
 import co.edu.univalle.patentsweep.config.SecurityConfig;
 import co.edu.univalle.patentsweep.controller.mapper.ConflictoMapper;
 import co.edu.univalle.patentsweep.exception.GlobalExceptionHandler;
-import co.edu.univalle.patentsweep.model.Patente;
-import co.edu.univalle.patentsweep.model.enums.EstadoVigenciaPatente;
+import co.edu.univalle.patentsweep.model.enums.EstadoFormula;
 import co.edu.univalle.patentsweep.model.enums.Rol;
+import co.edu.univalle.patentsweep.service.AutenticacionService;
 import co.edu.univalle.patentsweep.service.BusquedaService;
-import co.edu.univalle.patentsweep.service.PatenteService;
+import co.edu.univalle.patentsweep.service.EstadoFormulaService;
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -25,10 +25,11 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-@WebMvcTest({PatenteController.class, BusquedaController.class})
+@WebMvcTest({EstadoFormulaController.class, BusquedaController.class, AutenticacionController.class})
 @Import({GlobalExceptionHandler.class, SecurityConfig.class, JwtProvider.class, ClockConfig.class,
         ConflictoMapper.class})
 class SeguridadJwtTest {
@@ -42,39 +43,39 @@ class SeguridadJwtTest {
     private JwtProvider jwtProvider;
 
     @MockitoBean
-    private PatenteService patenteService;
+    private EstadoFormulaService estadoFormulaService;
 
     @MockitoBean
     private BusquedaService busquedaService;
 
+    @MockitoBean
+    private AutenticacionService autenticacionService;
+
     @Test
-    @DisplayName("401: exige JWT para consultar el estado de una patente")
+    @DisplayName("401: exige JWT para consultar el estado de una fórmula")
     void deberiaRechazarPeticionSinToken() throws Exception {
-        mockMvc.perform(get("/api/v1/patentes/estado/1"))
+        mockMvc.perform(get("/api/v1/patentes/estado/form-001"))
                 .andExpect(status().isUnauthorized());
     }
 
     @Test
     @DisplayName("200: acepta un JWT válido")
     void deberiaAceptarTokenValido() throws Exception {
-        when(patenteService.obtenerPorId(1L)).thenReturn(Patente.builder()
-                .patenteId(1L)
-                .codigoPatente("PAT-123456")
-                .titulo("Cuchilla láser")
-                .estadoVigencia(EstadoVigenciaPatente.EN_TRAMITE)
-                .build());
+        when(estadoFormulaService.consultarEstado("form-001"))
+                .thenReturn(new EstadoFormulaService.EstadoCalculado(EstadoFormula.LIBRE, null));
         String token = jwtProvider.generarToken("servicio", Rol.SERVICIO);
 
-        mockMvc.perform(get("/api/v1/patentes/estado/1")
+        mockMvc.perform(get("/api/v1/patentes/estado/form-001")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.patenteId").value(1));
+                .andExpect(jsonPath("$.formulaId").value("form-001"))
+                .andExpect(jsonPath("$.estado").value("LIBRE"));
     }
 
     @Test
     @DisplayName("401: exige JWT para buscar conflictos")
     void deberiaRechazarBusquedaSinToken() throws Exception {
-        mockMvc.perform(post("/api/v1/patentes/buscar-conflictos")
+        mockMvc.perform(post("/api/v1/patentes/busqueda")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"formulaId\":\"form-001\"}"))
                 .andExpect(status().isUnauthorized());
@@ -85,7 +86,7 @@ class SeguridadJwtTest {
     void deberiaRechazarBusquedaConRolServicio() throws Exception {
         String token = jwtProvider.generarToken("servicio", Rol.SERVICIO);
 
-        mockMvc.perform(post("/api/v1/patentes/buscar-conflictos")
+        mockMvc.perform(post("/api/v1/patentes/busqueda")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"formulaId\":\"form-001\"}"))
@@ -98,12 +99,52 @@ class SeguridadJwtTest {
         when(busquedaService.buscar("form-001", "ingeniera")).thenReturn(List.of());
         String token = jwtProvider.generarToken("ingeniera", Rol.ADMINISTRADOR);
 
-        mockMvc.perform(post("/api/v1/patentes/buscar-conflictos")
+        mockMvc.perform(post("/api/v1/patentes/busqueda")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"formulaId\":\"form-001\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.formulaId").value("form-001"));
+    }
+
+    @Test
+    @DisplayName("200: permite iniciar sesión sin JWT y devuelve el token")
+    void deberiaIniciarSesionSinToken() throws Exception {
+        when(autenticacionService.autenticar("admin", "clave"))
+                .thenReturn(new AutenticacionService.ResultadoAutenticacion(
+                        "jwt-demo", 3600, "admin", Rol.ADMINISTRADOR));
+
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"admin\",\"password\":\"clave\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accessToken").value("jwt-demo"))
+                .andExpect(jsonPath("$.tokenType").value("Bearer"))
+                .andExpect(jsonPath("$.expiresIn").value(3600))
+                .andExpect(jsonPath("$.username").value("admin"))
+                .andExpect(jsonPath("$.role").value("ADMINISTRADOR"));
+    }
+
+    @Test
+    @DisplayName("400: rechaza credenciales vacías")
+    void deberiaRechazarCredencialesVacias() throws Exception {
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"\",\"password\":\"\"}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("401: devuelve un error genérico con credenciales inválidas")
+    void deberiaRechazarCredencialesInvalidas() throws Exception {
+        when(autenticacionService.autenticar("admin", "incorrecta"))
+                .thenThrow(new BadCredentialsException("detalle que no debe exponerse"));
+
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"admin\",\"password\":\"incorrecta\"}"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.detail").value("Credenciales inválidas"));
     }
 
     @Test

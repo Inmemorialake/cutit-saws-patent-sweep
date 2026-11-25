@@ -3,9 +3,9 @@
 Servicio de vigilancia de patentes de la plataforma de Cutit Saws Ltd. — curso 750021C Desarrollo de Software II,
 Universidad del Valle, 2026-2.
 
-Este directorio es el **arquetipo Sprint 0** del backend: la estructura del DAS V3.0 hecha código, con **una sola
-transacción completa** (registrar y consultar una patente), sus pruebas, CI y despliegue. El alcance y lo que se
-quitó a propósito están en [ADR-006](../docs/adrs/ADR-006-arquetipo-sprint-0-una-transaccion.md).
+Este directorio contiene el backend de Patent Sweep: la estructura del DAS V3.0 hecha código, con HU-00, HU-01,
+HU-02 y HU-04 del Sprint 1, sus pruebas, CI y despliegue. El arquetipo de registro de patentes del Sprint 0 se
+retiró (ver [ADR-006](../docs/adrs/ADR-006-arquetipo-sprint-0-una-transaccion.md) y `docs/progress.md`).
 
 ## 1. Resumen arquitectónico
 
@@ -31,7 +31,7 @@ Flujo de la transacción `POST /api/v1/patentes/busqueda`:
 | Para | Necesita |
 |---|---|
 | Ejecutar con Docker | Docker 24+ y Docker Compose v2.24+ (comando `docker compose`) |
-| Pruebas y cobertura | JDK 21 y Maven 3.9+ (no requiere Docker ni PostgreSQL) |
+| Pruebas y cobertura | JDK 21 y Maven 3.9+; las pruebas de integración necesitan Docker (Testcontainers) |
 
 ## 3. Inicio rápido
 
@@ -58,7 +58,7 @@ mvn clean verify
 
 | Qué | Detalle |
 |---|---|
-| Pruebas | JUnit 5 + Mockito (estilo AAA): `PatenteControllerTest` (`@WebMvcTest`), `PatenteServiceTest`, `GlobalExceptionHandlerTest` y `RestriccionesEntidadesTest` |
+| Pruebas | JUnit 5 + Mockito (estilo AAA): pruebas de controladores (`@WebMvcTest`), servicios, clientes, `GlobalExceptionHandlerTest` y pruebas de integración con PostgreSQL (Testcontainers) |
 | Cobertura | JaCoCo. `verify` **falla** si `service` o `exception` bajan del 80 % de líneas o ramas. Reporte en `backend/target/site/jacoco/index.html`. Hoy: 100 % |
 | Estilo | Checkstyle (`backend/config/checkstyle/checkstyle.xml`), también ligado a `verify` |
 
@@ -118,14 +118,14 @@ patent-sweep/
     ├── config/checkstyle/    reglas de inspección estática
     └── src/
         ├── main/java/co/edu/univalle/patentsweep/
-        │   ├── controller/   Controllers Layer: PatenteController y dto/
-        │   ├── service/      Logic Layer: PatenteService
-        │   ├── integration/  Integration Layer: clientes de APIs externas (vacía en el Sprint 0, ver su LEEME.txt)
-        │   ├── repository/   Data Access Layer: PatenteRepository
-        │   ├── model/        Data Access Layer: entidad Patente y enums
+        │   ├── controller/   Controllers Layer: BusquedaController, EstadoFormulaController y dto/
+        │   ├── service/      Logic Layer: BusquedaService, EstadoFormulaService, BarridoService
+        │   ├── integration/  Integration Layer: MaterialesClient y FuentePatentesClient
+        │   ├── repository/   Data Access Layer: repositorios Spring Data
+        │   ├── model/        Data Access Layer: entidades y enums
         │   ├── config/       Utility Layer: OpenApiConfig
         │   └── exception/    Utility Layer: GlobalExceptionHandler (ProblemDetail) y excepciones propias
-        ├── main/resources/   application*.yml y db/migration (Flyway V1–V6)
+        ├── main/resources/   application*.yml y db/migration (Flyway V1–V8)
         └── test/             pruebas unitarias y de capa web
 ```
 
@@ -152,10 +152,14 @@ precalculado, JWT + RBAC) vuelven con las HU que las necesitan. Su última imple
 
 ## 9. Limitaciones conocidas
 
-- **Sin autenticación** en el Sprint 0: en el EC2 cualquiera puede registrar patentes. No cargue datos reales hasta que vuelva DA-11 (ADR-006).
-- Swagger UI sigue siendo público en `prod` (ahora por HTTPS). Falta decidir si se apaga (`springdoc.swagger-ui.enabled=false`
-  en `application-prod.yml`). `/actuator/prometheus` ya no es público (ADR-010).
-- El Sprint 0 no implementa historias del backlog: HU-01 a HU-12 empiezan en el Sprint 1.
+- La autenticación JWT está activa. `POST /api/v1/auth/login` valida cuentas existentes sembradas desde variables
+  de entorno; no hay registro ni administración de usuarios. Reemplace los valores de ejemplo antes de usar datos reales.
+- El health check es público en el puerto de la API. Swagger UI también es pública y en producción se sirve por HTTPS;
+  si se decide restringirla, se puede desactivar con `springdoc.swagger-ui.enabled=false`.
+- `/actuator/prometheus` solo es accesible sin JWT por el puerto interno de management; por el puerto de la API exige JWT
+  (ADR-008, ADR-010).
+- HU-01, HU-02 y HU-04 están implementadas. HU-05 a HU-12 siguen pendientes; consulte el estado vigente en
+  [`docs/progress.md`](../docs/progress.md).
 - `restart: unless-stopped` reinicia el contenedor si el proceso termina, pero no si queda `unhealthy`.
 - Spring Boot 3.5.x puede quedar fuera del soporte de código abierto. Migrar a 4.x es una tarea planificada: exige
   springdoc 3.x y revisar la configuración de pruebas (`@WebMvcTest`).

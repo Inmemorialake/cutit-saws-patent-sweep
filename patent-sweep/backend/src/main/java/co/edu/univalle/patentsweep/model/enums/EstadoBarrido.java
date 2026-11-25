@@ -4,5 +4,7 @@ package co.edu.univalle.patentsweep.model.enums;
 public enum EstadoBarrido {
     EN_CURSO,
     COMPLETADO,
-    FALLIDO
+    FALLIDO,
+    /** HU-01 criterio 1.1: no se inició porque ya había un barrido en curso; queda solo como auditoría. */
+    OMITIDO
 }

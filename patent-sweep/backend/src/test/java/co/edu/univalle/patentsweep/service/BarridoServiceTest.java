@@ -72,13 +72,50 @@ class BarridoServiceTest {
     private EstadoFormulaService estadoFormulaService;
 
     @Test
-    @DisplayName("no inicia otro barrido si ya hay uno en curso")
+    @DisplayName("no inicia otro barrido si ya hay uno en curso y lo registra como omitido en la auditoría")
     void deberiaOmitirUnBarridoEnCurso() {
         Barrido enCurso = Barrido.builder().barridoId(7L).estado(EstadoBarrido.EN_CURSO).build();
         when(barridoRepository.findByEstado(EstadoBarrido.EN_CURSO)).thenReturn(Optional.of(enCurso));
+        when(barridoRepository.save(any())).thenAnswer(invocacion -> invocacion.getArgument(0));
 
-        assertThat(servicio().ejecutar()).isSameAs(enCurso);
-        verify(barridoRepository, never()).save(any());
+        Barrido omitido = servicio().ejecutar();
+
+        assertThat(omitido).isNotSameAs(enCurso);
+        assertThat(omitido.getEstado()).isEqualTo(EstadoBarrido.OMITIDO);
+        assertThat(omitido.getMensaje()).isEqualTo("Barrido omitido: existe una ejecución en curso");
+        assertThat(omitido.getFechaInicio()).isEqualTo(FIN);
+        assertThat(omitido.getFechaFin()).isEqualTo(FIN);
+        assertThat(omitido.getTotalFormulas()).isZero();
+        assertThat(enCurso.getEstado()).isEqualTo(EstadoBarrido.EN_CURSO);
+        verify(barridoRepository, times(1)).save(any());
+        verifyNoInteractions(materialesClient, fuentePatentes, configuracionService, conflictoService,
+                historialService, estadoFormulaService);
+    }
+
+    @Test
+    @DisplayName("cuenta cada barrido por estado final y guarda el momento del último para Grafana")
+    void deberiaRegistrarLasMetricasDeEjecucion() {
+        Barrido enCurso = Barrido.builder().barridoId(7L).estado(EstadoBarrido.EN_CURSO).build();
+        when(barridoRepository.findByEstado(EstadoBarrido.EN_CURSO))
+                .thenReturn(Optional.empty(), Optional.of(enCurso));
+        when(barridoRepository.save(any())).thenAnswer(invocacion -> copiar(invocacion.getArgument(0)));
+        when(materialesClient.listarAprobadas()).thenReturn(List.of());
+        BarridoService servicio = servicio();
+
+        servicio.ejecutar();
+        servicio.ejecutar();
+
+        assertThat(metricas.get("patentsweep.barrido.ejecuciones").tag("estado", "COMPLETADO").counter().count())
+                .isEqualTo(1.0);
+        assertThat(metricas.get("patentsweep.barrido.ejecuciones").tag("estado", "OMITIDO").counter().count())
+                .isEqualTo(1.0);
+        double esperado = RELOJ.instant().getEpochSecond();
+        assertThat(metricas.get("patentsweep.barrido.ultima.ejecucion").tag("estado", "COMPLETADO").gauge().value())
+                .isEqualTo(esperado);
+        assertThat(metricas.get("patentsweep.barrido.ultima.ejecucion").tag("estado", "OMITIDO").gauge().value())
+                .isEqualTo(esperado);
+        assertThat(metricas.get("patentsweep.barrido.ultima.ejecucion").tag("estado", "FALLIDO").gauge().value())
+                .isZero();
     }
 
     @Test
@@ -91,7 +128,8 @@ class BarridoServiceTest {
 
         assertThat(barrido.getEstado()).isEqualTo(EstadoBarrido.COMPLETADO);
         assertThat(barrido.getFechaInicio()).isEqualTo(FIN);
-        assertThat(barrido.getMensaje()).isEqualTo("Barrido completado exitosamente");
+        assertThat(barrido.getMensaje())
+                .isEqualTo("No hay fórmulas registradas en estado APROBADA para evaluar");
         verify(materialesClient, never()).obtenerFormula(anyString());
         verifyNoInteractions(configuracionService, fuentePatentes, conflictoService, historialService,
                 estadoFormulaService);
@@ -220,22 +258,20 @@ class BarridoServiceTest {
     }
 
     @Test
-    @DisplayName("cuenta como no procesada una fórmula descontinuada")
-    void deberiaRegistrarFalloDeFormulaDescontinuada() {
+    @DisplayName("omite una fórmula descontinuada sin registrarla como fallo técnico")
+    void deberiaOmitirUnaFormulaDescontinuada() {
         permitirGuardado();
         when(materialesClient.listarAprobadas()).thenReturn(List.of(resumen("form-001")));
         when(configuracionService.criteriosVigentes()).thenReturn(configuracion());
         when(materialesClient.obtenerFormula("form-001")).thenReturn(formulaDescontinuada("form-001"));
-        when(historialService.registrar(anyString(), anyString(), eq("SISTEMA"),
-                eq(OrigenRevision.BARRIDO_AUTOMATICO), eq(ResultadoRevision.FALLO_TECNICO),
-                anyMap(), any(), any())).thenReturn(revision());
 
         Barrido barrido = servicio().ejecutar();
 
         assertThat(barrido.getEstado()).isEqualTo(EstadoBarrido.COMPLETADO);
-        assertThat(barrido.getNoProcesadas()).isEqualTo(1);
+        assertThat(barrido.getNoProcesadas()).isZero();
         assertThat(barrido.getTotalProcesadas()).isZero();
-        verifyNoInteractions(fuentePatentes, conflictoService);
+        assertThat(barrido.getTotalFormulas()).isZero();
+        verifyNoInteractions(fuentePatentes, conflictoService, historialService);
     }
 
     @Test

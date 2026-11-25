@@ -67,9 +67,10 @@ public class ConflictoService {
                     .findByFormulaIdAndPatente_PatenteId(formulaId, p.getPatenteId())));
         }
 
-        boolean hayConflictos = !existentes.isEmpty();
+        // PB 6.3: CON_CONFLICTO solo si queda al menos un conflicto vigente (DETECTADO), nuevo o previo.
+        boolean hayNuevos = existentes.stream().anyMatch(Optional::isEmpty);
         boolean hayVigentes = conflictoRepository.countByFormulaIdAndEstado(formulaId, EstadoConflicto.DETECTADO) > 0;
-        ResultadoRevision resultado = hayConflictos || hayVigentes
+        ResultadoRevision resultado = hayNuevos || hayVigentes
                 ? ResultadoRevision.CON_CONFLICTO : ResultadoRevision.SIN_CONFLICTO;
         RevisionFormula revision = historialService.registrar(formulaId, version, username,
                 origen, resultado, parametros, null, ahora);

@@ -2,11 +2,13 @@ package co.edu.univalle.patentsweep.controller.mapper;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import co.edu.univalle.patentsweep.controller.dto.AlertaActivaDTO;
 import co.edu.univalle.patentsweep.controller.dto.BusquedaResponseDTO;
 import co.edu.univalle.patentsweep.controller.dto.ConflictoResumenDTO;
 import co.edu.univalle.patentsweep.model.Conflicto;
 import co.edu.univalle.patentsweep.model.Patente;
 import co.edu.univalle.patentsweep.model.enums.EstadoVigenciaPatente;
+import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -42,6 +44,23 @@ class ConflictoMapperTest {
 
         // Assert
         assertThat(resumen.tituloPatente()).isEqualTo("Aleación para cadenas de corte");
+    }
+
+    @Test
+    @DisplayName("La alerta activa lleva id de 6 dígitos, título cortado a 60 y fecha de detección")
+    void deberiaArmarLaAlertaActiva() {
+        // Arrange
+        LocalDateTime fecha = LocalDateTime.of(2026, 10, 19, 10, 30, 0);
+        Conflicto conflicto = conflicto(100003L, "T".repeat(80));
+        conflicto.setFechaDeteccion(fecha);
+
+        // Act
+        AlertaActivaDTO alerta = mapper.aAlerta(conflicto);
+
+        // Assert
+        assertThat(alerta.conflictoId()).isEqualTo("100003");
+        assertThat(alerta.tituloPatente()).hasSize(60);
+        assertThat(alerta.fechaDeteccion()).isEqualTo(fecha);
     }
 
     @Test

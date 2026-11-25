@@ -2,18 +2,18 @@ package co.edu.univalle.patentsweep.controller;
 
 import co.edu.univalle.patentsweep.config.OpenApiConfig;
 import co.edu.univalle.patentsweep.controller.dto.EstadoFormulaResponseDTO;
+import co.edu.univalle.patentsweep.controller.mapper.ConflictoMapper;
 import co.edu.univalle.patentsweep.service.EstadoFormulaService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /** Consulta del estado de una fórmula para Fabricación (PB HU-04). */
@@ -24,27 +24,30 @@ import org.springframework.web.bind.annotation.RestController;
 @Validated
 public class EstadoFormulaController {
 
-    private final EstadoFormulaService estadoFormulaService;
+    static final String MENSAJE_EXITO = "Estado de la fórmula consultado correctamente";
 
-    public EstadoFormulaController(EstadoFormulaService estadoFormulaService) {
+    private final EstadoFormulaService estadoFormulaService;
+    private final ConflictoMapper mapper;
+
+    public EstadoFormulaController(EstadoFormulaService estadoFormulaService, ConflictoMapper mapper) {
         this.estadoFormulaService = estadoFormulaService;
+        this.mapper = mapper;
     }
 
-
-    @GetMapping("/estado")
+    @GetMapping("/estado/{formulaId}")
     @Operation(summary = "Consultar el estado de una fórmula frente al barrido de patentes",
             description = "Permite a Fabricación verificar el estado de la fórmula para autorizar su "
                     + "producción. El estado se calcula en cada consulta (HU-04) y la fórmula se verifica "
                     + "en Materiales. El usuario responsable se toma del token de la sesión.")
     @ApiResponse(responseCode = "200", description = "Estado consultado exitosamente")
-    @ApiResponse(responseCode = "400", description = "El formulaId está vacío o no tiene el formato form-NNN")
+    @ApiResponse(responseCode = "400", description = "El formulaId no tiene el formato form-NNN")
     @ApiResponse(responseCode = "401", description = "No autenticado")
     @ApiResponse(responseCode = "404", description = "La fórmula no existe")
+    @ApiResponse(responseCode = "503", description = "Materiales no respondió en 5 s")
     @ApiResponse(responseCode = "500", description = "Error interno del servidor")
     public ResponseEntity<EstadoFormulaResponseDTO> consultarEstado(
-            @RequestParam
-            @NotBlank(message = "El código de la fórmula es obligatorio y debe tener el formato form-NNN")
-            @Pattern(regexp = "^form-\\d{3}$", message = "El código de la fórmula es obligatorio y debe tener el formato form-NNN")
+            @PathVariable
+            @Pattern(regexp = "^form-\\d{3}$", message = "El identificador de la fórmula no es válido")
             String formulaId) {
 
         var resultado = estadoFormulaService.consultarEstado(formulaId);
@@ -52,7 +55,8 @@ public class EstadoFormulaController {
                 formulaId,
                 resultado.estado(),
                 resultado.fechaUltimaRevision(),
-                "La fórmula se encuentra en estado " + resultado.estado() + " para su uso en fabricación."
+                resultado.alertasActivas().stream().map(mapper::aAlerta).toList(),
+                MENSAJE_EXITO
         ));
     }
 }

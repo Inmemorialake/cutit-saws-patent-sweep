@@ -17,9 +17,11 @@ import co.edu.univalle.patentsweep.model.enums.EstadoVigenciaPatente;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.function.Supplier;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
@@ -33,6 +35,7 @@ class FuentePatentesClientTest {
 
     private MockRestServiceServer servidor;
     private FuentePatentesClient cliente;
+    private ResilientExternalCallExecutor llamadas;
 
     @BeforeEach
     void preparar() {
@@ -43,7 +46,10 @@ class FuentePatentesClientTest {
                 .messageConverters(conversores -> conversores.add(0,
                         new MappingJackson2HttpMessageConverter(jackson.build())));
         servidor = MockRestServiceServer.bindTo(constructor).build();
-        cliente = new FuentePatentesClient(constructor.build());
+        llamadas = Mockito.mock(ResilientExternalCallExecutor.class);
+        Mockito.doAnswer(invocacion -> ((Supplier<?>) invocacion.getArgument(0)).get())
+                .when(llamadas).ejecutarFuentePatentes(Mockito.any());
+        cliente = new FuentePatentesClient(constructor.build(), llamadas);
     }
 
     @Test

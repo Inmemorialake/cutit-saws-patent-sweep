@@ -72,13 +72,14 @@ patentsweep:
   fuente-patentes:
     url-base: ${FUENTE_PATENTES_URL:http://apis-simuladas:8080}
   http:
-    # Límite global de 20 s por intento (PB HU-01/02, S-07).
+    # Límite de 20 s por intento HTTP (PB); Resilience4j solo acota la llamada completa (70 s).
     timeout-conexion-segundos: 5
     timeout-lectura-segundos: 20
   coincidencia:
     # Regla del PB (HU-01, criterio 6): al menos el 50 % de los materiales y como mínimo 2.
     porcentaje-minimo: 50
     minimo-materiales: 2
+  # Dimensionamiento compartido por los pools independientes de notificaciones e integraciones HTTP.
   async:
     nucleo: 2
     maximo: 4
@@ -93,6 +94,10 @@ resilience4j:
         wait-duration: 5s
         retry-exceptions:
           - co.edu.univalle.patentsweep.exception.ServicioNoDisponibleException
+      materialesVerificacion:
+        # PB HU-04: la consulta de estado verifica la fórmula una sola vez y en 5 s como máximo.
+        max-attempts: 1
+        wait-duration: 5s
       fuentePatentes:
         max-attempts: 3
         wait-duration: 5s
@@ -101,13 +106,26 @@ resilience4j:
   timelimiter:
     instances:
       materiales:
-        # D-5: límite global de 20 s por llamada lógica; cancela la espera de reintentos restantes.
-        timeout-duration: 20s
+        # PB: 20 s por intento (lo aplica timeout-lectura-segundos). Este tope solo protege la llamada
+        # lógica completa: 3 intentos de 20 s + 2 esperas de 5 s = 70 s.
+        timeout-duration: 70s
+        cancel-running-future: true
+      materialesVerificacion:
+        timeout-duration: 5s
+        cancel-running-future: true
       fuentePatentes:
-        timeout-duration: 20s
+        timeout-duration: 70s
+        cancel-running-future: true
   circuitbreaker:
     instances:
       materiales:
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+        record-exceptions:
+          - co.edu.univalle.patentsweep.exception.ServicioNoDisponibleException
+      materialesVerificacion:
         sliding-window-size: 10
         minimum-number-of-calls: 5
         failure-rate-threshold: 50

@@ -9,6 +9,32 @@ El versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 ## [Unreleased]
 
+### Cambiado
+
+- HU-04: ruta `GET /estado/{formulaId}`, respuesta con `alertasActivas`, mensaje de éxito y errores del PB (400/503/500) y verificación de la fórmula en 5 s sin reintentos (política `materialesVerificacion`).
+- HU-02: la búsqueda manual pasa a `POST /api/v1/patentes/busqueda`, como pide el PB; se retira `POST /buscar-conflictos` (D-7).
+- HU-04 (GUI): la vista se llama «Patentes > Estado de Barrido», el botón «Ver Estado de Barrido» y muestra la tabla de `alertasActivas` (o «La fórmula no tiene alertas activas»).
+- HU-01 (criterio 1.1): un barrido omitido por haber otro en curso queda en la auditoría (`barrido`) con estado `OMITIDO` y el mensaje «Barrido omitido: existe una ejecución en curso»; antes solo iba al log.
+- HU-01/HU-02: el resultado del historial es `CON_CONFLICTO` solo con conflictos vigentes; el barrido guarda el mensaje del PB con la lista vacía y omite las fórmulas `DESCONTINUADAS` sin marcar fallo técnico.
+- Integraciones: 20 s por intento y tope de 70 s por llamada lógica (antes 20 s en total).
+- HU-02: `BusquedaService` ya no vuelve a consultar Materiales después de guardar conflictos e historial
+  (la llamada a `recalcular` descartaba su resultado y podía convertir una búsqueda guardada en un 503).
+- Migración V8 (ADR-012): el `UNIQUE` de `conflicto` pasa a `(formula_id, patente_id)`, sin la versión.
+
+### Añadido
+
+- Grafana (tablero *Patent Sweep · API*): paneles «Último barrido hace» (en rojo si pasaron más de 26 h), «Estado del último barrido» y «Barrido: ejecuciones (7 días)», con las métricas nuevas `patentsweep.barrido.ejecuciones{estado}` y `patentsweep.barrido.ultima.ejecucion{estado}`. Los contadores nacen en 0 para que Prometheus cuente también el primer barrido tras un reinicio.
+- Colección de Postman en `docs/postman/` (15 peticiones con pruebas y entornos local y producción, sin credenciales).
+- `docs/HU/HU-04.md`: especificación de HU-04 (endpoint, reglas de estado, GUI, pruebas y trazabilidad).
+- ADR-012 pasa de «Propuesta» a «Aceptada»; se corrige su consecuencia sobre HU-04 (las alertas cuentan por pareja, sin filtrar la versión).
+- Pruebas de integración de HU-02 (`@SpringBootTest` con PostgreSQL por Testcontainers y WireMock).
+
+### Corregido
+
+- Límite de memoria de Grafana en producción de 256 a 384 MB: en el EC2 usaba ~242 MB en reposo (94 % del límite) y
+  podía reiniciarse por OOM.
+- Una ruta inexistente (por ejemplo, la antigua `/buscar-conflictos`) respondía 500 y registraba un «Error interno»; ahora responde 404 `ProblemDetail`, y un método HTTP no soportado, 405.
+
 ## [1.0.0-beta.2] — 2026-11-24 · Sprint 1: HU-01, HU-02, monitoreo y HTTPS
 
 ### Añadido
@@ -21,10 +47,14 @@ El versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 - ADR-008: restauración del alcance Sprint 1 desde el commit `238806c` y fin del arquetipo de una sola transacción.
 - ADR-009: conflicto único por fórmula y patente, sin importar la versión; matiza ADR-002.
+- ADR-011: TimeLimiter global de 20 s para integraciones HTTP bloqueantes, aplicado sobre la operación asíncrona completa.
 - `docs/discrepancias.md` con las decisiones D-1 a D-12 y `docs/progress.md` como estado de avance del Sprint 1.
 - Seguridad JWT con roles `ADMINISTRADOR`/`SERVICIO`, configuración de Resilience4j, caché Caffeine,
   reloj inyectable y clientes `RestClient` base para Materiales y la fuente de patentes (HU-00, ADR-008).
 - Variables de entorno para JWT y las URL de integraciones en `.env.example` y Docker Compose.
+- `POST /api/v1/auth/login`: autentica usuarios existentes y devuelve un JWT Bearer, el vencimiento en segundos,
+  el usuario y el rol; credenciales inválidas responden 401 con `ProblemDetail`.
+- Pruebas de autenticación para el login público, validación de entradas, respuesta genérica 401 y claims del JWT.
 - Entidades y repositorios JPA para las tablas del esquema V1–V6: `conflicto`, `revision_formula`,
   `configuracion`, `evaluacion_formula`, `notificacion` y `usuario`, con sus enums de estado (P04, P17, P18).
 - Excepciones de integración y reglas de negocio, con handlers `ProblemDetail` 404/409/401/403/503 (P07, P19).
@@ -71,6 +101,8 @@ El versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 ### Corregido
 
+- Las integraciones HTTP aplican el `TimeLimiter` de Resilience4j alrededor de la llamada asíncrona completa,
+  incluidos los reintentos, sin interceptar métodos bloqueantes con una anotación incompatible.
 - `JwtAuthFilter` se registra como bean en `SecurityConfig` para no romper los slices `@WebMvcTest`.
 - CI y Dockerfile toleran el HTTP 429 de Maven Central: caché de Maven con `restore-keys`, espera creciente
   hasta 300 s y reintentos internos de Wagon, sin intervención manual ni infraestructura adicional.

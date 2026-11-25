@@ -1,5 +1,6 @@
 package co.edu.univalle.patentsweep.controller.mapper;
 
+import co.edu.univalle.patentsweep.controller.dto.AlertaActivaDTO;
 import co.edu.univalle.patentsweep.controller.dto.BusquedaResponseDTO;
 import co.edu.univalle.patentsweep.controller.dto.ConflictoResumenDTO;
 import co.edu.univalle.patentsweep.model.Conflicto;
@@ -17,11 +18,21 @@ public class ConflictoMapper {
     static final String MENSAJE_SIN_CONFLICTOS = "No se detectaron conflictos relacionados con su búsqueda";
     static final String MENSAJE_CON_CONFLICTOS = "Búsqueda completada correctamente";
 
+    public AlertaActivaDTO aAlerta(Conflicto conflicto) {
+        return new AlertaActivaDTO(
+                String.format("%06d", conflicto.getConflictoId()),
+                cortarTitulo(conflicto.getPatente().getTitulo()),
+                conflicto.getFechaDeteccion());
+    }
+
+    private static String cortarTitulo(String titulo) {
+        return titulo.length() > MAXIMO_TITULO ? titulo.substring(0, MAXIMO_TITULO) : titulo;
+    }
+
     public ConflictoResumenDTO aResumen(Conflicto conflicto) {
-        String titulo = conflicto.getPatente().getTitulo();
         return new ConflictoResumenDTO(
                 String.format("%06d", conflicto.getConflictoId()),
-                titulo.length() > MAXIMO_TITULO ? titulo.substring(0, MAXIMO_TITULO) : titulo,
+                cortarTitulo(conflicto.getPatente().getTitulo()),
                 conflicto.getPatente().getTipoProducto(),
                 conflicto.getPatente().getEstadoVigencia(),
                 conflicto.getPatente().getFechaConcesion());
